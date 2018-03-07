@@ -1,0 +1,239 @@
+\documentclass[11pt]{article}
+\usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{stix}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{natbib}
+\usepackage[section]{placeins}
+
+\author{Wen Yan}
+
+\newcommand{\AVE}[1]{\ensuremath{\langle {#1} \rangle}}
+\newcommand{\ABS}[1]{\ensuremath{\lvert {#1} \rvert}}
+\newcommand{\dpone}[2]{\ensuremath{\displaystyle\frac{\partial {#1}}{\partial {#2}}}}
+\newcommand{\dptwo}[2]{\ensuremath{\displaystyle\frac{\partial^2 {#1}}{\partial {#2}^2}}}
+\newcommand{\dpn}[3]{\ensuremath{\displaystyle\frac{\partial^{#1} {#2}}{\partial {#3}^{#1}}}}
+
+\newcommand{\bA}{\ensuremath{\bm{A}}}
+\newcommand{\bB}{\ensuremath{\bm{B}}}
+\newcommand{\bC}{\ensuremath{\bm{C}}}
+\newcommand{\bD}{\ensuremath{\bm{D}}}
+\newcommand{\bE}{\ensuremath{\bm{E}}}
+\newcommand{\bF}{\ensuremath{\bm{F}}}
+\newcommand{\bG}{\ensuremath{\bm{G}}}
+\newcommand{\bH}{\ensuremath{\bm{H}}}
+\newcommand{\bI}{\ensuremath{\bm{I}}}
+\newcommand{\bJ}{\ensuremath{\bm{J}}}
+\newcommand{\bK}{\ensuremath{\bm{K}}}
+\newcommand{\bL}{\ensuremath{\bm{L}}}
+\newcommand{\bM}{\ensuremath{\bm{M}}}
+\newcommand{\bN}{\ensuremath{\bm{N}}}
+\newcommand{\bO}{\ensuremath{\bm{O}}}
+\newcommand{\bP}{\ensuremath{\bm{P}}}
+\newcommand{\bQ}{\ensuremath{\bm{Q}}}
+\newcommand{\bR}{\ensuremath{\bm{R}}}
+\newcommand{\bS}{\ensuremath{\bm{S}}}
+\newcommand{\bT}{\ensuremath{\bm{T}}}
+\newcommand{\bU}{\ensuremath{\bm{U}}}
+\newcommand{\bV}{\ensuremath{\bm{V}}}
+\newcommand{\bW}{\ensuremath{\bm{W}}}
+\newcommand{\bX}{\ensuremath{\bm{X}}}
+\newcommand{\bY}{\ensuremath{\bm{Y}}}
+\newcommand{\bZ}{\ensuremath{\bm{Z}}}
+
+
+\newcommand{\ba}{\ensuremath{\bm{a}}}
+\newcommand{\bb}{\ensuremath{\bm{b}}}
+\newcommand{\bc}{\ensuremath{\bm{c}}}
+\newcommand{\bd}{\ensuremath{\bm{d}}}
+\newcommand{\be}{\ensuremath{\bm{e}}}
+\newcommand{\bff}{\ensuremath{\bm{f}}}
+\newcommand{\bg}{\ensuremath{\bm{g}}}
+\newcommand{\bh}{\ensuremath{\bm{h}}}
+\newcommand{\bi}{\ensuremath{\bm{i}}}
+\newcommand{\bj}{\ensuremath{\bm{j}}}
+\newcommand{\bk}{\ensuremath{\bm{k}}}
+\newcommand{\bl}{\ensuremath{\bm{l}}}
+\newcommand{\bmm}{\ensuremath{\bm{m}}}
+\newcommand{\bn}{\ensuremath{\bm{n}}}
+\newcommand{\bo}{\ensuremath{\bm{o}}}
+\newcommand{\bp}{\ensuremath{\bm{p}}}
+\newcommand{\bq}{\ensuremath{\bm{q}}}
+\newcommand{\br}{\ensuremath{\bm{r}}}
+\newcommand{\bs}{\ensuremath{\bm{s}}}
+\newcommand{\bt}{\ensuremath{\bm{t}}}
+\newcommand{\bu}{\ensuremath{\bm{u}}}
+\newcommand{\bv}{\ensuremath{\bm{v}}}
+\newcommand{\bw}{\ensuremath{\bm{w}}}
+\newcommand{\bx}{\ensuremath{\bm{x}}}
+\newcommand{\by}{\ensuremath{\bm{y}}}
+\newcommand{\bz}{\ensuremath{\bm{z}}}
+
+\newcommand{\bsigma}{\ensuremath{\bm{\sigma}}}
+
+\begin{document}
+\title{Singularity solutions in Stokes flow}
+\maketitle
+\section{Introduction}
+The purpose of this document is to clear up the chaotic mess in literatures about Stokes flow singularities including the name, sign, index, notation.
+
+This document is mostly based on the following materials:
+\begin{itemize}
+	\item 1.Blake, J. R. \& Chwang, A. T. Fundamental singularities of viscous flow. J Eng Math 8, 23-29 (1974).
+	\item 2.Durlofsky, L., Brady, J. F. \& Bossis, G. Dynamic Simulation of Hydrodynamically Interacting Particles. Journal of Fluid Mechanics 180, 21-49 (1987).
+	\item 3.Kim, S. \& Karrila, S. J. Microhydrodynamics: Principles and Selected Applications. (Courier Corporation, 2005).
+	\item STFMM3DLib document
+\end{itemize}
+
+\textbf{Important Remark: }The force, torque, stresslet in this document are all applied on the fluid.
+
+\section{Definitions}
+The Stokes equation:
+\begin{align}
+	\nabla\cdot\bsigma = -\nabla p + \mu \nabla^2 \mu &= -\bF \delta(\bx_F) \\
+	\nabla\cdot\bu &=0
+\end{align}
+
+Define the vector $\br$ pointing from source to target, and the $G_{ij}$ Oseen-Burgers tensors:
+\begin{align}
+	G_{ij} &= \frac{\delta_{ij}}{r} + \frac{r_ir_j}{r^3}\\
+	G_{ij,k} &= \left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right] \\
+	\nabla^2 G_{ij} &= 2\frac{\delta_{ij}}{r^3} - 6\frac{r_ir_j}{r^5} = -2\nabla\nabla \frac{1}{r}
+\end{align}
+Note that $G_{ij,k}$ contains a symmetric and an anti-symmetric part for index $j,k$. We need that in the derivation for doublet, stresslet, and rotlet. 
+
+In the next section we consider a sphere with radius $a$, and consider the force exerted by this sphere on the fluid. Let $n$ denotes the norm vector pointing outward the sphere. We have:
+\begin{align}
+	F_i &= \int \sigma_{ij} n_j dS \\
+	L_i &= \int \epsilon_{ijk} y_j \sigma_{kl} n_l dS \\
+	D_{ij} &= \int \sigma_{ik} n_k y_j dS \\
+	S_{ij} &= \frac{1}{2}\left(D_{ij}+D_{ji}\right) - \frac{1}{3}D_{kk}\delta_{ij}\\
+	T_{ij} &= \frac{1}{2}\left(D_{ij}-D_{ji}\right)
+\end{align}
+$S_{ij}$ is symmetric, and $T_{ij}$ is anti-symmetric. Both of them are trace-free tensors. Further, $D_{ij},S_{ij},T_{ij}$ refers to force strength with index $i$ and direction with index $j$.
+
+\section{Propagators for finite size sphere $a$.}
+This part is taken from Durlofsky, 1987.
+\begin{align}
+	u_i &= \frac{1}{8\pi\mu} \left(1+\frac{1}{6}a^2\nabla^2 \right) G_{ij}F_j + \frac{1}{8\pi\mu} R_{ij} L_j + \frac{1}{8\pi\mu} \left(1+\frac{1}{10}a^2\nabla^2 \right) K_{ijk}S_{jk}
+\end{align}
+Here 
+$$ K_{ijk} = \frac{1}{2}\left(G_{ij,k}+G_{ik,j}\right) = \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} . $$
+$$ R_{ij} =  \frac{\epsilon_{ijk}r_k}{r^3}.$$
+By utilizing the trace-free property of $S_{jk}$ by definition, we have $S_{jk}\delta_{jk}=0$. So the flow disturbance can also be written as:
+\begin{align}
+	\left(1+\frac{1}{10}a^2\nabla^2 \right)\left(- \frac{3r_ir_jr_k}{r^5}\right)S_{jk}
+\end{align}
+
+
+
+The torque $L_j$ is related to the rotlet $T_{ij}$ as:
+\begin{align}
+	T_{ij}&=\frac{1}{2}\epsilon_{ijk}L_k\\
+	L_i &= \epsilon_{ijk} T_{jk}  
+\end{align}
+
+\subsection{Faxen's Laws}
+\begin{align}
+	U_i - u_i^\infty &= \frac{F_i}{6\pi\mu a} + \left(1+\frac{1}{6}a^2\nabla^2\right)u_i' \\
+	\Omega_i - \Omega_i^\infty &= \frac{L_i}{8\pi\mu a^3} + \frac{1}{2}\epsilon_{ijk}\nabla_j u_k' \\
+	-E_{ij}^\infty &= \frac{S_{ij}}{\frac{20}{3}\pi\mu a^3} +\left(1+\frac{1}{10}a^2\nabla^2\right) e_{ij}'
+\end{align}
+
+\section{Limit of point singularities: $a\to 0$.}
+\subsection{Velocity}
+This is equivalent to setting $a=0$ in Eq.(11). But here we rederive it to clear up things. We start from the point-multipole expansion. The force term is straightforward and the doublet term is:
+\begin{align}
+	u_i &= \frac{1}{8\pi\mu} G_{ij,k} D_{jk} \\
+	&= \frac{1}{8\pi\mu} \left(\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right]\right)D_{jk}
+\end{align}
+The propagators for $S_{ij}$ and $T_{ij}$ can be constructed as follows:
+\begin{align}
+	\frac{1}{2} u_i &= \frac{1}{8\pi\mu} \frac{1}{2} D_{jk} G_{ij,k} \\
+	\frac{1}{2} u_i &= \frac{1}{8\pi\mu} \frac{1}{2} D_{kj} G_{ik,j}
+\end{align}
+Add them together, utilizing that $G_{ij,k}$ contains a symmetric and an anti-symmetric part:
+\begin{align}
+	u_i &= \frac{1}{8\pi\mu} \frac{1}{2}\left(D_{jk}+D_{kj}\right)\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \frac{1}{8\pi\mu} \frac{1}{2}\left(D_{jk}-D_{kj}\right) \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right]\\ 
+	&= \frac{1}{8\pi\mu}S_{jk}\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \frac{1}{8\pi\mu}\left( \frac{2}{3} D_{ii}\delta_{jk} \right)\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \frac{1}{8\pi\mu}T_{jk} \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right]
+\end{align}
+
+It is clear that the trace-dependent term is zero:
+\begin{align}
+   \delta_{jk} \left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] = 3\frac{r_i}{r^3} - 3\frac{r_ir_jr_j}{r^5} = 0
+\end{align}
+
+$S_{jk}$ is trace-free so $S_{jk}\delta_{jk}=0$. Therefore:
+\begin{align}
+	u_i = \frac{1}{8\pi\mu}S_{jk}\left[ - \frac{3r_ir_jr_k}{r^5} \right]  + \frac{1}{8\pi\mu}T_{jk} \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right]
+\end{align}
+
+We further utilize the relation between the torque $L_j$ and the rotlet $T_{jk}$, we have:
+\begin{align}
+	T_{jk} \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right] &= \frac{1}{2}\epsilon_{jkl}L_l \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right] = \frac{1}{2} L_l \left(\epsilon_{jil}r_j - \epsilon_{ikl}r_k\right) \frac{1}{r^3} \\
+	&= L_l \frac{\epsilon_{ilj}r_j}{r^3}
+\end{align}
+
+We get back to the same equation by setting $a=0$ in Eq.(11).
+
+\textbf{Remark: } The finite-size effect factor $a^2\nabla^2$ appears for stresslet $S_{jk}$ but not for torque $L_j$ in Eq.(11) is due to the fact that $\nabla^2 L_l \frac{\epsilon_{ilj}r_j}{r^3} =0 $.
+
+\textbf{Remark 2:} The equation in Blake 1971 and STFMM3D for $D_{jk}$ seems to be off by a negative sign. 
+
+\subsection{Pressure}
+\begin{align}
+p &= \frac{1}{4\pi} \frac{r_k}{r^3} F_k + \frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)D_{jk} \\
+	& = \frac{1}{4\pi} \frac{r_k}{r^3} F_k + \frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5}\right)S_{jk}\\
+	\dpone{p}{x_i} &= \frac{1}{4\pi}\frac{r^2 F_i - 3r_ir_kF_k}{r^5} + \frac{1}{4\pi} \left(15\frac{r_ir_jr_k}{r^7}-3\frac{\delta_{ij}r_k+\delta_{ik}r_j+\delta_{jk}r_i}{r^5}\right) D_{jk} \\
+	&= \frac{1}{4\pi}\frac{r^2F_i - 3r_ir_kF_k}{r^5} + \frac{1}{4\pi} \left(15\frac{r_ir_jr_k}{r^7}-3\frac{\delta_{ij}r_k+\delta_{ik}r_j}{r^5}\right) S_{jk}
+\end{align}
+Since $S_{jk}$ is symmetric and trace-free.
+Torque/Rotlet does not contribute to pressure disturbance.
+
+\subsection{Double layer potential}
+The following two combinations satisfy the Stokes equation, for trace-free $S_{jk}$ and general $D_{jk}$, respectively:
+\begin{align}
+	p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5}\right)S_{jk}, \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right] S_{jk} \\
+	p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)D_{jk}  ,\quad u_i = \frac{1}{8\pi\mu} \left(\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right] + \left[\frac{\delta_{ik}r_j}{r^3} -\frac{\delta_{ij}r_k}{r^3} \right]\right)D_{jk}
+\end{align}
+
+For $S_{jk}$, the Stokes equation generates:
+\begin{align}
+	-\dpone{p}{r_i} + \nabla^2 u_i = -\frac{3}{4}\frac{r_i}{r^5} S_{jj}
+\end{align}
+Because $S_{jj}$ is trace-free by definition, Stokes equation is satisfied. Note that the satisfaction of Stokes equation does not require the symmetry of $S_{jk}$.
+
+For $D_{jk}$ the Stokes equation is always zero, since $D_{jk}$ is arbitrary by definition.
+
+\textbf{Important: }In boundary integral theory the double layer kernel $\frac{1}{8\pi\mu}S_{jk}\left[ - \frac{3r_ir_jr_k}{r^5} \right]$ is used with an arbitrary source $v_kg_j$, where the trace-free condition is not necessarily satisfied. In this case, the pressure calculated by $\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5}\right)v_kg_j$ is not correct.
+
+For arbitrary $D_{jk}$ or arbitrary $D_{jk}=v_kg_j$, the following combination of pressure and velocity kernel still satisfies the Stokes equation:
+\begin{align}
+		p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)D_{jk}, \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right] D_{jk}
+\end{align}
+This is the correct formula which should be used in the double layer boundary integral equations (cf. STFMMLIB documentation).
+
+
+\subsection{Derivatives of double layer potential}
+Grad and Laplacian, where $\nabla^2 \bu = \nabla p$ due to Stokes equation:
+\begin{align}
+	\left[\frac{r_ir_jr_k}{r^5} \right]_{,l} &= \delta_{il}r_jr_k\frac{1}{r^5} + \delta_{jl}r_ir_k\frac{1}{r^5} + \delta_{kl}r_ir_j\frac{1}{r^5} + r_ir_jr_k\left(-5\frac{r_l}{r^7}\right) \\
+	\left[\frac{r_ir_jr_k}{r^5} \right]_{,ll} &= 2\left[\delta_{ij}r_k\frac{1}{r^5}+\delta_{ik}r_j\frac{1}{r^5}+\delta_{jk}r_i\frac{1}{r^5}\right]-10\left[\frac{1}{r^7}r_ir_jr_k\right]
+\end{align}
+
+
+
+\section{Discussion}
+\textbf{1. } Two propagators $\left[ \frac{\delta_{jk}r_i}{r^3} - \frac{3r_ir_jr_k}{r^5} \right]$ and $\left[ - \frac{3r_ir_jr_k}{r^5} \right]$ are used interchangeably in literature, but they are equivalent only for trace free tensors.
+
+\textbf{2.} The stress generated by a point force is 
+$$\sigma_{ij} = -p\delta_{ij} + \mu \left(u_{i,j}+u_{j,i}\right) = -\frac{3}{4\pi}\frac{r_ir_jr_k}{r^5}F_k. $$ 
+
+\textbf{3. } Pay attention to the prefactors. The prefactors in STFMM3D and Blake 1971 for stress propagators to velocity and pressure seem to be both off by a factor of 2 and a negative sign.
+
+
+
+\end{document}
