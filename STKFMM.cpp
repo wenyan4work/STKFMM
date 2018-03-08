@@ -71,7 +71,7 @@ std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
 }
 
 void FMMData::setKernel() {
-    matrixPtr->Initialize(multOrder, MPI_COMM_WORLD, kernelFunctionPtr);
+    matrixPtr->Initialize(multOrder, comm, kernelFunctionPtr);
     kdimSL = kernelFunctionPtr->k_s2t->ker_dim[0];
     kdimTrg = kernelFunctionPtr->k_s2t->ker_dim[1];
     kdimDL = kernelFunctionPtr->surf_dim;
@@ -108,6 +108,7 @@ void FMMData::readM2LMat(const std::string dataName) {
 FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_)
     : kernelChoice(kernelChoice_), periodicity(periodicity_), multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
       matrixPtr(nullptr), treeDataPtr(nullptr) {
+    comm = MPI_COMM_WORLD;
     matrixPtr = new pvfmm::PtFMM();
     // choose a kernel
     switch (kernelChoice) {
@@ -213,7 +214,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     treeDataPtr->trg_value.Resize(nTrg * kdimTrg);
 
     // construct tree
-    treePtr = new pvfmm::PtFMM_Tree(MPI_COMM_WORLD);
+    treePtr = new pvfmm::PtFMM_Tree(comm);
     treePtr->Initialize(treeDataPtr);
     treePtr->InitFMM_Tree(true, periodicType == PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
     treePtr->SetupFMM(matrixPtr);
@@ -328,6 +329,7 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_
         printf("to be implemented\n");
         exit(1);
     }
+    comm = MPI_COMM_WORLD;
 
     poolFMM.clear();
 
@@ -473,7 +475,6 @@ void STKFMM::setupCoord(const std::vector<double> &coordIn, std::vector<double> 
 void STKFMM::setPoints(const std::vector<double> &srcSLCoord_, const std::vector<double> &srcDLCoord_,
                        const std::vector<double> &trgCoord_) {
     int np, myrank;
-    MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Comm_size(comm, &np);
     MPI_Comm_rank(comm, &myrank);
 

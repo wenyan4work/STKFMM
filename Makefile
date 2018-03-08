@@ -17,7 +17,7 @@ SYSLIB =
 SIZE =	size
 
 # Source Files. Header files will be automatically processed
-SRC = main.cpp ChebNodal.cpp PointDistribution.cpp SimpleKernel.cpp STKFMM.cpp 
+SRC = main.cpp SimpleKernel.cpp STKFMM.cpp Util/ChebNodal.cpp Util/PointDistribution.cpp 
 
 # Definitions
 EXE := TestSTKFMM.X

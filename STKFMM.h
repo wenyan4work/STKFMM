@@ -96,6 +96,7 @@ class FMMData {
     pvfmm::PtFMM *matrixPtr;
     pvfmm::PtFMM_Tree *treePtr;
     pvfmm::PtFMM_Data *treeDataPtr;
+    MPI_Comm comm;
 
     void readM2LMat(const std::string dataName);
 
@@ -188,6 +189,8 @@ class STKFMM {
     double zlow, zhigh;
     double scaleFactor;
     double xshift, yshift, zshift;
+
+    MPI_Comm comm;
 
     std::vector<double> srcSLCoordInternal; // scaled coordinate Single Layer
     std::vector<double> srcDLCoordInternal; // scaled coordinate Double Layer

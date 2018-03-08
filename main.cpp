@@ -7,9 +7,9 @@
 
 #include <mpi.h>
 
-#include "PointDistribution.h"
 #include "STKFMM.h"
 #include "SimpleKernel.h"
+#include "Util/PointDistribution.h"
 #include "Util/cmdparser.hpp"
 
 using namespace stkfmm;
@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
     parser.run_and_exit_if_error();
 
     showOption(parser);
-    for (int p = 10; p <= 10; p += 2) {
+    for (int p = 6; p <= 16; p += 2) {
         testFMM(parser, p);
     }
 
