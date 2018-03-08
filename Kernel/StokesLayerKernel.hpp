@@ -26,7 +26,7 @@ struct StokesLayerKernel {
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVel() {
     static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
-        "stokes_PVel", 3, std::pair<int, int>(3, 4));
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     return stokes_pker;
 }
@@ -34,11 +34,11 @@ inline const Kernel<T> &StokesLayerKernel<T>::PVel() {
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVelGrad() {
     static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
-        "stokes_PVel", 3, std::pair<int, int>(3, 4));
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
         BuildKernel<T, stokes_pvelgrad<T, NEWTON_ITE>, stokes_doublepvelgrad<T, NEWTON_ITE>>(
-            "stokes_PVelGrad", 3, std::pair<int, int>(3, 16), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
+            "stokes_PVelGrad", 3, std::pair<int, int>(4, 16), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
             &stokes_pker, NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
     return stokes_pgker;
@@ -47,11 +47,11 @@ inline const Kernel<T> &StokesLayerKernel<T>::PVelGrad() {
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVelLaplacian() {
     static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
-        "stokes_PVel", 3, std::pair<int, int>(3, 4));
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
         BuildKernel<T, stokes_pvellaplacian<T, NEWTON_ITE>, stokes_doublelaplacian<T, NEWTON_ITE>>(
-            "stokes_PVelLaplacian", 3, std::pair<int, int>(3, 7), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
+            "stokes_PVelLaplacian", 3, std::pair<int, int>(4, 7), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
             &stokes_pker, NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
     return stokes_pgker;
@@ -60,7 +60,7 @@ inline const Kernel<T> &StokesLayerKernel<T>::PVelLaplacian() {
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Traction() {
     static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
-        "stokes_PVel", 3, std::pair<int, int>(3, 4));
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
         BuildKernel<T, stokes_traction<T, NEWTON_ITE>, stokes_doubletraction<T, NEWTON_ITE>>(

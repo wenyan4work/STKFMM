@@ -520,6 +520,14 @@ void STKFMM::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &s
     for (int i = 0; i < nDL * fmm.kdimDL; i++) {
         srcDLValueInternal[i] = srcDLValue[i] * scaleFactor;
     }
+    if (fmm.kdimSL == 4) {
+    // stokes kernel
+#pragma omp parallel for
+        for (int i = 0; i < nSL; i++) {
+            // the Trace term scales as double layer
+            srcSLValueInternal[4 * i + 3] = srcSLValue[4 * i + 3] * scaleFactor;
+        }
+    }
 
     // run FMM
     // evaluate on internal sources with proper scaling
