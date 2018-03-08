@@ -21,13 +21,13 @@ void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>(
         "D", "nDLSource", 1,
         "1 for point force, 2 for force dipole, 4 for 4 point forces, other for same as target, default=1");
-    parser.set_optional<int>("T", "nTarget", 2, "total target number = (T+1)^3");
-    parser.set_optional<double>("B", "box", 1.0, "box edge length, default 1");
-    parser.set_optional<double>("M", "move", 0.0, "box origin shift move, default 0");
+    parser.set_optional<int>("T", "nTarget", 2, "total target number = (T+1)^3, default T=2");
+    parser.set_optional<double>("B", "box", 1.0, "box edge length, default B=1.0");
+    parser.set_optional<double>("M", "move", 0.0, "box origin shift move, default M=0");
     parser.set_optional<int>("K", "Kernel Combination", 0,
                              "any positive number for arbitrary combination of kernels, default=0 means all kernels");
-    parser.set_optional<int>("R", "Random", 1, "0 for random, 1 for Chebyshev");
-    parser.set_optional<int>("F", "FMM", 1, "0 for test S2T kernel, 1 for test FMM");
+    parser.set_optional<int>("R", "Random", 1, "0 for random, 1 for Chebyshev, default 1");
+    parser.set_optional<int>("F", "FMM", 1, "0 for test S2T kernel, 1 for test FMM, default 1");
 }
 
 void showOption(const cli::Parser &parser) {
@@ -39,6 +39,7 @@ void showOption(const cli::Parser &parser) {
     std::cout << "Shift: " << parser.get<double>("M") << std::endl;
     std::cout << "KERNEL: " << parser.get<int>("K") << std::endl;
     std::cout << "Random: " << parser.get<int>("R") << std::endl;
+    std::cout << "Using FMM: " << parser.get<int>("F") << std::endl;
 }
 
 void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL, const int kdimTrg,
@@ -223,14 +224,15 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     int nSrcDLLocal = srcDLCoordLocal.size() / 3;
     int nTrgLocal = trgCoordLocal.size() / 3;
 
-    srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 0);
-    randomUniformFill(srcSLValueLocal, -1, 1);
+    srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 1);
+    // randomUniformFill(srcSLValueLocal, -1, 1);
 
-    srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 0);
-    randomUniformFill(srcDLValueLocal, -1, 1);
+    srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 1);
+    // trace-free debugging
+    // randomUniformFill(srcDLValueLocal, -1, 1);
 
-    trgValueLocal.resize(nTrgLocal * kdimTrg);
-    trgValueTrueLocal.resize(nTrgLocal * kdimTrg);
+    trgValueLocal.resize(nTrgLocal * kdimTrg, 0);
+    trgValueTrueLocal.resize(nTrgLocal * kdimTrg, 0);
 
     // FMM1
     myFMM.setupTree(testKernel);
@@ -262,7 +264,7 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const size_t k = (temp == 0) ? ~((size_t)0) : temp;
-    STKFMM myFMM(order, 1000, PAXIS::NONE, k);
+    STKFMM myFMM(order, 100, PAXIS::NONE, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
@@ -283,9 +285,9 @@ void testFMM(const cli::Parser &parser, int order) {
             chebPoints(nPts, box, shift, trgCoord);
         }
         // set src SL coord
-        const int nSrc = parser.get<int>("S");
-        if (nSrc == 1 || nSrc == 2 || nSrc == 4) {
-            fixedPoints(nSrc, box, shift, srcSLCoord);
+        const int nSL = parser.get<int>("S");
+        if (nSL == 1 || nSL == 2 || nSL == 4) {
+            fixedPoints(nSL, box, shift, srcSLCoord);
         } else {
             srcSLCoord = trgCoord;
         }
@@ -308,6 +310,7 @@ void testFMM(const cli::Parser &parser, int order) {
         distributePts(srcDLCoord, 3);
         distributePts(trgCoord, 3);
         myFMM.setPoints(srcSLCoord, srcDLCoord, trgCoord);
+
         if (myFMM.isKernelActive(KERNEL::PVel)) {
             testOneKernelFMM(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord, trgCoord);
         }
@@ -325,6 +328,7 @@ void testFMM(const cli::Parser &parser, int order) {
         }
     } else {
         // test S2T kernel, on rank 0 only
+        // TODO: this is not fully implemented yet
         if (myFMM.isKernelActive(KERNEL::PVel)) {
             testOneKernelS2T(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord, trgCoord);
         }
