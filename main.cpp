@@ -225,11 +225,10 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     int nTrgLocal = trgCoordLocal.size() / 3;
 
     srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 1);
-    // randomUniformFill(srcSLValueLocal, -1, 1);
+    randomUniformFill(srcSLValueLocal, -1, 1);
 
     srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 1);
-    // trace-free debugging
-    // randomUniformFill(srcDLValueLocal, -1, 1);
+    randomUniformFill(srcDLValueLocal, -1, 1);
 
     trgValueLocal.resize(nTrgLocal * kdimTrg, 0);
     trgValueTrueLocal.resize(nTrgLocal * kdimTrg, 0);

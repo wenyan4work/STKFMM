@@ -64,7 +64,7 @@ inline const Kernel<T> &StokesLayerKernel<T>::Traction() {
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
         BuildKernel<T, stokes_traction<T, NEWTON_ITE>, stokes_doubletraction<T, NEWTON_ITE>>(
-            "stokes_Traction", 3, std::pair<int, int>(3, 9), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
+            "stokes_Traction", 3, std::pair<int, int>(4, 9), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
             &stokes_pker, NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
     return stokes_pgker;
