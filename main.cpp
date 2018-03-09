@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
     parser.run_and_exit_if_error();
 
     showOption(parser);
-    for (int p = 6; p <= 16; p += 2) {
+    for (int p = 6; p <= 14; p += 2) {
         testFMM(parser, p);
     }
 

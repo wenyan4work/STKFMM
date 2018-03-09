@@ -60,4 +60,4 @@ clean:
 	rm -f ./*.d
 
 doc: 
-	cd ./Doc && pdflatex ./*.tex
+	cd ./Doc && pdflatex ./*.tex && pdflatex ./*.tex  # pdflatex it twice for crossreference

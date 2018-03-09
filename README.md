@@ -9,6 +9,7 @@ A C++ wrapper for PVFMM. No extra dependence except PVFMM.
 5. (To be implemented). Singly, doubly and triply periodicity in a unified interface.
 
 # Usage
+You only need two files: `STKFMM.cpp` and `STKFMM.h`.
 Construct an STKFMM object, with chosen BC and kernels. Multiple kernels can be activated through bitwise combination of each kernel:
 ```cpp
 STKFMM myFMM(order, maxPts, PAXIS::NONE, KERNEL::PVel | KERNEL::LAPPGrad);

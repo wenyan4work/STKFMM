@@ -211,7 +211,7 @@ For $D_{jk}$ the Stokes equation is always zero, since $D_{jk}$ is arbitrary by 
 \textbf{Important: }In boundary integral theory the double layer kernel $\frac{1}{8\pi\mu}S_{jk}\left[ - \frac{3r_ir_jr_k}{r^5} \right]$ is used with an arbitrary source $v_kg_j$, where the trace-free condition is not necessarily satisfied. In this case, the pressure calculated by $\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5}\right)v_kg_j$ is not correct.
 
 For arbitrary $D_{jk}$ or arbitrary $D_{jk}=v_kg_j$, the following combination of pressure and velocity kernel still satisfies the Stokes equation:
-\begin{align}
+\begin{align}\label{eq:doublelayerfmm}
 		p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)D_{jk}, \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right] D_{jk}
 \end{align}
 This is the correct formula which should be used in the double layer boundary integral equations (cf. STFMMLIB documentation).
@@ -234,6 +234,45 @@ $$\sigma_{ij} = -p\delta_{ij} + \mu \left(u_{i,j}+u_{j,i}\right) = -\frac{3}{4\p
 
 \textbf{3. } Pay attention to the prefactors. The prefactors in STFMM3D and Blake 1971 for stress propagators to velocity and pressure seem to be both off by a factor of 2 and a negative sign.
 
+\section{FMM}
+In KIFMM the single layer could be used for M2M, M2L, L2L operations for both single layer and double layer potential. However the double layer potential Eq.~\ref{eq:doublelayerfmm} cannot be expressed by single layers if $D_{jk}$ is not trace free. In this case, we could set:
+\begin{align}
+	D_{jk} = S_{jk} + \frac{1}{3}D_{mm}\delta_{jk}
+\end{align}  
+where $S_{jk}$ is trace-free and $D_{mm}$ is the trace. In this way, Eq.~\ref{eq:doublelayerfmm} is converted to:
+\begin{align}
+		p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)\left(S_{jk} + \frac{1}{3}D_{mm}\delta_{jk}\right), \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right] \left(S_{jk} + \frac{1}{3}D_{mm}\delta_{jk}\right)
+\end{align}
+It simplifies to:
+\begin{align}
+p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5}\right) S_{jk}, \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right]S_{jk} + \frac{1}{8\pi\mu}\left(-\frac{r_i}{r^3}\right)D_{mm}
+\end{align}
+The $S_{jk}$ part could be described by single layer sources, but the $D_{mm}$ term is not. Therefore we should extend the single layer kernel from 3 to 4 dimensions: $(F_x,F_y,F_z,D_{mm})$.
+After the extension, the single layer kernel is:
+\begin{align}\label{eq:singlelayerfmm}
+	p=\frac{1}{4\pi} \frac{r_k}{r^3} F_k,\quad u_i = \frac{1}{8\pi\mu}\left(\frac{r^2\delta_{ij}+r_ir_j}{r^3} F_j -\frac{r_i}{r^3}D_{mm}\right)
+\end{align}
+Note that the trace of double layer $D_{mm}$ does not generate pressure. Therefore the pressure gradient is the same as those given in Section 4.2. Also the Laplacian of $u_i$ due to the extra $D_{mm}$ term is also zero. 
+
+The velocity gradient due to $D_{mm}$ is:
+\begin{align}
+\dpone{u_i}{x_j} = \frac{1}{8\pi\mu}\left(\frac{3r_ir_j}{r^5}-\frac{\delta_{ij}}{r^3}\right)D_{mm}
+\end{align}
+The traction is then computed based on this.
+
+\section{Summary: what are computed in the PVFMM Wrapper, exactly}
+The Stokes single layer kernel is $4\times4$, from $(F_x,F_y,F_z,D_{mm})$ to $(p,u_x,u_y,u_z)$, as shown in Eq.~\ref{eq:singlelayerfmm}:
+\begin{align}
+p=\frac{1}{4\pi} \frac{r_k}{r^3} F_k,\quad u_i = \frac{1}{8\pi\mu}\left(\frac{r^2\delta_{ij}+r_ir_j}{r^3} F_j -\frac{r_i}{r^3}D_{mm}\right)
+\end{align}
+
+The double layer kernel is $9\times4$, from $(D_{xx},D_{xy},D_{xz},D_{yx},D_{yy},D_{yz},D_{zx},D_{zy},D_{zz})$ to $(p,u_x,u_y,u_z)$, as shown in Eq.~\ref{eq:doublelayerfmm}:
+\begin{align} 
+p& =\frac{1}{4\pi}\left(-3\frac{r_jr_k}{r^5} + \frac{\delta_{jk}}{r^3}\right)D_{jk}, \quad u_i = \frac{1}{8\pi\mu}\left[ - \frac{3r_ir_jr_k}{r^5} \right] D_{jk}
+\end{align}
+$D_{jk}$ here is arbitrary, not limited to trace-free cases, not limited to cases where $D_{jk}=v_kg_j$.
+
+The gradient, Laplacian, and traction are computed with derivatives of these.
 
 
 \end{document}
