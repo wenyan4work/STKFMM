@@ -34,6 +34,12 @@ enum class KERNEL : size_t {
     LAPPGrad = 16, // laplace single layer
 };
 
+enum class PPKERNEL : size_t {
+    SLS2T = 1,
+    DLS2T = 2,
+    L2T = 4,
+};
+
 struct EnumClassHash {
     template <typename T>
     std::size_t operator()(T t) const {
@@ -86,8 +92,8 @@ class FMMData {
 
     void periodizeFMM(std::vector<double> &trgValue);
 
-    void evaluateKernel(bool omp, bool L2T, const int nSrc, double *srcCoordPtr, double *srcValuePtr, const int nTrg,
-                        double *trgCoordPtr, double *trgValuePtr);
+    void evaluateKernel(int nThreads, PPKERNEL chooseSD, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
+                        const int nTrg, double *trgCoordPtr, double *trgValuePtr);
 
     void deleteTree();
     void clear();
@@ -153,11 +159,14 @@ class STKFMM {
 
     ~STKFMM();
 
+    // results already in trgValue are cleaned
     void evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, std::vector<double> &trgValue,
                      KERNEL kernelChoice);
 
-    void evaluateKernel(bool omp, bool L2T, const int nSrc, double *srcCoordPtr, double *srcValuePtr, const int nTrg,
-                        double *trgCoordPtr, double *trgValuePtr, KERNEL kernel);
+    // results are added to values already in trgValuePtr.
+    void evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
+                        double *srcValuePtr, const int nTrg, double *trgCoordPtr, double *trgValuePtr,
+                        const KERNEL kernel);
 
     void clearFMM(KERNEL kernelChoice);
 

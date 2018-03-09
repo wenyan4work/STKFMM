@@ -158,9 +158,8 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     // srcCoord and trgCoord are distributed
     int kdimSL, kdimDL, kdimTrg;
     myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
-    if (myRank == 0) {
+    if (myRank == 0)
         printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
-    }
 
     std::vector<double> srcSLValueLocal;
     std::vector<double> srcDLValueLocal;
@@ -171,20 +170,23 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     int nSrcDLLocal = srcDLCoordLocal.size() / 3;
     int nTrgLocal = trgCoordLocal.size() / 3;
 
-    srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 0);
-    // randomUniformFill(srcSLValueLocal, -1, 1);
+    srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 1);
+    randomUniformFill(srcSLValueLocal, -1, 1);
 
-    srcDLValueLocal.resize(nSrcDLLocal * kdimDL);
+    srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 1);
     randomUniformFill(srcDLValueLocal, -1, 1);
 
-    trgValueLocal.resize(nTrgLocal * kdimTrg);
-    trgValueTrueLocal.resize(nTrgLocal * kdimTrg);
+    trgValueLocal.resize(nTrgLocal * kdimTrg, 0);
+    trgValueTrueLocal.resize(nTrgLocal * kdimTrg, 0);
 
-    printf("S2T kernel evaluated\n");
-    myFMM.evaluateKernel(true, false, nSrcSLLocal, srcSLCoordLocal.data(), srcSLValueLocal.data(), nTrgLocal,
+    myFMM.evaluateKernel(-1, PPKERNEL::SLS2T, nSrcSLLocal, srcSLCoordLocal.data(), srcSLValueLocal.data(), nTrgLocal,
                          trgCoordLocal.data(), trgValueLocal.data(), testKernel); // SL
-    myFMM.evaluateKernel(true, false, nSrcDLLocal, srcDLCoordLocal.data(), srcDLValueLocal.data(), nTrgLocal,
+    if (myRank == 0)
+        printf("SLS2T kernel evaluated\n");
+    myFMM.evaluateKernel(-1, PPKERNEL::DLS2T, nSrcDLLocal, srcDLCoordLocal.data(), srcDLValueLocal.data(), nTrgLocal,
                          trgCoordLocal.data(), trgValueLocal.data(), testKernel); // DL
+    if (myRank == 0)
+        printf("DLS2T kernel evaluated\n");
 
     calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal, srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
                   srcDLValueLocal, trgValueTrueLocal);
@@ -243,7 +245,8 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     // myFMM.clearFMM(testKernel);
     // myFMM.setupTree(testKernel);
     // myFMM.evaluateFMM(srcValue, trgValue, testKernel);
-    printf("fmm evaluated\n");
+    if (myRank == 0)
+        printf("fmm evaluated\n");
 
     calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal, srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
                   srcDLValueLocal, trgValueTrueLocal);
@@ -327,7 +330,6 @@ void testFMM(const cli::Parser &parser, int order) {
         }
     } else {
         // test S2T kernel, on rank 0 only
-        // TODO: this is not fully implemented yet
         if (myFMM.isKernelActive(KERNEL::PVel)) {
             testOneKernelS2T(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord, trgCoord);
         }
@@ -349,11 +351,18 @@ void testFMM(const cli::Parser &parser, int order) {
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
+    int myRank;
+    int nProcs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
+
     cli::Parser parser(argc, argv);
     configure_parser(parser);
     parser.run_and_exit_if_error();
 
-    showOption(parser);
+    if (myRank == 0)
+        showOption(parser);
+
     for (int p = 6; p <= 14; p += 2) {
         testFMM(parser, p);
     }

@@ -276,37 +276,35 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     }
 
     // L2T evaluation with openmp
-    evaluateKernel(true, true, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(), trgValue.data());
+    evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
+                   trgValue.data());
 }
 
-void FMMData::evaluateKernel(bool omp, bool L2T, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
+void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
                              const int nTrg, double *trgCoordPtr, double *trgValuePtr) {
-    // TODO: rewrite this to include SL and DL
-    if (omp) {
-        const size_t chunkSize = 2000; // each chunk has 2000 target points.
-        const size_t chunkNumber = floor(1.0 * (nTrg) / chunkSize) + 1;
-        // printf("chunkSize, chunkNumber: %d, %d\n", chunkSize, chunkNumber);
-#pragma omp parallel for schedule(static, 1)
-        for (size_t i = 0; i < chunkNumber; i++) {
-            const size_t idTrgLow = i * chunkSize;
-            const size_t idTrgHigh = (i + 1 < chunkNumber) ? idTrgLow + chunkSize : nTrg; // not inclusive
-            //        printf("i, idTrgLow, idTrgHigh: %d, %d, %d\n", i, idTrgLow, idTrgHigh);
-            if (L2T) {
-                kernelFunctionPtr->k_l2t->ker_poten(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr + 3 * idTrgLow,
-                                                    idTrgHigh - idTrgLow, trgValuePtr + 3 * idTrgLow, NULL);
-            } else {
-                kernelFunctionPtr->k_s2t->ker_poten(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr + 3 * idTrgLow,
-                                                    idTrgHigh - idTrgLow, trgValuePtr + 3 * idTrgLow, NULL);
-            }
-        }
-    } else {
-        if (L2T) {
-            kernelFunctionPtr->k_l2t->ker_poten(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr, nTrg, trgValuePtr,
-                                                NULL);
-        } else {
-            kernelFunctionPtr->k_s2t->ker_poten(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr, nTrg, trgValuePtr,
-                                                NULL);
-        }
+    if (nThreads < 1 || nThreads > omp_get_max_threads()) {
+        nThreads = omp_get_max_threads();
+    }
+
+    const size_t chunkSize = 4000; // each chunk has some target points.
+    const size_t chunkNumber = floor(1.0 * (nTrg) / chunkSize) + 1;
+
+    pvfmm::Kernel<double>::Ker_t kerPtr = nullptr; // a function pointer
+    if (p2p == PPKERNEL::SLS2T) {
+        kerPtr = kernelFunctionPtr->k_s2t->ker_poten;
+    } else if (p2p == PPKERNEL::DLS2T) {
+        kerPtr = kernelFunctionPtr->k_s2t->dbl_layer_poten;
+    } else if (p2p == PPKERNEL::L2T) {
+        kerPtr = kernelFunctionPtr->k_l2t->ker_poten;
+    }
+
+#pragma omp parallel for schedule(static, 1) num_threads(nThreads)
+    for (size_t i = 0; i < chunkNumber; i++) {
+        // each thread process one chunk
+        const size_t idTrgLow = i * chunkSize;
+        const size_t idTrgHigh = (i + 1 < chunkNumber) ? idTrgLow + chunkSize : nTrg; // not inclusive
+        kerPtr(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr + 3 * idTrgLow, idTrgHigh - idTrgLow,
+               trgValuePtr + kdimTrg * idTrgLow, NULL);
     }
 }
 
@@ -618,14 +616,16 @@ void STKFMM::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &s
     return;
 }
 
-void STKFMM::evaluateKernel(bool omp, bool L2T, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
-                            const int nTrg, double *trgCoordPtr, double *trgValuePtr, KERNEL kernel) {
+void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
+                            double *srcValuePtr, const int nTrg, double *trgCoordPtr, double *trgValuePtr,
+                            const KERNEL kernel) {
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
-    fmm.evaluateKernel(omp, L2T, nSrc, srcCoordPtr, srcValuePtr, nTrg, trgCoordPtr, trgValuePtr);
+
+    fmm.evaluateKernel(nThreads, p2p, nSrc, srcCoordPtr, srcValuePtr, nTrg, trgCoordPtr, trgValuePtr);
 }
 
 void STKFMM::showActiveKernels() {
