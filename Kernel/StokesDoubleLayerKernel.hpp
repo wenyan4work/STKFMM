@@ -1250,7 +1250,7 @@ void stokes_double_pressure(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, 
 template <class Real_t, class Vec_t = Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
 void stokes_dgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                           Matrix<Real_t> &trg_value) {
-#define SRC_BLK 100
+#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     //// Number of newton iterations

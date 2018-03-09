@@ -740,10 +740,10 @@ void stokes_pvellaplacian(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, in
 
 template <class T>
 struct StokesSingleLayerKernel {
-    // TODO: add the following kernels:
-    //  P+Vel
-    //  P+Vel+gradP + grad Vel
-    //  (stress = -p I + gradU + gradU^T), no special kernel needed
+    //  P + Vel
+    //  P + Vel + gradP + grad Vel
+    //  Traction (stress = -p I + gradU + gradU^T)d
+    //  P + Vel + Laplacian Vel
     inline static const Kernel<T> &PVel();          //   3->1+3
     inline static const Kernel<T> &PVelGrad();      //   3->1+3+3+9
     inline static const Kernel<T> &Traction();      //   3->9

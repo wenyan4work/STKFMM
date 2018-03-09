@@ -10,6 +10,7 @@
 #include "STKFMM.h"
 #include "SimpleKernel.h"
 #include "Util/PointDistribution.h"
+#include "Util/Timer.hpp"
 #include "Util/cmdparser.hpp"
 
 using namespace stkfmm;
@@ -236,8 +237,14 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     trgValueTrueLocal.resize(nTrgLocal * kdimTrg, 0);
 
     // FMM1
+    Timer timer;
+    timer.tick();
     myFMM.setupTree(testKernel);
+    timer.tock("Tree setup ");
+    timer.tick();
     myFMM.evaluateFMM(srcSLValueLocal, srcDLValueLocal, trgValueLocal, testKernel);
+    timer.tock("FMM Evaluation ");
+    timer.dump();
 
     // FMM2
     // randomUniformFill(srcValue, -1, 1);
@@ -246,7 +253,7 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     // myFMM.setupTree(testKernel);
     // myFMM.evaluateFMM(srcValue, trgValue, testKernel);
     if (myRank == 0)
-        printf("fmm evaluated\n");
+        printf("fmm evaluated, computing true results with simple O(N^2) sum\n");
 
     calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal, srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
                   srcDLValueLocal, trgValueTrueLocal);
@@ -266,7 +273,7 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const size_t k = (temp == 0) ? ~((size_t)0) : temp;
-    STKFMM myFMM(order, 100, PAXIS::NONE, k);
+    STKFMM myFMM(order, 2000, PAXIS::NONE, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
