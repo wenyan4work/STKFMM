@@ -34,13 +34,13 @@ myFMM.evaluateFMM(srcSLValue, srcDLValue, trgValue, testKernel2);
 ```
 
 # Supported Kernel
-| Kernel | SrcSL(dim) | SrcDL(dim) | Trg(dim) |
-| ------ | --- |---	|---	|---	|---
+| Kernel | Single Layer Source(dim) | Double Layer Source(dim) | Target(dim) |
+| ---  | --- |---	|---|
 |PVel |force+TrD(4)| double layer (9)| pressure,velocity (1+3)|  
-|PVelGrad |force+TrD(4)| double layer (9)| pressure,velocity,gradP,gradVel (1+3+3+9)|  
+|PVelGrad |force+TrD(4)| double layer (9)| pressure,velocity,grad pressure,grad velocity (1+3+3+9)|  
 |PVelLaplacian |force+TrD(4)| double layer (9)| pressure,velocity,Laplacian velocity (1+3+3)|  
-|Traction |force+TrD(4)| force.direction (9)| traction(9)|  
-|LAPPGrad |charge(1)| double layer (3)| potential,gradpotential (1+3)|  
+|Traction |force+TrD(4)| double layer (9)| traction(9)|  
+|LAPPGrad |charge(1)| double layer (3)| potential,gradpotential (1+3)|   
 
 Here TrD means an arbitrary number performing as the trace of the double layer 3x3 matrix. The reason for including this extra dimension is to use the single layer kernel in the M2M, M2L, L2L operations for both single layer and double layer. Explanation is available in the document.
 
