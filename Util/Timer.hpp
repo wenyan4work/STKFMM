@@ -10,45 +10,53 @@
 #ifndef TIMER_HPP_
 #define TIMER_HPP_
 
-#include <cstdio>
 #include <chrono>
-#include <sstream>
 #include <iostream>
+#include <string>
 
 class Timer {
-private:
-    std::chrono::high_resolution_clock::time_point startTime;
-    std::chrono::high_resolution_clock::time_point stopTime;
-    std::stringstream logfile;
+  private:
     bool work = true;
+    struct Block {
+        std::chrono::high_resolution_clock::time_point startTime;
+        std::chrono::high_resolution_clock::time_point stopTime;
+        std::string message;
+    };
+    std::vector<Block> timing;
 
-public:
+  public:
     explicit Timer() = default;
 
-    explicit Timer(bool work_) :
-            Timer() {
-        work = work_;
-    }
+    explicit Timer(bool work_) : Timer() { work = work_; }
 
     ~Timer() = default;
 
-    void start() {
-        if (work)
-            this->startTime = std::chrono::high_resolution_clock::now();
+    void enable() { work = true; }
+    void disable() { work = false; }
+
+    void tick() {
+        if (work) {
+            timing.emplace_back();
+            auto &recording = timing.back();
+            recording.startTime = std::chrono::high_resolution_clock::now();
+        }
     }
 
-    void stop(const std::string &s) {
+    void tock(const std::string &s) {
         if (work) {
-            this->stopTime = std::chrono::high_resolution_clock::now();
-            logfile << s.c_str() << " Time elapsed = "
-                    << std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() / 1e6
-                    << std::endl;
+            auto &recording = timing.back();
+            recording.stopTime = std::chrono::high_resolution_clock::now();
+            recording.message = s;
         }
     }
 
     void dump() {
-        if (work)
-            std::cout << logfile.rdbuf();
+        for (const auto &event : timing) {
+            std::cout
+                << event.message << " :time "
+                << std::chrono::duration_cast<std::chrono::microseconds>(event.stopTime - event.startTime).count() / 1e6
+                << " seconds." << std::endl;
+        }
     }
 };
 
