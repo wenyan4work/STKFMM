@@ -7,7 +7,7 @@
 
 #include <mpi.h>
 
-#include "STKFMM.h"
+#include "../STKFMM.h"
 #include "SimpleKernel.h"
 #include "Util/PointDistribution.h"
 #include "Util/Timer.hpp"

@@ -13,7 +13,6 @@
 
 #include "Kernel/LaplaceLayerKernel.hpp"
 #include "Kernel/StokesLayerKernel.hpp"
-#include "Util/Timer.hpp"
 
 #include "STKFMM.h"
 
