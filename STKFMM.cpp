@@ -16,7 +16,7 @@
 
 #include "STKFMM.h"
 
-PeriodicType periodicType;
+extern pvfmm::PeriodicType pvfmm::periodicType;
 
 namespace stkfmm {
 
@@ -215,7 +215,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     // construct tree
     treePtr = new pvfmm::PtFMM_Tree(comm);
     treePtr->Initialize(treeDataPtr);
-    treePtr->InitFMM_Tree(true, periodicType == PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
+    treePtr->InitFMM_Tree(true, pvfmm::periodicType == pvfmm::PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
     treePtr->SetupFMM(matrixPtr);
     return;
 }
@@ -313,16 +313,16 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_
     // set periodic boundary condition
     switch (pbc) {
     case PAXIS::NONE:
-        periodicType = PeriodicType::NONE;
+        pvfmm::periodicType = pvfmm::PeriodicType::NONE;
         break;
     case PAXIS::PZ:
-        periodicType = PeriodicType::PZ;
+        pvfmm::periodicType = pvfmm::PeriodicType::PZ;
         break;
     case PAXIS::PXY:
-        periodicType = PeriodicType::PXY;
+        pvfmm::periodicType = pvfmm::PeriodicType::PXY;
         break;
     case PAXIS::PXYZ:
-        periodicType = PeriodicType::PXYZ;
+        pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
         break;
     }
     if (pbc != PAXIS::NONE) {
@@ -436,52 +436,50 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
     }
 }
 
-void STKFMM::setupCoord(const std::vector<double> &coordIn, std::vector<double> &coord) {
+void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<double> &coord) {
     // apply scale to internal data array, without rotation
     // Set source points, with scale
-
-    const int npts = coordIn.size() / 3;
     coord.resize(npts * 3);
 
     if (pbc == PAXIS::PXYZ) {
-    // no rotate
+        // no rotate
 #pragma omp parallel for
         for (size_t i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap((coordIn[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = fracwrap((coordIn[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = fracwrap((coordIn[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = fracwrap((coordInPtr[3 * i] + xshift) * scaleFactor);
+            coord[3 * i + 1] = fracwrap((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
+            coord[3 * i + 2] = fracwrap((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
         }
     } else if (pbc == PAXIS::PZ) {
-    // no rotate
+        // no rotate
 #pragma omp parallel for
         for (size_t i = 0; i < npts; i++) {
-            coord[3 * i] = ((coordIn[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = ((coordIn[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = fracwrap((coordIn[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
+            coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
+            coord[3 * i + 2] = fracwrap((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
         }
     } else if (pbc == PAXIS::PXY) {
-    // no rotate
+        // no rotate
 #pragma omp parallel for
         for (size_t i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap((coordIn[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = fracwrap((coordIn[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = ((coordIn[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = fracwrap((coordInPtr[3 * i] + xshift) * scaleFactor);
+            coord[3 * i + 1] = fracwrap((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
+            coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
         }
     } else {
         assert(pbc == PAXIS::NONE);
         // no rotate
 #pragma omp parallel for
         for (size_t i = 0; i < npts; i++) {
-            coord[3 * i] = ((coordIn[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = ((coordIn[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = ((coordIn[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
+            coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
+            coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
         }
     }
     return;
 }
 
-void STKFMM::setPoints(const std::vector<double> &srcSLCoord_, const std::vector<double> &srcDLCoord_,
-                       const std::vector<double> &trgCoord_) {
+void STKFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL, const double *srcDLCoordPtr,
+                       const int nTrg, const double *trgCoordPtr) {
     int np, myRank;
     MPI_Comm_size(comm, &np);
     MPI_Comm_rank(comm, &myRank);
@@ -497,9 +495,9 @@ void STKFMM::setPoints(const std::vector<double> &srcSLCoord_, const std::vector
     }
 
     // setup point coordinates
-    setupCoord(srcSLCoord_, srcSLCoordInternal);
-    setupCoord(srcDLCoord_, srcDLCoordInternal);
-    setupCoord(trgCoord_, trgCoordInternal);
+    setupCoord(nSL, srcSLCoordPtr, srcSLCoordInternal);
+    setupCoord(nDL, srcDLCoordPtr, srcDLCoordInternal);
+    setupCoord(nTrg, trgCoordPtr, trgCoordInternal);
     if (myRank == 0)
         printf("points set\n");
 }
@@ -512,8 +510,8 @@ void STKFMM::setupTree(KERNEL kernel_) {
         printf("Coord setup for kernel %d\n", static_cast<int>(kernel_));
 }
 
-void STKFMM::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue,
-                         std::vector<double> &trgValue, KERNEL kernel) {
+void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int nDL, const double *srcDLValuePtr,
+                         const int nTrg, double *trgValuePtr, const KERNEL kernel) {
 
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
@@ -521,27 +519,27 @@ void STKFMM::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &s
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
 
-    const int nSL = srcSLCoordInternal.size() / 3;
-    const int nDL = srcDLCoordInternal.size() / 3;
-    const int nTrg = trgCoordInternal.size() / 3;
+    // const int nSL = srcSLCoordInternal.size() / 3;
+    // const int nDL = srcDLCoordInternal.size() / 3;
+    // const int nTrg = trgCoordInternal.size() / 3;
     srcSLValueInternal.resize(nSL * fmm.kdimSL);
     srcDLValueInternal.resize(nDL * fmm.kdimDL);
-    trgValue.resize(nTrg * fmm.kdimTrg);
+    // trgValue.resize(nTrg * fmm.kdimTrg);
 
     // scale the source strength, SL as 1/r, DL as 1/r^2
     // SL no extra scaling
     // DL scale as scaleFactor
-    srcSLValueInternal = srcSLValue;
+    std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL, srcSLValueInternal.begin());
 #pragma omp parallel for
     for (int i = 0; i < nDL * fmm.kdimDL; i++) {
-        srcDLValueInternal[i] = srcDLValue[i] * scaleFactor;
+        srcDLValueInternal[i] = srcDLValuePtr[i] * scaleFactor;
     }
     if (fmm.kdimSL == 4) {
-    // stokes kernel
+        // stokes kernel
 #pragma omp parallel for
         for (int i = 0; i < nSL; i++) {
             // the Trace term scales as double layer
-            srcSLValueInternal[4 * i + 3] = srcSLValue[4 * i + 3] * scaleFactor;
+            srcSLValueInternal[4 * i + 3] *= scaleFactor;
         }
     }
 
@@ -553,59 +551,60 @@ void STKFMM::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &s
     // scale back according to kernel
     switch (kernel) {
     case KERNEL::PVel: {
-    // 1+3
+        // 1+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValue[4 * i] = trgValueInternal[4 * i] * scaleFactor * scaleFactor; // pressure 1/r^2
-            trgValue[4 * i + 1] = trgValueInternal[4 * i + 1] * scaleFactor;       // vel 1/r
-            trgValue[4 * i + 2] = trgValueInternal[4 * i + 2] * scaleFactor;
-            trgValue[4 * i + 3] = trgValueInternal[4 * i + 3] * scaleFactor;
+            trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor * scaleFactor; // pressure 1/r^2
+            trgValuePtr[4 * i + 1] += trgValueInternal[4 * i + 1] * scaleFactor;       // vel 1/r
+            trgValuePtr[4 * i + 2] += trgValueInternal[4 * i + 2] * scaleFactor;
+            trgValuePtr[4 * i + 3] += trgValueInternal[4 * i + 3] * scaleFactor;
         }
     } break;
     case KERNEL::PVelGrad: {
-    // 1+3+3+9
+        // 1+3+3+9
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValue[16 * i] = trgValueInternal[16 * i] * scaleFactor * scaleFactor; // p
+            trgValuePtr[16 * i] += trgValueInternal[16 * i] * scaleFactor * scaleFactor; // p
             for (int j = 1; j < 4; j++) {
-                trgValue[16 * i + j] = trgValueInternal[16 * i + j] * scaleFactor; // vel
+                trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] * scaleFactor; // vel
             }
             for (int j = 4; j < 7; j++) {
-                trgValue[16 * i + j] = trgValueInternal[16 * i + j] * scaleFactor * scaleFactor * scaleFactor; // grad p
+                trgValuePtr[16 * i + j] +=
+                    trgValueInternal[16 * i + j] * scaleFactor * scaleFactor * scaleFactor; // grad p
             }
             for (int j = 7; j < 16; j++) {
-                trgValue[16 * i + j] = trgValueInternal[16 * i + j] * scaleFactor * scaleFactor; // grad vel
+                trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] * scaleFactor * scaleFactor; // grad vel
             }
         }
     } break;
     case KERNEL::Traction: {
-    // 9
+        // 9
 #pragma omp parallel for
         for (int i = 0; i < 9 * nTrg; i++) {
-            trgValue[i] = trgValueInternal[i] * scaleFactor * scaleFactor; // traction 1/r^2
+            trgValuePtr[i] += trgValueInternal[i] * scaleFactor * scaleFactor; // traction 1/r^2
         }
     } break;
     case KERNEL::PVelLaplacian: {
-    // 1+3+3
+        // 1+3+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValue[7 * i] = trgValueInternal[7 * i] * scaleFactor * scaleFactor; // p
+            trgValuePtr[7 * i] += trgValueInternal[7 * i] * scaleFactor * scaleFactor; // p
             for (int j = 1; j < 4; j++) {
-                trgValue[7 * i + j] = trgValueInternal[7 * i + j] * scaleFactor; // vel
+                trgValuePtr[7 * i + j] += trgValueInternal[7 * i + j] * scaleFactor; // vel
             }
             for (int j = 4; j < 7; j++) {
-                trgValue[7 * i + j] =
+                trgValuePtr[7 * i + j] +=
                     trgValueInternal[7 * i + j] * scaleFactor * scaleFactor * scaleFactor; // laplacian vel
             }
         }
     } break;
     case KERNEL::LAPPGrad: {
-    // 1+3
+        // 1+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValue[4 * i] = trgValueInternal[4 * i] * scaleFactor; // p, 1/r
+            trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor; // p, 1/r
             for (int j = 1; j < 4; j++) {
-                trgValue[4 * i + j] = trgValueInternal[4 * i + j] * scaleFactor * scaleFactor; // grad p, 1/r^2
+                trgValuePtr[4 * i + j] += trgValueInternal[4 * i + j] * scaleFactor * scaleFactor; // grad p, 1/r^2
             }
         }
 

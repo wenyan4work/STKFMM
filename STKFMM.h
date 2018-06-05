@@ -155,13 +155,16 @@ class STKFMM {
         return static_cast<typename std::underlying_type<Enumeration>::type>(value);
     }
 
-    STKFMM(int multOrder = 10, int maxPts = 1000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 1);
+    STKFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 1);
 
     ~STKFMM();
 
-    // results already in trgValue are cleaned
-    void evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, std::vector<double> &trgValue,
-                     KERNEL kernelChoice);
+    void setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL, const double *srcDLCoordPtr,
+                   const int nTrg, const double *trgCoordPtr);
+
+    // results are added to values already in trgValuePtr
+    void evaluateFMM(const int nSL, const double *srcSLValuePtr, const int nDL, const double *srcDLValuePtr,
+                     const int nTrg, double *trgValuePtr, const KERNEL kernel);
 
     // results are added to values already in trgValuePtr.
     void evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
@@ -170,12 +173,9 @@ class STKFMM {
 
     void clearFMM(KERNEL kernelChoice);
 
-    void setPoints(const std::vector<double> &srcSLCoord_, const std::vector<double> &srcDLCoord_,
-                   const std::vector<double> &trgCoord_);
-
     void setupTree(KERNEL kernel_);
 
-    void setBox(double, double, double, double, double, double);
+    void setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, double zlow_, double zhigh_);
 
     void showActiveKernels();
 
@@ -208,7 +208,7 @@ class STKFMM {
     std::vector<double> srcDLValueInternal; // scaled SL value
     std::vector<double> trgValueInternal;   // scaled trg value
 
-    void setupCoord(const std::vector<double> &, std::vector<double> &); // setup the internal srcCoord and
+    void setupCoord(const int npts,const double * coordInPtr, std::vector<double> & coord); // setup the internal srcCoord and
                                                                          // trgCoord, with proper rotation and BC
 
     std::unordered_map<KERNEL, FMMData *, EnumClassHash> poolFMM;

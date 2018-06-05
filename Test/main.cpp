@@ -242,7 +242,8 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     myFMM.setupTree(testKernel);
     timer.tock("Tree setup ");
     timer.tick();
-    myFMM.evaluateFMM(srcSLValueLocal, srcDLValueLocal, trgValueLocal, testKernel);
+    myFMM.evaluateFMM(nSrcSLLocal, srcSLValueLocal.data(), nSrcDLLocal, srcDLValueLocal.data(), nTrgLocal,
+                      trgValueLocal.data(), testKernel);
     timer.tock("FMM Evaluation ");
     timer.dump();
 
@@ -318,7 +319,8 @@ void testFMM(const cli::Parser &parser, int order) {
         distributePts(srcSLCoord, 3);
         distributePts(srcDLCoord, 3);
         distributePts(trgCoord, 3);
-        myFMM.setPoints(srcSLCoord, srcDLCoord, trgCoord);
+        myFMM.setPoints(srcSLCoord.size() / 3, srcSLCoord.data(), srcDLCoord.size() / 3, srcDLCoord.data(),
+                        trgCoord.size() / 3, trgCoord.data());
 
         if (myFMM.isKernelActive(KERNEL::PVel)) {
             testOneKernelFMM(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord, trgCoord);
