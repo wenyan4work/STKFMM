@@ -21,7 +21,7 @@ namespace stkfmm {
 enum class PAXIS : size_t {
     NONE,
     // TODO: add periodic BC
-    PZ,
+    PX,
     PXY,
     PXYZ
 };

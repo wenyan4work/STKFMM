@@ -146,7 +146,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
         if (kernelChoice == KERNEL::LAPPGrad) {
             // load Laplace 1D, 2D, 3D data
             std::string dataName;
-            if (periodicity == PAXIS::PZ) {
+            if (periodicity == PAXIS::PX) {
                 dataName = "M2LLaplace1D3DpX";
             } else if (periodicity == PAXIS::PXY) {
                 dataName = "M2LLaplace2D3DpX";
@@ -159,7 +159,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
         } else {
             // load Stokes 1D, 2D, 3D data
             std::string dataName;
-            if (periodicity == PAXIS::PZ) {
+            if (periodicity == PAXIS::PX) {
                 // TODO: generate Stokes PVel periodicity data
                 dataName = "M2LStokesPVel1D3DpX";
             } else if (periodicity == PAXIS::PXY) {
@@ -315,8 +315,8 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_
     case PAXIS::NONE:
         pvfmm::periodicType = pvfmm::PeriodicType::NONE;
         break;
-    case PAXIS::PZ:
-        pvfmm::periodicType = pvfmm::PeriodicType::PZ;
+    case PAXIS::PX:
+        pvfmm::periodicType = pvfmm::PeriodicType::PX;
         break;
     case PAXIS::PXY:
         pvfmm::periodicType = pvfmm::PeriodicType::PXY;
@@ -409,7 +409,7 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
     case PAXIS::NONE:
         // for PNONE, scale max length to [0,1), all choices are valid
         break;
-    case PAXIS::PZ:
+    case PAXIS::PX:
         if (zlen < xlen || zlen < ylen) {
             std::cout << "periodic box size error" << std::endl;
             exit(1);
@@ -449,7 +449,7 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<do
             coord[3 * i + 1] = fracwrap((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
             coord[3 * i + 2] = fracwrap((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
         }
-    } else if (pbc == PAXIS::PZ) {
+    } else if (pbc == PAXIS::PX) {
         // no rotate
 #pragma omp parallel for
         for (size_t i = 0; i < npts; i++) {
