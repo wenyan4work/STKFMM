@@ -250,7 +250,8 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     myFMM.evaluateFMM(nSrcSLLocal, srcSLValueLocal.data(), nSrcDLLocal, srcDLValueLocal.data(), nTrgLocal,
                       trgValueLocal.data(), testKernel);
     timer.tock("FMM Evaluation ");
-    timer.dump();
+    if (myRank == 0)
+        timer.dump();
 
     // FMM2
     // randomUniformFill(srcValue, -1, 1);
