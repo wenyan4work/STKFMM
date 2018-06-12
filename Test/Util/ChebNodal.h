@@ -9,18 +9,19 @@
 #define HYDROFIBER_CHEBNODAL_H_
 
 #include <cmath>
+#include <cstdlib>
 #include <vector>
 
-// points belong to -1, 1
+// points in the range -1, 1
 // scaling is the user's duty
 class ChebNodal {
   public:
-    int chebN; // points.size() = pChebN+1
+    size_t chebN; // points.size() = pChebN+1
     std::vector<double> points;
     std::vector<double> weights;
 
   public:
-    ChebNodal(int);
+    ChebNodal(size_t);
     ~ChebNodal() = default;
 
   private:

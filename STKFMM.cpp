@@ -88,13 +88,14 @@ void FMMData::readM2LMat(const std::string dataName) {
     st << dataName.c_str();
 
     FILE *fin = fopen(st.str().c_str(), "r");
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
+    for (size_t i = 0; i < size; i++) {
+        for (size_t j = 0; j < size; j++) {
             int iread, jread;
             double fread;
             fscanf(fin, "%d %d %lf\n", &iread, &jread, &fread);
             if (i != iread || j != jread) {
                 printf("read ij error \n");
+                exit(1);
             }
             fdata[i * size + j] = fread;
         }
@@ -232,16 +233,19 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &
     const size_t nSurf = treeDataPtr->surf_coord.Dim() / 3;
     const size_t nTrg = treeDataPtr->trg_coord.Dim() / 3;
 
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
     if (nTrg * kdimTrg != trgValue.size()) {
-        printf("trg value size error for kernel %zu\n", kernelChoice);
+        printf("trg value size error for kernel %zu from rank %d\n", kernelChoice, rank);
         exit(1);
     }
     if (nSrc * kdimSL != srcSLValue.size()) {
-        printf("src SL value size error for kernel %zu\n", kernelChoice);
+        printf("src SL value size error for kernel %zu\n from rank %d", kernelChoice, rank);
         exit(1);
     }
     if (nSurf * kdimDL != srcDLValue.size()) {
-        printf("src DL value size error for kernel %zu\n", kernelChoice);
+        printf("src DL value size error for kernel %zu\n from rank %d", kernelChoice, rank);
         exit(1);
     }
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
@@ -266,9 +270,9 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     std::vector<double> M2Lsource(v.Dim());
 
 #pragma omp parallel for
-    for (int i = 0; i < M; i++) {
+    for (size_t i = 0; i < M; i++) {
         double temp = 0;
-        for (int j = 0; j < N; j++) {
+        for (size_t j = 0; j < N; j++) {
             temp += M2Ldata[i * N + j] * v[j];
         }
         M2Lsource[i] = temp;
@@ -279,8 +283,8 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
                    trgValue.data());
 }
 
-void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
-                             const int nTrg, double *trgCoordPtr, double *trgValuePtr) {
+void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const size_t nSrc, double *srcCoordPtr, double *srcValuePtr,
+                             const size_t nTrg, double *trgCoordPtr, double *trgValuePtr) {
     if (nThreads < 1 || nThreads > omp_get_max_threads()) {
         nThreads = omp_get_max_threads();
     }
@@ -400,8 +404,13 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
     scaleFactor = 1 / std::max(zlen, std::max(xlen, ylen));
     // new coordinate = (x+xshift)*scaleFactor, in [0,1)
 
-    std::cout << "box x " << xlen << " box y " << ylen << " box z " << zlen << std::endl;
-    std::cout << "scale factor " << scaleFactor << std::endl;
+    int rank = 0;
+    MPI_Comm_rank(comm, &rank);
+
+    if (rank = 0) {
+        std::cout << "box x " << xlen << " box y " << ylen << " box z " << zlen << std::endl;
+        std::cout << "scale factor " << scaleFactor << std::endl;
+    }
 
     // sanity check of box setting, ensure fitting in a cubic box [0,1)^3
     const double eps = pow(10, -12) / scaleFactor;
@@ -478,8 +487,8 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<do
     return;
 }
 
-void STKFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL, const double *srcDLCoordPtr,
-                       const int nTrg, const double *trgCoordPtr) {
+void STKFMM::setPoints(const size_t nSL, const double *srcSLCoordPtr, const size_t nDL, const double *srcDLCoordPtr,
+                       const size_t nTrg, const double *trgCoordPtr) {
     int np, myRank;
     MPI_Comm_size(comm, &np);
     MPI_Comm_rank(comm, &myRank);
@@ -510,8 +519,8 @@ void STKFMM::setupTree(KERNEL kernel_) {
         printf("Coord setup for kernel %d\n", static_cast<int>(kernel_));
 }
 
-void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int nDL, const double *srcDLValuePtr,
-                         const int nTrg, double *trgValuePtr, const KERNEL kernel) {
+void STKFMM::evaluateFMM(const size_t nSL, const double *srcSLValuePtr, const size_t nDL, const double *srcDLValuePtr,
+                         const size_t nTrg, double *trgValuePtr, const KERNEL kernel) {
 
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
@@ -519,25 +528,21 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
 
-    // const int nSL = srcSLCoordInternal.size() / 3;
-    // const int nDL = srcDLCoordInternal.size() / 3;
-    // const int nTrg = trgCoordInternal.size() / 3;
     srcSLValueInternal.resize(nSL * fmm.kdimSL);
     srcDLValueInternal.resize(nDL * fmm.kdimDL);
-    // trgValue.resize(nTrg * fmm.kdimTrg);
 
     // scale the source strength, SL as 1/r, DL as 1/r^2
     // SL no extra scaling
     // DL scale as scaleFactor
     std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL, srcSLValueInternal.begin());
 #pragma omp parallel for
-    for (int i = 0; i < nDL * fmm.kdimDL; i++) {
+    for (size_t i = 0; i < nDL * fmm.kdimDL; i++) {
         srcDLValueInternal[i] = srcDLValuePtr[i] * scaleFactor;
     }
     if (fmm.kdimSL == 4) {
         // stokes kernel
 #pragma omp parallel for
-        for (int i = 0; i < nSL; i++) {
+        for (size_t i = 0; i < nSL; i++) {
             // the Trace term scales as double layer
             srcSLValueInternal[4 * i + 3] *= scaleFactor;
         }
@@ -553,7 +558,7 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     case KERNEL::PVel: {
         // 1+3
 #pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
+        for (size_t i = 0; i < nTrg; i++) {
             trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor * scaleFactor; // pressure 1/r^2
             trgValuePtr[4 * i + 1] += trgValueInternal[4 * i + 1] * scaleFactor;       // vel 1/r
             trgValuePtr[4 * i + 2] += trgValueInternal[4 * i + 2] * scaleFactor;
@@ -563,16 +568,16 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     case KERNEL::PVelGrad: {
         // 1+3+3+9
 #pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
+        for (size_t i = 0; i < nTrg; i++) {
             trgValuePtr[16 * i] += trgValueInternal[16 * i] * scaleFactor * scaleFactor; // p
-            for (int j = 1; j < 4; j++) {
+            for (size_t j = 1; j < 4; j++) {
                 trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] * scaleFactor; // vel
             }
-            for (int j = 4; j < 7; j++) {
+            for (size_t j = 4; j < 7; j++) {
                 trgValuePtr[16 * i + j] +=
                     trgValueInternal[16 * i + j] * scaleFactor * scaleFactor * scaleFactor; // grad p
             }
-            for (int j = 7; j < 16; j++) {
+            for (size_t j = 7; j < 16; j++) {
                 trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] * scaleFactor * scaleFactor; // grad vel
             }
         }
@@ -580,19 +585,19 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     case KERNEL::Traction: {
         // 9
 #pragma omp parallel for
-        for (int i = 0; i < 9 * nTrg; i++) {
+        for (size_t i = 0; i < 9 * nTrg; i++) {
             trgValuePtr[i] += trgValueInternal[i] * scaleFactor * scaleFactor; // traction 1/r^2
         }
     } break;
     case KERNEL::PVelLaplacian: {
         // 1+3+3
 #pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
+        for (size_t i = 0; i < nTrg; i++) {
             trgValuePtr[7 * i] += trgValueInternal[7 * i] * scaleFactor * scaleFactor; // p
-            for (int j = 1; j < 4; j++) {
+            for (size_t j = 1; j < 4; j++) {
                 trgValuePtr[7 * i + j] += trgValueInternal[7 * i + j] * scaleFactor; // vel
             }
-            for (int j = 4; j < 7; j++) {
+            for (size_t j = 4; j < 7; j++) {
                 trgValuePtr[7 * i + j] +=
                     trgValueInternal[7 * i + j] * scaleFactor * scaleFactor * scaleFactor; // laplacian vel
             }
@@ -601,9 +606,9 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     case KERNEL::LAPPGrad: {
         // 1+3
 #pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
+        for (size_t i = 0; i < nTrg; i++) {
             trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor; // p, 1/r
-            for (int j = 1; j < 4; j++) {
+            for (size_t j = 1; j < 4; j++) {
                 trgValuePtr[4 * i + j] += trgValueInternal[4 * i + j] * scaleFactor * scaleFactor; // grad p, 1/r^2
             }
         }
@@ -614,8 +619,8 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     return;
 }
 
-void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
-                            double *srcValuePtr, const int nTrg, double *trgCoordPtr, double *trgValuePtr,
+void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p, const size_t nSrc, double *srcCoordPtr,
+                            double *srcValuePtr, const size_t nTrg, double *trgCoordPtr, double *trgValuePtr,
                             const KERNEL kernel) {
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));

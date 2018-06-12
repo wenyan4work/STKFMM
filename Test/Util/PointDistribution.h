@@ -8,11 +8,11 @@
 #include <string>
 #include <vector>
 
-void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord);
+void fixedPoints(size_t nPts, double box, double shift, std::vector<double> &srcCoord);
 
-void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord);
+void chebPoints(size_t nPts, double box, double shift, std::vector<double> &ptsCoord);
 
-void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord);
+void randomPoints(size_t nPts, double box, double shift, std::vector<double> &ptsCoord);
 
 void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale);
 

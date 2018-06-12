@@ -92,8 +92,8 @@ class FMMData {
 
     void periodizeFMM(std::vector<double> &trgValue);
 
-    void evaluateKernel(int nThreads, PPKERNEL chooseSD, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
-                        const int nTrg, double *trgCoordPtr, double *trgValuePtr);
+    void evaluateKernel(int nThreads, PPKERNEL chooseSD, const size_t nSrc, double *srcCoordPtr, double *srcValuePtr,
+                        const size_t nTrg, double *trgCoordPtr, double *trgValuePtr);
 
     void deleteTree();
     void clear();
@@ -106,46 +106,46 @@ class FMMData {
 
     void readM2LMat(const std::string dataName);
 
-    template <class Real_t>
-    std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
-        size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
+    // template <class Real_t>
+    // std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
+    //     size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
 
-        std::vector<Real_t> coord(n_ * 3);
-        coord[0] = coord[1] = coord[2] = -1.0;
-        size_t cnt = 1;
-        for (int i = 0; i < p - 1; i++)
-            for (int j = 0; j < p - 1; j++) {
-                coord[cnt * 3] = -1.0;
-                coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
-                coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
-                cnt++;
-            }
-        for (int i = 0; i < p - 1; i++)
-            for (int j = 0; j < p - 1; j++) {
-                coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
-                coord[cnt * 3 + 1] = -1.0;
-                coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
-                cnt++;
-            }
-        for (int i = 0; i < p - 1; i++)
-            for (int j = 0; j < p - 1; j++) {
-                coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
-                coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
-                coord[cnt * 3 + 2] = -1.0;
-                cnt++;
-            }
-        for (size_t i = 0; i < (n_ / 2) * 3; i++)
-            coord[cnt * 3 + i] = -coord[i];
+    //     std::vector<Real_t> coord(n_ * 3);
+    //     coord[0] = coord[1] = coord[2] = -1.0;
+    //     size_t cnt = 1;
+    //     for (int i = 0; i < p - 1; i++)
+    //         for (int j = 0; j < p - 1; j++) {
+    //             coord[cnt * 3] = -1.0;
+    //             coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
+    //             coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
+    //             cnt++;
+    //         }
+    //     for (int i = 0; i < p - 1; i++)
+    //         for (int j = 0; j < p - 1; j++) {
+    //             coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
+    //             coord[cnt * 3 + 1] = -1.0;
+    //             coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
+    //             cnt++;
+    //         }
+    //     for (int i = 0; i < p - 1; i++)
+    //         for (int j = 0; j < p - 1; j++) {
+    //             coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
+    //             coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
+    //             coord[cnt * 3 + 2] = -1.0;
+    //             cnt++;
+    //         }
+    //     for (size_t i = 0; i < (n_ / 2) * 3; i++)
+    //         coord[cnt * 3 + i] = -coord[i];
 
-        Real_t r = 0.5 * pow(0.5, depth);
-        Real_t b = alpha * r;
-        for (size_t i = 0; i < n_; i++) {
-            coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
-            coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
-            coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
-        }
-        return coord;
-    }
+    //     Real_t r = 0.5 * pow(0.5, depth);
+    //     Real_t b = alpha * r;
+    //     for (size_t i = 0; i < n_; i++) {
+    //         coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
+    //         coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
+    //         coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
+    //     }
+    //     return coord;
+    // }
 };
 
 class STKFMM {
@@ -159,16 +159,16 @@ class STKFMM {
 
     ~STKFMM();
 
-    void setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL, const double *srcDLCoordPtr,
-                   const int nTrg, const double *trgCoordPtr);
+    void setPoints(const size_t nSL, const double *srcSLCoordPtr, const size_t nDL, const double *srcDLCoordPtr,
+                   const size_t nTrg, const double *trgCoordPtr);
 
     // results are added to values already in trgValuePtr
-    void evaluateFMM(const int nSL, const double *srcSLValuePtr, const int nDL, const double *srcDLValuePtr,
-                     const int nTrg, double *trgValuePtr, const KERNEL kernel);
+    void evaluateFMM(const size_t nSL, const double *srcSLValuePtr, const size_t nDL, const double *srcDLValuePtr,
+                     const size_t nTrg, double *trgValuePtr, const KERNEL kernel);
 
     // results are added to values already in trgValuePtr.
-    void evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
-                        double *srcValuePtr, const int nTrg, double *trgCoordPtr, double *trgValuePtr,
+    void evaluateKernel(const int nThreads, const PPKERNEL p2p, const size_t nSrc, double *srcCoordPtr,
+                        double *srcValuePtr, const size_t nTrg, double *trgCoordPtr, double *trgValuePtr,
                         const KERNEL kernel);
 
     void clearFMM(KERNEL kernelChoice);
@@ -208,8 +208,9 @@ class STKFMM {
     std::vector<double> srcDLValueInternal; // scaled SL value
     std::vector<double> trgValueInternal;   // scaled trg value
 
-    void setupCoord(const int npts,const double * coordInPtr, std::vector<double> & coord); // setup the internal srcCoord and
-                                                                         // trgCoord, with proper rotation and BC
+    void setupCoord(const int npts, const double *coordInPtr,
+                    std::vector<double> &coord); // setup the internal srcCoord and
+                                                 // trgCoord, with proper rotation and BC
 
     std::unordered_map<KERNEL, FMMData *, EnumClassHash> poolFMM;
     // return fraction part between [0,1)

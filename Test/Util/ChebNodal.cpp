@@ -13,7 +13,7 @@
 #include <iostream>
 
 // chebN equals to the number of points - 1
-ChebNodal::ChebNodal(int chebN) : chebN(chebN) {
+ChebNodal::ChebNodal(size_t chebN) : chebN(chebN) {
     points.resize(chebN + 1);
     weights.resize(chebN + 1);
 
@@ -42,8 +42,8 @@ void ChebNodal::calcWeight() {
     const double Pi = 3.1415926535897932384626433;
 
     double *Dkn = new double[(chebN + 1) * (chebN + 1)];
-    for (int k = 0; k < chebN + 1; k++) {
-        int n = 0;
+    for (size_t k = 0; k < chebN + 1; k++) {
+        size_t n = 0;
         Dkn[k * (chebN + 1) + n] = cos(k * n * Pi / chebN) / chebN;
         for (n = 1; n < chebN; n++) {
             Dkn[k * (chebN + 1) + n] = cos(k * n * Pi / chebN) * 2 / chebN;
@@ -52,15 +52,15 @@ void ChebNodal::calcWeight() {
         Dkn[k * (chebN + 1) + n] = cos(k * n * Pi / chebN) / chebN;
     }
     double *dvec = new double[chebN + 1];
-    for (int i = 0; i < chebN + 1; i++) {
+    for (size_t i = 0; i < chebN + 1; i++) {
         dvec[i] = i % 2 == 1 ? 0 : 2 / (1.0 - static_cast<double>(i * i));
     }
     dvec[0] = 1;
     points.resize(chebN + 1);
     weights.resize(chebN + 1);
-    for (int i = 0; i < chebN + 1; i++) {
+    for (size_t i = 0; i < chebN + 1; i++) {
         double temp = 0;
-        for (int j = 0; j < chebN + 1; j++) {
+        for (size_t j = 0; j < chebN + 1; j++) {
             temp += Dkn[j * (chebN + 1) + i] * dvec[j]; // not optimal layout for speed.
         }
         weights[i] = temp;

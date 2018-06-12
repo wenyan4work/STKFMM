@@ -11,7 +11,7 @@
 #include "ChebNodal.h"
 #include "PointDistribution.h"
 
-void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord) {
+void fixedPoints(size_t nPts, double box, double shift, std::vector<double> &srcCoord) {
     switch (nPts) {
     case 1: {
         srcCoord.push_back(0.7 * box + shift);
@@ -46,7 +46,7 @@ void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoo
     }
 }
 
-void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+void chebPoints(size_t nPts, double box, double shift, std::vector<double> &ptsCoord) {
 
     ChebNodal chebData(nPts);
     chebData.points[0] += 0;
@@ -56,9 +56,9 @@ void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoor
     const int dimension = chebData.points.size();
     chebMesh.resize(pow(dimension, 3) * 3);
 
-    for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++) {
-            for (int k = 0; k < dimension; k++) {
+    for (size_t i = 0; i < dimension; i++) {
+        for (size_t j = 0; j < dimension; j++) {
+            for (size_t k = 0; k < dimension; k++) {
                 chebMesh[3 * (i * dimension * dimension + j * dimension + k)] =
                     (chebData.points[i] + 1) * box / 2 + shift;
                 chebMesh[3 * (i * dimension * dimension + j * dimension + k) + 1] =
@@ -70,7 +70,7 @@ void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoor
     }
 }
 
-void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+void randomPoints(size_t nPts, double box, double shift, std::vector<double> &ptsCoord) {
     ptsCoord.resize(pow(nPts + 1, 3) * 3);
     randomLogNormalFill(ptsCoord, 1.0, 1.0);
     for (auto &v : ptsCoord) {
@@ -81,8 +81,8 @@ void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCo
 
 void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale) {
     // user's job to guarantee pts stays in the unit cube after shift
-    const int nPts = ptsCoord.size() / 3;
-    for (int i = 0; i < nPts; i++) {
+    const size_t nPts = ptsCoord.size() / 3;
+    for (size_t i = 0; i < nPts; i++) {
         ptsCoord[3 * i] = ptsCoord[3 * i] * scale + shift[0];
         ptsCoord[3 * i + 1] = ptsCoord[3 * i + 1] * scale + shift[1];
         ptsCoord[3 * i + 2] = ptsCoord[3 * i + 2] * scale + shift[2];
@@ -157,7 +157,7 @@ void checkError(const std::vector<double> &valueLocal, const std::vector<double>
         double errorL2 = 0, errorAbs = 0, L2 = 0, errorMaxL2 = 0, maxU = 0;
         double errorMaxRel = 0;
 
-        for (int i = 0; i < valueTrue.size(); i++) {
+        for (size_t i = 0; i < valueTrue.size(); i++) {
             double temp = pow(valueTrue[i] - value[i], 2);
             errorL2 += temp;
             errorAbs += sqrt(temp);
@@ -186,7 +186,7 @@ void distributePts(std::vector<double> &pts, int dimension) {
     if (nProcs == 1) {
         return;
     }
-    int ptsGlobalSize;
+    size_t ptsGlobalSize;
     if (myRank == 0) {
         ptsGlobalSize = pts.size();
         MPI_Bcast(&ptsGlobalSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -202,11 +202,11 @@ void distributePts(std::vector<double> &pts, int dimension) {
     MPI_Bcast(pts.data(), ptsGlobalSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     // each take a portion
-    const int nPts = ptsGlobalSize / dimension;
+    const size_t nPts = ptsGlobalSize / dimension;
     // inclusive low
-    int indexlow = dimension * floor(myRank * nPts / static_cast<double>(nProcs));
+    size_t indexlow = dimension * floor(myRank * nPts / static_cast<double>(nProcs));
     // non-inclusive high
-    int indexhigh = dimension * floor((myRank + 1) * nPts / static_cast<double>(nProcs));
+    size_t indexhigh = dimension * floor((myRank + 1) * nPts / static_cast<double>(nProcs));
     if (myRank == nProcs - 1) {
         indexhigh = ptsGlobalSize;
     }
@@ -225,8 +225,8 @@ void collectPts(std::vector<double> &pts) {
     if (nProcs == 1) {
         return;
     }
-    int ptsLocalSize = pts.size();
-    int ptsGlobalSize = 0;
+    size_t ptsLocalSize = pts.size();
+    size_t ptsGlobalSize = 0;
 
     std::vector<int> recvSize(0);
     std::vector<int> displs(0);
@@ -271,7 +271,7 @@ void collectPtsAll(std::vector<double> &pts) {
     // first collect to rank 0
     collectPts(pts);
     // broadcast to all rank
-    int numGlobal = pts.size();
+    size_t numGlobal = pts.size();
     MPI_Bcast(&numGlobal, 1, MPI_INT, 0, MPI_COMM_WORLD);
     pts.resize(numGlobal);
     MPI_Bcast(pts.data(), numGlobal, MPI_DOUBLE, 0, MPI_COMM_WORLD);
