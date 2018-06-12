@@ -16,13 +16,13 @@
 using namespace stkfmm;
 
 void configure_parser(cli::Parser &parser) {
-    parser.set_optional<size_t>(
+    parser.set_optional<int>(
         "S", "nSLSource", 1,
         "1 for point force, 2 for force dipole, 4 for 4 point forces, other for same as target, default=1");
-    parser.set_optional<size_t>(
+    parser.set_optional<int>(
         "D", "nDLSource", 1,
         "1 for point force, 2 for force dipole, 4 for 4 point forces, other for same as target, default=1");
-    parser.set_optional<size_t>("T", "nTarget", 2, "total target number = (T+1)^3, default T=2");
+    parser.set_optional<int>("T", "nTarget", 2, "total target number = (T+1)^3, default T=2");
     parser.set_optional<double>("B", "box", 1.0, "box edge length, default B=1.0");
     parser.set_optional<double>("M", "move", 0.0, "box origin shift move, default M=0");
     parser.set_optional<int>("K", "Kernel Combination", 0,
@@ -34,9 +34,9 @@ void configure_parser(cli::Parser &parser) {
 
 void showOption(const cli::Parser &parser) {
     std::cout << "Running setting: " << std::endl;
-    std::cout << "nSLSource: " << parser.get<size_t>("S") << std::endl;
-    std::cout << "nDLSource: " << parser.get<size_t>("D") << std::endl;
-    std::cout << "nTarget: " << parser.get<size_t>("T") << std::endl;
+    std::cout << "nSLSource: " << parser.get<int>("S") << std::endl;
+    std::cout << "nDLSource: " << parser.get<int>("D") << std::endl;
+    std::cout << "nTarget: " << parser.get<int>("T") << std::endl;
     std::cout << "Box: " << parser.get<double>("B") << std::endl;
     std::cout << "Shift: " << parser.get<double>("M") << std::endl;
     std::cout << "KERNEL: " << parser.get<int>("K") << std::endl;
@@ -75,7 +75,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL, const int 
 
     // check results
 #pragma omp parallel for
-    for (size_t i = 0; i < nTrg; i++) {
+    for (int i = 0; i < nTrg; i++) {
         double t[3];
         const double *trg = trgCoordLocal.data() + 3 * i;
         t[0] = trg[0];
@@ -83,9 +83,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL, const int 
         t[2] = trg[2];
 
         // add SL values
-        for (size_t j = 0; j < nSL; j++) {
+        for (int j = 0; j < nSL; j++) {
             double result[20];
-            for (size_t ii = 0; ii < 20; ii++) {
+            for (int ii = 0; ii < 20; ii++) {
                 result[ii] = 0;
             }
             double *s = srcSLCoordGlobal.data() + 3 * j;
@@ -109,15 +109,15 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL, const int 
                 break;
             }
 
-            for (size_t k = 0; k < kdimTrg; k++) {
+            for (int k = 0; k < kdimTrg; k++) {
                 trgValueTrueLocal[kdimTrg * i + k] += result[k];
             }
         }
 
         // add DL values
-        for (size_t j = 0; j < nDL; j++) {
+        for (int j = 0; j < nDL; j++) {
             double result[20];
-            for (size_t ii = 0; ii < 20; ii++) {
+            for (int ii = 0; ii < 20; ii++) {
                 result[ii] = 0;
             }
             double *s = srcDLCoordGlobal.data() + 3 * j;
@@ -141,7 +141,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL, const int 
                 break;
             }
 
-            for (size_t k = 0; k < kdimTrg; k++) {
+            for (int k = 0; k < kdimTrg; k++) {
                 trgValueTrueLocal[kdimTrg * i + k] += result[k];
             }
         }
@@ -279,7 +279,7 @@ void testFMM(const cli::Parser &parser, int order) {
     const double shift = parser.get<double>("M");
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
-    const size_t k = (temp == 0) ? ~((size_t)0) : temp;
+    const int k = (temp == 0) ? ~((int)0) : temp;
     STKFMM myFMM(order, 2000, PAXIS::NONE, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
@@ -294,21 +294,21 @@ void testFMM(const cli::Parser &parser, int order) {
 
     if (myRank == 0) {
         // set trg coord
-        const size_t nPts = parser.get<size_t>("T");
+        const int nPts = parser.get<int>("T");
         if (parser.get<int>("R") > 0) {
             randomPoints(nPts, box, shift, trgCoord);
         } else {
             chebPoints(nPts, box, shift, trgCoord);
         }
         // set src SL coord
-        const size_t nSL = parser.get<size_t>("S");
+        const int nSL = parser.get<int>("S");
         if (nSL == 1 || nSL == 2 || nSL == 4) {
             fixedPoints(nSL, box, shift, srcSLCoord);
         } else {
             srcSLCoord = trgCoord;
         }
 
-        const size_t nDL = parser.get<size_t>("D");
+        const int nDL = parser.get<int>("D");
         if (nDL == 1 || nDL == 2 || nDL == 4) {
             fixedPoints(nDL, box, shift, srcDLCoord);
         } else {

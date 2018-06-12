@@ -16,12 +16,12 @@
 // scaling is the user's duty
 class ChebNodal {
   public:
-    size_t chebN; // points.size() = pChebN+1
+    int chebN; // points.size() = pChebN+1
     std::vector<double> points;
     std::vector<double> weights;
 
   public:
-    ChebNodal(size_t);
+    ChebNodal(int);
     ~ChebNodal() = default;
 
   private:
