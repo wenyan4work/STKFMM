@@ -407,7 +407,7 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
     int rank = 0;
     MPI_Comm_rank(comm, &rank);
 
-    if (rank = 0) {
+    if (rank == 0) {
         std::cout << "box x " << xlen << " box y " << ylen << " box z " << zlen << std::endl;
         std::cout << "scale factor " << scaleFactor << std::endl;
     }
