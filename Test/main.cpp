@@ -188,10 +188,10 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
 
     myFMM.evaluateKernel(-1, PPKERNEL::DLS2T, nSrcDLLocal, srcDLCoordLocal.data(), srcDLValueLocal.data(), nTrgLocal,
                          trgCoordLocal.data(), trgValueLocal.data(), testKernel); // DL
-    if (myRank == 0)
-        printf("DLS2T kernel evaluated\n");
 
     if (verify) {
+        if (myRank == 0)
+            printf("DLS2T kernel evaluated\n");
         calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal, srcDLCoordLocal, trgCoordLocal,
                       srcSLValueLocal, srcDLValueLocal, trgValueTrueLocal);
         checkError(trgValueLocal, trgValueTrueLocal);
@@ -258,10 +258,9 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     // myFMM.setupTree(testKernel);
     // myFMM.evaluateFMM(srcValue, trgValue, testKernel);
 
-    if (myRank == 0)
-        printf("fmm evaluated, computing true results with simple O(N^2) sum\n");
-
     if (verify) {
+        if (myRank == 0)
+            printf("fmm evaluated, computing true results with simple O(N^2) sum\n");
         calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal, srcDLCoordLocal, trgCoordLocal,
                       srcSLValueLocal, srcDLValueLocal, trgValueTrueLocal);
         checkError(trgValueLocal, trgValueTrueLocal);
@@ -323,6 +322,12 @@ void testFMM(const cli::Parser &parser, int order) {
 
     const bool verify = parser.get<int>("V");
 
+    if (myRank == 0) {
+        std::cout << "nSL: " << srcSLCoord.size() / 3 << "\n";
+        std::cout << "nDL: " << srcDLCoord.size() / 3 << "\n";
+        std::cout << "nTrg: " << trgCoord.size() / 3 << std::endl;
+    }
+
     // test each active kernel
     if (parser.get<int>("F") == 1) {
         distributePts(srcSLCoord, 3);
@@ -382,7 +387,13 @@ int main(int argc, char **argv) {
         showOption(parser);
 
     for (int p = 6; p <= 14; p += 2) {
+        if (myRank == 0) {
+            printf("------------------------------------\n");
+            printf("Testing order p = %d\n", p);
+        }
         testFMM(parser, p);
+        if (myRank == 0)
+            printf("------------------------------------\n");
     }
 
     MPI_Finalize();
