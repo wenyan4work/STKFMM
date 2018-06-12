@@ -237,15 +237,15 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &
     MPI_Comm_rank(comm, &rank);
 
     if (nTrg * kdimTrg != trgValue.size()) {
-        printf("trg value size error for kernel %zu from rank %d\n", kernelChoice, rank);
+        printf("trg value size error for kernel %u from rank %d\n", kernelChoice, rank);
         exit(1);
     }
     if (nSrc * kdimSL != srcSLValue.size()) {
-        printf("src SL value size error for kernel %zu\n from rank %d", kernelChoice, rank);
+        printf("src SL value size error for kernel %u\n from rank %d", kernelChoice, rank);
         exit(1);
     }
     if (nSurf * kdimDL != srcDLValue.size()) {
-        printf("src DL value size error for kernel %zu\n from rank %d", kernelChoice, rank);
+        printf("src DL value size error for kernel %u\n from rank %d", kernelChoice, rank);
         exit(1);
     }
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
@@ -342,27 +342,27 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_
     // parse the choice of kernels, use bitwise and
     if (kernelComb & asInteger(KERNEL::PVel)) {
         if (myRank == 0)
-            printf("enable PVel %lu\n", kernelComb & asInteger(KERNEL::PVel));
+            printf("enable PVel %u\n", kernelComb & asInteger(KERNEL::PVel));
         poolFMM[KERNEL::PVel] = new FMMData(KERNEL::PVel, pbc, multOrder, maxPts);
     }
     if (kernelComb & asInteger(KERNEL::PVelGrad)) {
         if (myRank == 0)
-            printf("enable PVelGrad %lu\n", kernelComb & asInteger(KERNEL::PVelGrad));
+            printf("enable PVelGrad %u\n", kernelComb & asInteger(KERNEL::PVelGrad));
         poolFMM[KERNEL::PVelGrad] = new FMMData(KERNEL::PVelGrad, pbc, multOrder, maxPts);
     }
     if (kernelComb & asInteger(KERNEL::PVelLaplacian)) {
         if (myRank == 0)
-            printf("enable PVelLaplacian %lu\n", kernelComb & asInteger(KERNEL::PVelLaplacian));
+            printf("enable PVelLaplacian %u\n", kernelComb & asInteger(KERNEL::PVelLaplacian));
         poolFMM[KERNEL::PVelLaplacian] = new FMMData(KERNEL::PVelLaplacian, pbc, multOrder, maxPts);
     }
     if (kernelComb & asInteger(KERNEL::Traction)) {
         if (myRank == 0)
-            printf("enable Traction %lu\n", kernelComb & asInteger(KERNEL::Traction));
+            printf("enable Traction %u\n", kernelComb & asInteger(KERNEL::Traction));
         poolFMM[KERNEL::Traction] = new FMMData(KERNEL::Traction, pbc, multOrder, maxPts);
     }
     if (kernelComb & asInteger(KERNEL::LAPPGrad)) {
         if (myRank == 0)
-            printf("enable LAPPGrad %lu\n", kernelComb & asInteger(KERNEL::LAPPGrad));
+            printf("enable LAPPGrad %u\n", kernelComb & asInteger(KERNEL::LAPPGrad));
         poolFMM[KERNEL::LAPPGrad] = new FMMData(KERNEL::LAPPGrad, pbc, multOrder, maxPts);
     }
 
@@ -496,7 +496,7 @@ void STKFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
             if (myRank == 0)
-                printf("kernel %lu \n", asInteger(fmm.second->kernelChoice));
+                printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
         if (myRank == 0)
