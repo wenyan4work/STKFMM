@@ -198,11 +198,12 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
     }
 
     // output for debug
-    dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
-    dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
-    dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
-    if (verify)
+    if (verify) {
+        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
         dumpPoints("trgPointsTrue.txt", trgCoordLocal, trgValueTrueLocal, kdimTrg);
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -267,11 +268,12 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel, std::vector<double> &src
         checkError(trgValueLocal, trgValueTrueLocal);
     }
     // output for debug
-    dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
-    dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
-    dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
-    if (verify)
+    if (verify) {
+        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
         dumpPoints("trgPointsTrue.txt", trgCoordLocal, trgValueTrueLocal, kdimTrg);
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -281,7 +283,7 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const int k = (temp == 0) ? ~((int)0) : temp;
-    STKFMM myFMM(order, 2000, PAXIS::NONE, k);
+    STKFMM myFMM(order, 20000, PAXIS::NONE, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
@@ -303,14 +305,18 @@ void testFMM(const cli::Parser &parser, int order) {
         }
         // set src SL coord
         const int nSL = parser.get<int>("S");
-        if (nSL == 1 || nSL == 2 || nSL == 4) {
+        if (nSL == 0) {
+            srcSLCoord.clear();
+        } else if (nSL == 1 || nSL == 2 || nSL == 4) {
             fixedPoints(nSL, box, shift, srcSLCoord);
         } else {
             srcSLCoord = trgCoord;
         }
 
         const int nDL = parser.get<int>("D");
-        if (nDL == 1 || nDL == 2 || nDL == 4) {
+        if (nDL == 0) {
+            srcDLCoord.clear();
+        } else if (nDL == 1 || nDL == 2 || nDL == 4) {
             fixedPoints(nDL, box, shift, srcDLCoord);
         } else {
             srcDLCoord = trgCoord;

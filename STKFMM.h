@@ -3,10 +3,10 @@
  *
  *  Created on: Oct 6, 2016
  *      Author: wyan
- * 
+ *
  * use int as index type, easier compatibility with MPI functions.
  * for larger data, compile with ILP64 model, no code changes.
- * 
+ *
  */
 
 #ifndef INCLUDE_STKFMM_H
@@ -109,7 +109,6 @@ class FMMData {
     MPI_Comm comm;
 
     void readM2LMat(const std::string dataName);
-
 };
 
 class STKFMM {
@@ -172,17 +171,11 @@ class STKFMM {
     std::vector<double> srcDLValueInternal; // scaled SL value
     std::vector<double> trgValueInternal;   // scaled trg value
 
-    void setupCoord(const int npts, const double *coordInPtr,
-                    std::vector<double> &coord); // setup the internal srcCoord and
-                                                 // trgCoord, with proper rotation and BC
+    void setupCoord(const int npts, const double *coordInPtr, std::vector<double> &coord) const;
+    // setup the internal coord, with proper scaling and BC
 
     std::unordered_map<KERNEL, FMMData *, EnumClassHash> poolFMM;
-    // return fraction part between [0,1)
-    /*
-     * This function is only applied in the PERIODIC DIRECTION
-     * The user of the library must ensure that all points are located within [0,1)
-     * */
-    inline double fracwrap(double x) { return x - floor(x); }
+
 };
 } // namespace stkfmm
 

@@ -28,6 +28,13 @@ void safeDeletePtr(T *ptr) {
     }
 }
 
+// return fraction part between [0,1)
+/*
+ * This function is only applied in the PERIODIC DIRECTION
+ * The user of the library must ensure that all points are located within [0,1)
+ * */
+inline double fracwrap(double x) { return x - floor(x); }
+
 template <class Real_t>
 std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
     int n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
@@ -195,7 +202,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
 
     // setup treeData
     treeDataPtr->dim = 3;
-    treeDataPtr->max_depth = 15; // must < MAX_DEPTH in pvfmm_common.hpp
+    treeDataPtr->max_depth = MAX_DEPTH; // must <= MAX_DEPTH in pvfmm_common.hpp
     treeDataPtr->max_pts = maxPts;
 
     treeDataPtr->src_coord = srcSLCoord;
@@ -208,6 +215,8 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     const int nDL = srcDLCoord.size() / 3;
     const int nTrg = trgCoord.size() / 3;
 
+    // printf("nSL %d, nDL %d, nTrg %d\n",nSL,nDL,nTrg);
+
     // space allocate
     treeDataPtr->src_value.Resize(nSL * kdimSL);
     treeDataPtr->surf_value.Resize(nDL * kdimDL);
@@ -215,9 +224,13 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
 
     // construct tree
     treePtr = new pvfmm::PtFMM_Tree(comm);
+    // printf("tree alloc\n");
     treePtr->Initialize(treeDataPtr);
+    // printf("tree init\n");
     treePtr->InitFMM_Tree(true, pvfmm::periodicType == pvfmm::PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
+    // printf("tree build\n");
     treePtr->SetupFMM(matrixPtr);
+    // printf("tree fmm matrix setup\n");
     return;
 }
 
@@ -445,44 +458,41 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
     }
 }
 
-void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<double> &coord) {
-    // apply scale to internal data array, without rotation
-    // Set source points, with scale
+void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<double> &coord) const {
+    // scale points into internal data array, without rotation
+    // Set points
     coord.resize(npts * 3);
 
-    if (pbc == PAXIS::PXYZ) {
-        // no rotate
+// scale
+#pragma omp parallel for
+    for (int i = 0; i < npts; i++) {
+        coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
+        coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
+        coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
+    }
+
+    // wrap periodic images
+    if (pbc == PAXIS::PX) {
 #pragma omp parallel for
         for (int i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap((coordInPtr[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = fracwrap((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = fracwrap((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
-        }
-    } else if (pbc == PAXIS::PX) {
-        // no rotate
-#pragma omp parallel for
-        for (int i = 0; i < npts; i++) {
-            coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = fracwrap((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = fracwrap(coord[3 * i]);
         }
     } else if (pbc == PAXIS::PXY) {
-        // no rotate
 #pragma omp parallel for
         for (int i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap((coordInPtr[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = fracwrap((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
+            coord[3 * i] = fracwrap(coord[3 * i]);
+            coord[3 * i + 1] = fracwrap(coord[3 * i + 1]);
+        }
+    } else if (pbc == PAXIS::PXYZ) {
+#pragma omp parallel for
+        for (int i = 0; i < npts; i++) {
+            coord[3 * i] = fracwrap(coord[3 * i]);
+            coord[3 * i + 1] = fracwrap(coord[3 * i + 1]);
+            coord[3 * i + 2] = fracwrap(coord[3 * i + 2]);
         }
     } else {
         assert(pbc == PAXIS::NONE);
-        // no rotate
-#pragma omp parallel for
-        for (int i = 0; i < npts; i++) {
-            coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
-            coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
-            coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
-        }
+        // no fracwrap
     }
     return;
 }
