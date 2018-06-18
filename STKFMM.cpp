@@ -461,6 +461,10 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_, do
 void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<double> &coord) const {
     // scale points into internal data array, without rotation
     // Set points
+    if (npts == 0) {
+        coord.clear();
+        return;
+    }
     coord.resize(npts * 3);
 
 // scale
