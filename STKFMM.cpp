@@ -215,7 +215,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     const int nDL = srcDLCoord.size() / 3;
     const int nTrg = trgCoord.size() / 3;
 
-    // printf("nSL %d, nDL %d, nTrg %d\n",nSL,nDL,nTrg);
+    printf("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
 
     // space allocate
     treeDataPtr->src_value.Resize(nSL * kdimSL);
@@ -467,12 +467,17 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<do
     }
     coord.resize(npts * 3);
 
+    const double xs = this->xshift;
+    const double ys = this->yshift;
+    const double zs = this->zshift;
+    const double sF = this->scaleFactor;
+
 // scale
 #pragma omp parallel for
     for (int i = 0; i < npts; i++) {
-        coord[3 * i] = ((coordInPtr[3 * i] + xshift) * scaleFactor);
-        coord[3 * i + 1] = ((coordInPtr[3 * i + 1] + yshift) * scaleFactor);
-        coord[3 * i + 2] = ((coordInPtr[3 * i + 2] + zshift) * scaleFactor);
+        coord[3 * i + 0] = (coordInPtr[3 * i + 0] + xs) * sF;
+        coord[3 * i + 1] = (coordInPtr[3 * i + 1] + ys) * sF;
+        coord[3 * i + 2] = (coordInPtr[3 * i + 2] + zs) * sF;
     }
 
     // wrap periodic images
@@ -498,6 +503,7 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr, std::vector<do
         assert(pbc == PAXIS::NONE);
         // no fracwrap
     }
+
     return;
 }
 
@@ -549,8 +555,9 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     // SL no extra scaling
     // DL scale as scaleFactor
     std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL, srcSLValueInternal.begin());
+    int nloop = nDL * fmm.kdimDL;
 #pragma omp parallel for
-    for (int i = 0; i < nDL * fmm.kdimDL; i++) {
+    for (int i = 0; i < nloop; i++) {
         srcDLValueInternal[i] = srcDLValuePtr[i] * scaleFactor;
     }
     if (fmm.kdimSL == 4) {
@@ -598,8 +605,9 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr, const int n
     } break;
     case KERNEL::Traction: {
         // 9
+        int nloop = 9 * nTrg;
 #pragma omp parallel for
-        for (int i = 0; i < 9 * nTrg; i++) {
+        for (int i = 0; i < nloop; i++) {
             trgValuePtr[i] += trgValueInternal[i] * scaleFactor * scaleFactor; // traction 1/r^2
         }
     } break;
