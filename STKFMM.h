@@ -103,9 +103,9 @@ class FMMData {
     void clear();
 
   private:
-    pvfmm::PtFMM *matrixPtr;
-    pvfmm::PtFMM_Tree *treePtr;
-    pvfmm::PtFMM_Data *treeDataPtr;
+    pvfmm::PtFMM<double> *matrixPtr;
+    pvfmm::PtFMM_Tree<double> *treePtr;
+    pvfmm::PtFMM_Data<double> *treeDataPtr;
     MPI_Comm comm;
 
     void readM2LMat(const std::string dataName);
