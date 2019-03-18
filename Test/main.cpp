@@ -283,7 +283,7 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const int k = (temp == 0) ? ~((int)0) : temp;
-    STKFMM myFMM(order, 20000, PAXIS::NONE, k);
+    STKFMM myFMM(order, 2000, PAXIS::NONE, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 

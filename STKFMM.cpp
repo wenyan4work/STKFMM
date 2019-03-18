@@ -143,7 +143,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
     if (periodicity != PAXIS::NONE) {
 
         // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-        double scaleLEquiv = RAD1; // RAD1 = 2.95 defined in pvfmm_common.h
+        double scaleLEquiv = PVFMM_RAD1; // RAD1 = 2.95 defined in pvfmm_common.h
         double pCenterLEquiv[3];
         pCenterLEquiv[0] = -(scaleLEquiv - 1) / 2;
         pCenterLEquiv[1] = -(scaleLEquiv - 1) / 2;
@@ -202,7 +202,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
 
     // setup treeData
     treeDataPtr->dim = 3;
-    treeDataPtr->max_depth = MAX_DEPTH; // must <= MAX_DEPTH in pvfmm_common.hpp
+    treeDataPtr->max_depth = PVFMM_MAX_DEPTH; // must <= MAX_DEPTH in pvfmm_common.hpp
     treeDataPtr->max_pts = maxPts;
 
     treeDataPtr->src_coord = srcSLCoord;
@@ -271,7 +271,7 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     }
 
     pvfmm::Vector<double> v = treePtr->RootNode()->FMMData()->upward_equiv; // the value calculated by pvfmm
-    assert(v.Dim() == 3 * this->equivN);
+    // assert(v.Dim() == 3 * this->equivN);
 
     // add to trg_value
     auto &trgCoord = treeDataPtr->trg_coord;
