@@ -1,0 +1,110 @@
+Running setting: 
+nSLSource: 128
+nDLSource: 128
+nTarget: 128
+Box: 10
+Shift: 2
+KERNEL: 8
+Random: 1
+Using FMM: 1
+O(N^2) Verification: 0
+------------------------------------
+Testing order p = 6
+enable Traction 8
+FMM Initialized
+box x 10 box y 10 box z 10
+scale factor 0.1
+active kernels:
+Traction
+nSL: 2146689
+nDL: 2146689
+nTrg: 2146689
+kernel 8 
+ALL FMM Tree Cleared
+points set
+kdim: SL 4, DL 9, TRG 9
+nSL 2146689, nDL 2146689, nTrg 2146689
+Coord setup for kernel 8
+Tree setup  :time 4.26423 seconds.
+FMM Evaluation  :time 21.3932 seconds.
+------------------------------------
+------------------------------------
+Testing order p = 8
+enable Traction 8
+FMM Initialized
+box x 10 box y 10 box z 10
+scale factor 0.1
+active kernels:
+Traction
+nSL: 2146689
+nDL: 2146689
+nTrg: 2146689
+kernel 8 
+ALL FMM Tree Cleared
+points set
+kdim: SL 4, DL 9, TRG 9
+nSL 2146689, nDL 2146689, nTrg 2146689
+Coord setup for kernel 8
+Tree setup  :time 3.99139 seconds.
+FMM Evaluation  :time 26.4737 seconds.
+------------------------------------
+------------------------------------
+Testing order p = 10
+enable Traction 8
+FMM Initialized
+box x 10 box y 10 box z 10
+scale factor 0.1
+active kernels:
+Traction
+nSL: 2146689
+nDL: 2146689
+nTrg: 2146689
+kernel 8 
+ALL FMM Tree Cleared
+points set
+kdim: SL 4, DL 9, TRG 9
+nSL 2146689, nDL 2146689, nTrg 2146689
+Coord setup for kernel 8
+Tree setup  :time 3.15956 seconds.
+FMM Evaluation  :time 28.6778 seconds.
+------------------------------------
+------------------------------------
+Testing order p = 12
+enable Traction 8
+FMM Initialized
+box x 10 box y 10 box z 10
+scale factor 0.1
+active kernels:
+Traction
+nSL: 2146689
+nDL: 2146689
+nTrg: 2146689
+kernel 8 
+ALL FMM Tree Cleared
+points set
+kdim: SL 4, DL 9, TRG 9
+nSL 2146689, nDL 2146689, nTrg 2146689
+Coord setup for kernel 8
+Tree setup  :time 4.33207 seconds.
+FMM Evaluation  :time 37.0239 seconds.
+------------------------------------
+------------------------------------
+Testing order p = 14
+enable Traction 8
+FMM Initialized
+box x 10 box y 10 box z 10
+scale factor 0.1
+active kernels:
+Traction
+nSL: 2146689
+nDL: 2146689
+nTrg: 2146689
+kernel 8 
+ALL FMM Tree Cleared
+points set
+kdim: SL 4, DL 9, TRG 9
+nSL 2146689, nDL 2146689, nTrg 2146689
+Coord setup for kernel 8
+Tree setup  :time 5.039 seconds.
+FMM Evaluation  :time 55.7971 seconds.
+------------------------------------
