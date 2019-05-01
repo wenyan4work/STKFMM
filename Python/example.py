@@ -20,13 +20,13 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
 
     # Create sources and targets
-    nsrc_SL = 2
+    nsrc_SL = 1024
     src_SL_coord = np.random.rand(nsrc_SL, 3)
     src_SL_value = np.random.rand(nsrc_SL, 3)
-    nsrc_DL = 2
+    nsrc_DL = 1024
     src_DL_coord = np.random.rand(nsrc_DL, 3)
     src_DL_value = np.random.rand(nsrc_DL, 3)
-    ntrg = 3
+    ntrg = 1024
     trg_coord = np.random.rand(ntrg, 3)
     sys.stdout.flush()
     comm.Barrier()
@@ -76,12 +76,15 @@ if __name__ == '__main__':
 
 
 
-    # fmm.FMM_UpdateTree(myFMM, trg_coord, src_coord)
-    # fmm.FMM_Evaluate(myFMM, trg_value, src_value)
-    # fmm.FMM_DataClear(myFMM)
-    # fmm.FMM_TreeClear(myFMM)
-    # fmm.FMM_UpdateTree(myFMM, trg_coord, src_coord)
-    # fmm.FMM_Evaluate(myFMM, trg_value, src_value)
+    p2p = stkfmm.FMM_PPKERNEL.SLS2T
+    test_kernel = stkfmm.FMM_KERNEL.PVel
+    if stkfmm.isKernelActive(myFMM, test_kernel):
+        print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+        stkfmm.evaluateKernel(myFMM, -1, stkfmm.FMM_PPKERNEL.SLS2T, nsrc_SL, src_SL_coord, src_SL_value, 
+                              ntrg, trg_coord, trg_value, test_kernel)
+        print(trg_value)
+
+
     comm.Barrier()
 
     print('# End')
