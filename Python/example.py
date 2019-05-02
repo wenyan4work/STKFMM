@@ -6,6 +6,16 @@ try:
 except ImportError:
     print('It didn\'t find mpi4py!')
 import stkfmm 
+import kernels as kr
+
+
+def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
+    if kernel_index == 1:
+        trg_value = kr.oseen_kernel_source_target_numba(src_SL_coord, trg_coord, src_SL_value)
+    else:
+        trg_value = None
+    return trg_value
+
 
 if __name__ == '__main__':
     print('# Start')
@@ -14,8 +24,10 @@ if __name__ == '__main__':
     mult_order = 10
     max_pts = 1024
     pbc = stkfmm.PAXIS.NONE
-    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
+    # kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
+    kernels = [stkfmm.KERNEL.PVel]
     kernels_index = [stkfmm.KERNEL(k) for k in kernels]
+    verify = True
 
     # Get MPI parameters
     comm = MPI.COMM_WORLD
@@ -66,6 +78,12 @@ if __name__ == '__main__':
         stkfmm.clearFMM(myFMM, kernel)
         stkfmm.evaluateFMM(myFMM, nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
         print('trg_value = \n', trg_value)
+
+        if verify:
+            trg_value_true = calc_true_value(kernels_index[k], src_SL_coord, trg_coord, src_SL_value)
+            diff = trg_value - trg_value_true
+            print('relative L2 error = ', np.linalg.norm(diff) / np.linalg.norm(trg_value_true))
+            print('Linf error        = ', np.linalg.norm(diff.flatten(), norm=np.inf))
 
     comm.Barrier()
     print('# End')
