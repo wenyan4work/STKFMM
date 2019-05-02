@@ -85,25 +85,26 @@ BOOST_PYTHON_MODULE(stkfmm) {
     Py_Initialize();
     np::initialize();
 
-    // Class FMM_Wrapper
-    enum_<stkfmm::PAXIS>("FMM_PAXIS")
+    // Enums
+    enum_<stkfmm::PAXIS>("PAXIS")
       .value("NONE", stkfmm::PAXIS::NONE)
       .value("PX", stkfmm::PAXIS::PX)
       .value("PXY", stkfmm::PAXIS::PXY)
       .value("PXYZ", stkfmm::PAXIS::PXYZ);
 
-    enum_<stkfmm::KERNEL>("FMM_KERNEL")
+    enum_<stkfmm::KERNEL>("KERNEL")
       .value("PVel", stkfmm::KERNEL::PVel) // single layer kernel
       .value("PVelGrad", stkfmm::KERNEL::PVelGrad)
       .value("PVelLaplacian", stkfmm::KERNEL::PVelLaplacian)
       .value("Traction", stkfmm::KERNEL::Traction)
       .value("LAPPGrad", stkfmm::KERNEL::LAPPGrad); // laplace single layer
 
-    enum_<stkfmm::PPKERNEL>("FMM_PPKERNEL")
+    enum_<stkfmm::PPKERNEL>("PPKERNEL")
       .value("SLS2T", stkfmm::PPKERNEL::SLS2T)
       .value("DLS2T", stkfmm::PPKERNEL::DLS2T)
       .value("L2T", stkfmm::PPKERNEL::L2T);
 
+    // Class STKFMM
     class_<stkfmm::STKFMM>("STKFMM", init<int, int, stkfmm::PAXIS, unsigned int>());
 
     // Define functions for stkfmm
