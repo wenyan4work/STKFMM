@@ -14,6 +14,9 @@ def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
     if kernel_index == 1:
         trg_value  = kr.StokesSLPVel(src_SL_coord, trg_coord, src_SL_value)
         trg_value += kr.StokesDLPVel(src_DL_coord, trg_coord, src_DL_value)
+    elif kernel_index == 2:
+        trg_value  = kr.StokesSLPVelGrad(src_SL_coord, trg_coord, src_SL_value)
+        trg_value += kr.StokesDLPVelGrad(src_DL_coord, trg_coord, src_DL_value)
     else:
         trg_value = None
     return trg_value
@@ -27,7 +30,7 @@ if __name__ == '__main__':
     max_pts = 1024
     pbc = stkfmm.PAXIS.NONE
     # kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
-    kernels = [stkfmm.KERNEL.PVel]
+    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad]
     kernels_index = [stkfmm.KERNEL(k) for k in kernels]
     verify = True
 
@@ -96,10 +99,11 @@ if __name__ == '__main__':
             timer.timer('true_value')
             trg_value_true  = calc_true_value(kernels_index[k], src_SL_coord, trg_coord, src_SL_value)
             timer.timer('true_value')
-            diff = trg_value - trg_value_true
-            print('diff = \n', diff)
-            print('relative L2 error = ', np.linalg.norm(diff) / np.linalg.norm(trg_value_true))
-            print('Linf error        = ', np.linalg.norm(diff.flatten(), ord=np.inf))
+            if trg_value_true is not None:
+                diff = trg_value - trg_value_true
+                print('diff = \n', diff)
+                print('relative L2 error = ', np.linalg.norm(diff) / np.linalg.norm(trg_value_true))
+                print('Linf error        = ', np.linalg.norm(diff.flatten(), ord=np.inf))
 
     comm.Barrier()
     timer.timer(' ', print_all=True)
