@@ -20,6 +20,9 @@ def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
     elif kernel_index == 4:
         trg_value  = kr.StokesSLPVelLaplacian(src_SL_coord, trg_coord, src_SL_value)
         trg_value += kr.StokesDLPVelLaplacian(src_DL_coord, trg_coord, src_DL_value)
+    elif kernel_index == 8:
+        trg_value  = kr.StokesSLTraction(src_SL_coord, trg_coord, src_SL_value)
+        trg_value += kr.StokesDLTraction(src_DL_coord, trg_coord, src_DL_value)
     else:
         trg_value = None
     return trg_value
@@ -33,7 +36,7 @@ if __name__ == '__main__':
     max_pts = 1024
     pbc = stkfmm.PAXIS.NONE
     # kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
-    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian]
+    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction]
     kernels_index = [stkfmm.KERNEL(k) for k in kernels]
     verify = True
 
@@ -67,7 +70,7 @@ if __name__ == '__main__':
 
         # Create sources and target values
         src_SL_value = np.random.randn(nsrc_SL, kdimSL) * 1
-        src_DL_value = np.random.randn(nsrc_DL, kdimDL) * 0
+        src_DL_value = np.random.randn(nsrc_DL, kdimDL) * 1
         trg_value = np.zeros((ntrg, kdimTrg))
         print('kdimSL = ', kdimSL)
         print('kdimDL = ', kdimDL)

@@ -226,6 +226,7 @@ def StokesDLPVelGrad(r_source, r_target, density, epsilon_distance = 1e-10):
       
       pvelGrad[xn,3] += ((-3 * dbxx * np.power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) - 3 * dbyy * np.power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) - 3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * np.power(sz - tz, 2)) * (-sz + tz)) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
 
+      # p grad
       pvelGrad[xn,4] += ((4 * dbxx * (sx - tx) - 2 * (dbyy + dbzz) * (sx - tx) + 3 * (dbxy + dbyx) * (sy - ty) + 3 * (dbxz + dbzx) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sx - tx) * (dbzz * np.power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * np.power(sy, 2) - 3 * dbxz * sx * sz - 3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * np.power(sz, 2) - 2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * np.power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * np.power(ty, 2) + dbyy * (np.power(sx - tx, 2) - 2 * np.power(sy - ty, 2) + np.power(sz - tz, 2)) + dbxx * (-2 * np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + (4 * dbzz * sz + 3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty)) * tz - 2 * dbzz * np.power(tz, 2))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
 
       pvelGrad[xn,5] += ((3 * (dbxy + dbyx) * (sx - tx) - 2 * (dbxx - 2 * dbyy + dbzz) * (sy - ty) + 3 * (dbyz + dbzy) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sy - ty) * (dbzz * np.power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * np.power(sy, 2) - 3 * dbxz * sx * sz - 3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * np.power(sz, 2) - 2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * np.power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * np.power(ty, 2) + dbyy * (np.power(sx - tx, 2) - 2 * np.power(sy - ty, 2) + np.power(sz - tz, 2)) + dbxx * (-2 * np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + (4 * dbzz * sz + 3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty)) * tz - 2 * dbzz * np.power(tz, 2))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
@@ -363,3 +364,137 @@ def StokesDLPVelLaplacian(r_source, r_target, density, epsilon_distance = 1e-10)
       pvelLaplacian[xn,6] += (3 * (dbyz * np.power(sx, 2) * sy + dbzy * np.power(sx, 2) * sy + dbyz * np.power(sy, 3) + dbzy * np.power(sy, 3) - 4 * dbxx * np.power(sx, 2) * sz + dbyy * np.power(sx, 2) * sz + 3 * dbzz * np.power(sx, 2) * sz - 5 * dbxy * sx * sy * sz - 5 * dbyx * sx * sy * sz + dbxx * np.power(sy, 2) * sz - 4 * dbyy * np.power(sy, 2) * sz + 3 * dbzz * np.power(sy, 2) * sz - 4 * dbyz * sy * np.power(sz, 2) - 4 * dbzy * sy * np.power(sz, 2) + dbxx * np.power(sz, 3) + dbyy * np.power(sz, 3) - 2 * dbzz * np.power(sz, 3) - 2 * dbyz * sx * sy * tx - 2 * dbzy * sx * sy * tx + 8 * dbxx * sx * sz * tx - 2 * dbyy * sx * sz * tx - 6 * dbzz * sx * sz * tx + 5 * dbxy * sy * sz * tx + 5 * dbyx * sy * sz * tx + dbyz * sy * np.power(tx, 2) + dbzy * sy * np.power(tx, 2) - 4 * dbxx * sz * np.power(tx, 2) + dbyy * sz * np.power(tx, 2) + 3 * dbzz * sz * np.power(tx, 2) - dbyz * np.power(sx, 2) * ty - dbzy * np.power(sx, 2) * ty - 3 * dbyz * np.power(sy, 2) * ty - 3 * dbzy * np.power(sy, 2) * ty + 5 * dbxy * sx * sz * ty + 5 * dbyx * sx * sz * ty - 2 * dbxx * sy * sz * ty + 8 * dbyy * sy * sz * ty - 6 * dbzz * sy * sz * ty + 4 * dbyz * np.power(sz, 2) * ty + 4 * dbzy * np.power(sz, 2) * ty + 2 * dbyz * sx * tx * ty + 2 * dbzy * sx * tx * ty - 5 * dbxy * sz * tx * ty - 5 * dbyx * sz * tx * ty - dbyz * np.power(tx, 2) * ty - dbzy * np.power(tx, 2) * ty + 3 * dbyz * sy * np.power(ty, 2) + 3 * dbzy * sy * np.power(ty, 2) + dbxx * sz * np.power(ty, 2) - 4 * dbyy * sz * np.power(ty, 2) + 3 * dbzz * sz * np.power(ty, 2) - dbyz * np.power(ty, 3) - dbzy * np.power(ty, 3) + dbxz * (sx - tx) * (np.power(sx, 2) - 2 * sx * tx + np.power(tx, 2) + np.power(sy - ty, 2) - 4 * np.power(sz - tz, 2)) + dbzx * (sx - tx) * (np.power(sx, 2) - 2 * sx * tx + np.power(tx, 2) + np.power(sy - ty, 2) - 4 * np.power(sz - tz, 2)) + (-3 * dbzz * np.power(sx, 2) + 5 * dbxy * sx * sy + 5 * dbyx * sx * sy - 3 * dbzz * np.power(sy, 2) + 8 * dbyz * sy * sz + 8 * dbzy * sy * sz + 6 * dbzz * np.power(sz, 2) + 6 * dbzz * sx * tx - 5 * dbxy * sy * tx - 5 * dbyx * sy * tx - 3 * dbzz * np.power(tx, 2) - dbyy * (3 * np.power(sz, 2) + np.power(sx - tx, 2) - 4 * np.power(sy - ty, 2)) +  dbxx * (-3 * np.power(sz, 2) + 4 * np.power(sx - tx, 2) - np.power(sy - ty, 2)) + (6 * dbzz * sy - 8 * (dbyz + dbzy) * sz - 5 * (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbzz * np.power(ty, 2)) * tz + (3 * (dbxx + dbyy - 2 * dbzz) * sz - 4 * (dbyz + dbzy) * (sy - ty)) * np.power(tz, 2) - (dbxx + dbyy - 2 * dbzz) * np.power(tz, 3))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
 
   return pvelLaplacian
+
+
+@njit(parallel=True)
+def StokesSLTraction(r_source, r_target, density, epsilon_distance = 1e-10):
+  '''
+  epsilon_distance = (default 1e-10) set elements to zero for 
+                     distances < epsilon_distance.
+  '''
+  # Variables
+  Nsource = r_source.size // 3
+  Ntarget = r_target.size // 3
+  r_source = r_source.reshape(Nsource, 3)
+  r_target = r_target.reshape(Ntarget, 3)
+  density = density.reshape(Nsource, 4)
+  traction = np.zeros((Ntarget, 9))
+
+  # Loop over targets
+  for xn in prange(Ntarget):
+    tx = r_target[xn, 0] 
+    ty = r_target[xn, 1] 
+    tz = r_target[xn, 2] 
+    for yn in range(Nsource):
+      sx = r_source[yn, 0]
+      sy = r_source[yn, 1]
+      sz = r_source[yn, 2]
+      x = sx - tx
+      y = sy - ty
+      z = sz - tz
+      r_norm = np.sqrt(x**2 + y**2 + z**2)
+      if r_norm < epsilon_distance:
+        continue     
+
+      fx = density[yn, 0]
+      fy = density[yn, 1]
+      fz = density[yn, 2]
+      TrD = density[yn, 3]
+
+      traction[xn,0] += (3 * fz * np.power(sx, 2) * sz + 2 * np.power(sx, 2) * TrD - np.power(sy, 2) * TrD - np.power(sz, 2) * TrD + 3 * fx * np.power(sx - tx, 3) - 6 * fz * sx * sz * tx - 4 * sx * TrD * tx + 3 * fz * sz * np.power(tx, 2) + 2 * TrD * np.power(tx, 2) + 3 * fy * np.power(sx - tx, 2) * (sy - ty) + 2 * sy * TrD * ty - TrD * np.power(ty, 2) - 3 * fz * np.power(sx, 2) * tz + 2 * sz * TrD * tz + 6 * fz * sx * tx * tz - 3 * fz * np.power(tx, 2) * tz - TrD * np.power(tz, 2)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,1] += (3 * (sx - tx) * (sy - ty) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,2] += (3 * (sx - tx) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+          
+      traction[xn,3] += (3 * (sx - tx) * (sy - ty) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,4] += (3 * fz * np.power(sy, 2) * sz - np.power(sx, 2) * TrD + 2 * np.power(sy, 2) * TrD - np.power(sz, 2) * TrD + 2 * sx * TrD * tx - TrD * np.power(tx, 2) + 3 * fx * (sx - tx) * np.power(sy - ty, 2) + 3 * fy * np.power(sy - ty, 3) - 6 * fz * sy * sz * ty - 4 * sy * TrD * ty + 3 * fz * sz * np.power(ty, 2) + 2 * TrD * np.power(ty, 2) - 3 * fz * np.power(sy, 2) * tz + 2 * sz * TrD * tz + 6 * fz * sy * ty * tz - 3 * fz * np.power(ty, 2) * tz - TrD * np.power(tz, 2)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,5] += (3 * (sy - ty) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,6] += (3 * (sx - tx) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,7] += (3 * (sy - ty) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      traction[xn,8] += (3 * fz * np.power(sz, 3) - (np.power(sx, 2) + np.power(sy, 2)) * TrD + 2 * np.power(sz, 2) * TrD + 2 * sx * TrD * tx - TrD * np.power(tx, 2) + 2 * sy * TrD * ty - TrD * np.power(ty, 2) + 3 * fx * (sx - tx) * np.power(sz - tz, 2) + 3 * fy * (sy - ty) * np.power(sz - tz, 2) - sz * (9 * fz * sz + 4 * TrD) * tz + (9 * fz * sz + 2 * TrD) * np.power(tz, 2) - 3 * fz * np.power(tz, 3)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+
+  return traction
+
+
+@njit(parallel=True)
+def StokesDLTraction(r_source, r_target, density, epsilon_distance = 1e-10):
+  '''
+  epsilon_distance = (default 1e-10) set elements to zero for 
+                     distances < epsilon_distance.
+  '''
+  # Variables
+  Nsource = r_source.size // 3
+  Ntarget = r_target.size // 3
+  r_source = r_source.reshape(Nsource, 3)
+  r_target = r_target.reshape(Ntarget, 3)
+  density = density.reshape(Nsource, 9)
+  traction = np.zeros((Ntarget, 9))
+
+  # Loop over targets
+  for xn in prange(Ntarget):
+    tx = r_target[xn, 0] 
+    ty = r_target[xn, 1] 
+    tz = r_target[xn, 2] 
+    for yn in range(Nsource):
+      sx = r_source[yn, 0]
+      sy = r_source[yn, 1]
+      sz = r_source[yn, 2]
+      x = sx - tx
+      y = sy - ty
+      z = sz - tz
+      r_norm = np.sqrt(x**2 + y**2 + z**2)
+      if r_norm < epsilon_distance:
+        continue     
+
+      dbxx = density[yn, 0]
+      dbxy = density[yn, 1]
+      dbxz = density[yn, 2]
+      dbyx = density[yn, 3]
+      dbyy = density[yn, 4]
+      dbyz = density[yn, 5]
+      dbzx = density[yn, 6]
+      dbzy = density[yn, 7]
+      dbzz = density[yn, 8]
+
+      # p
+      p = (dbzz * np.power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * np.power(sy, 2) - 3 * dbxz * sx * sz - 3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * np.power(sz, 2) - 2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * np.power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * np.power(ty, 2) + 3 * dbxz * sx * tz + 3 * dbzx * sx * tz + 3 * dbyz * sy * tz + 3 * dbzy * sy * tz + 4 * dbzz * sz * tz - 3 * dbxz * tx * tz - 3 * dbzx * tx * tz - 3 * dbyz * ty * tz - 3 * dbzy * ty * tz - 2 * dbzz * np.power(tz, 2) + dbyy * (np.power(sx, 2) - 2 * np.power(sy, 2) + np.power(sz, 2) - 2 * sx * tx + np.power(tx, 2) + 4 * sy * ty - 2 * np.power(ty, 2) - 2 * sz * tz + np.power(tz, 2)) + dbxx * (-2 * np.power(sx, 2) + np.power(sy, 2) + np.power(sz, 2) + 4 * sx * tx - 2 * np.power(tx, 2) - 2 * sy * ty + np.power(ty, 2) - 2 * sz * tz + np.power(tz, 2))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      # vx grad
+      vxx = (3 * (-sx + tx) * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sx - tx) * (-sx + tx) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)) + (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vxy = ((-sx + tx) * (3 * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sy - ty) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vxz = ((-sx + tx) * (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sz - tz) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      # vy grad
+      vyx = ((-sy + ty) * (3 * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sx - tx) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vyy = (3 * (-sy + ty) * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sy - ty) * (-sy + ty) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)) + (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vyz = ((-sy + ty) * (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sz - tz) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      # vz grad
+      vzx = ((-sz + tz) *(3 * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sx - tx) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vzy = ((-sz + tz) * (3 * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) + 5 * (sy - ty) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      vzz = (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) * (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) * (-sz + tz) + (np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2)) + 5 * (sz - tz) * (-sz + tz) * (-3 * ((dbxy + dbyx) * sx * sy + dbyy * np.power(sy, 2) + (dbxz + dbzx) * sx * sz + (dbyz + dbzy) * sy * sz + dbzz * np.power(sz, 2)) - 3 * dbxx * np.power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx + 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * np.power(ty, 2) + 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz - 3 * dbzz * np.power(tz, 2))) / (8. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 3.5))
+
+      traction[xn,0] += vxx + vxx - p
+      traction[xn,1] += vxy + vyx
+      traction[xn,2] += vxz + vzx
+      traction[xn,3] += vxy + vyx
+      traction[xn,4] += vyy + vyy - p
+      traction[xn,5] += vyz + vzy
+      traction[xn,6] += vzx + vxz
+      traction[xn,7] += vzy + vyz
+      traction[xn,8] += vzz + vzz - p
+
+  return traction
