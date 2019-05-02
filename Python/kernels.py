@@ -498,3 +498,89 @@ def StokesDLTraction(r_source, r_target, density, epsilon_distance = 1e-10):
       traction[xn,8] += vzz + vzz - p
 
   return traction
+
+
+@njit(parallel=True)
+def LaplaceSLPGrad(r_source, r_target, density, epsilon_distance = 1e-10):
+  '''
+  epsilon_distance = (default 1e-10) set elements to zero for 
+                     distances < epsilon_distance.
+  '''
+  # Variables
+  Nsource = r_source.size // 3
+  Ntarget = r_target.size // 3
+  r_source = r_source.reshape(Nsource, 3)
+  r_target = r_target.reshape(Ntarget, 3)
+  density = density.reshape(Nsource, 1)
+  pgrad = np.zeros((Ntarget, 4))
+
+  # Loop over targets
+  for xn in prange(Ntarget):
+    tx = r_target[xn, 0] 
+    ty = r_target[xn, 1] 
+    tz = r_target[xn, 2] 
+    for yn in range(Nsource):
+      sx = r_source[yn, 0]
+      sy = r_source[yn, 1]
+      sz = r_source[yn, 2]
+      x = sx - tx
+      y = sy - ty
+      z = sz - tz
+      r_norm = np.sqrt(x**2 + y**2 + z**2)
+      if r_norm < epsilon_distance:
+        continue     
+
+      charge = density[yn, 0]
+
+      pgrad[xn,0] += charge / (4. * np.pi * np.sqrt(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2)))
+      pgrad[xn,1] += (charge * (sx - tx)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5))
+      pgrad[xn,2] += (charge * (sy - ty)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5))
+      pgrad[xn,3] += (charge * (sz - tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5))
+
+  return pgrad
+
+
+@njit(parallel=True)
+def LaplaceDLPGrad(r_source, r_target, density, epsilon_distance = 1e-10):
+  '''
+  epsilon_distance = (default 1e-10) set elements to zero for 
+                     distances < epsilon_distance.
+  '''
+  # Variables
+  Nsource = r_source.size // 3
+  Ntarget = r_target.size // 3
+  r_source = r_source.reshape(Nsource, 3)
+  r_target = r_target.reshape(Ntarget, 3)
+  density = density.reshape(Nsource, 3)
+  pgrad = np.zeros((Ntarget, 4))
+
+  # Loop over targets
+  for xn in prange(Ntarget):
+    tx = r_target[xn, 0] 
+    ty = r_target[xn, 1] 
+    tz = r_target[xn, 2] 
+    for yn in range(Nsource):
+      sx = r_source[yn, 0]
+      sy = r_source[yn, 1]
+      sz = r_source[yn, 2]
+      x = sx - tx
+      y = sy - ty
+      z = sz - tz
+      r_norm = np.sqrt(x**2 + y**2 + z**2)
+      if r_norm < epsilon_distance:
+        continue     
+
+      dx = density[yn, 0]
+      dy = density[yn, 1]
+      dz = density[yn, 2]
+
+      pgrad[xn,0] += (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz)) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5))
+
+      pgrad[xn,1] += dx / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5)) + (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      pgrad[xn,2] += dy / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5)) + (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+      pgrad[xn,3] += dz / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 1.5)) + (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) / (4. * np.pi * np.power(np.power(sx - tx, 2) + np.power(sy - ty, 2) + np.power(sz - tz, 2), 2.5))
+
+  return pgrad
+

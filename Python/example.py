@@ -11,18 +11,22 @@ import timer
 
 
 def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
+    epsilon_distance = 2e-4
     if kernel_index == 1:
-        trg_value  = kr.StokesSLPVel(src_SL_coord, trg_coord, src_SL_value)
-        trg_value += kr.StokesDLPVel(src_DL_coord, trg_coord, src_DL_value)
+        trg_value  = kr.StokesSLPVel(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
+        trg_value += kr.StokesDLPVel(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     elif kernel_index == 2:
-        trg_value  = kr.StokesSLPVelGrad(src_SL_coord, trg_coord, src_SL_value)
-        trg_value += kr.StokesDLPVelGrad(src_DL_coord, trg_coord, src_DL_value)
+        trg_value  = kr.StokesSLPVelGrad(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
+        trg_value += kr.StokesDLPVelGrad(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     elif kernel_index == 4:
-        trg_value  = kr.StokesSLPVelLaplacian(src_SL_coord, trg_coord, src_SL_value)
-        trg_value += kr.StokesDLPVelLaplacian(src_DL_coord, trg_coord, src_DL_value)
+        trg_value  = kr.StokesSLPVelLaplacian(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
+        trg_value += kr.StokesDLPVelLaplacian(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     elif kernel_index == 8:
-        trg_value  = kr.StokesSLTraction(src_SL_coord, trg_coord, src_SL_value)
-        trg_value += kr.StokesDLTraction(src_DL_coord, trg_coord, src_DL_value)
+        trg_value  = kr.StokesSLTraction(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
+        trg_value += kr.StokesDLTraction(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
+    elif kernel_index == 16:
+        trg_value  = kr.LaplaceSLPGrad(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
+        trg_value += kr.LaplaceDLPGrad(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     else:
         trg_value = None
     return trg_value
@@ -32,11 +36,10 @@ if __name__ == '__main__':
     print('# Start')
 
     # FMM parameters
-    mult_order = 10
-    max_pts = 1024
+    mult_order = 14
+    max_pts = 128
     pbc = stkfmm.PAXIS.NONE
-    # kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
-    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction]
+    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
     kernels_index = [stkfmm.KERNEL(k) for k in kernels]
     verify = True
 
@@ -45,9 +48,9 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
 
     # Create sources and targets coordinates
-    nsrc_SL = 10
-    nsrc_DL = 10
-    ntrg = 10
+    nsrc_SL = 1000
+    nsrc_DL = 1000
+    ntrg = 1000
     src_SL_coord = np.random.rand(nsrc_SL, 3)
     src_DL_coord = np.random.rand(nsrc_DL, 3)
     trg_coord = np.random.rand(ntrg, 3)
@@ -69,8 +72,8 @@ if __name__ == '__main__':
         timer.timer('get_kernel_dimension')
 
         # Create sources and target values
-        src_SL_value = np.random.randn(nsrc_SL, kdimSL) * 1
-        src_DL_value = np.random.randn(nsrc_DL, kdimDL) * 1
+        src_SL_value = np.random.randn(nsrc_SL, kdimSL) 
+        src_DL_value = np.random.randn(nsrc_DL, kdimDL) 
         trg_value = np.zeros((ntrg, kdimTrg))
         print('kdimSL = ', kdimSL)
         print('kdimDL = ', kdimDL)
@@ -107,7 +110,6 @@ if __name__ == '__main__':
             timer.timer('true_value')
             if trg_value_true is not None:
                 diff = trg_value - trg_value_true
-                print('diff = \n', diff)
                 print('relative L2 error = ', np.linalg.norm(diff) / np.linalg.norm(trg_value_true))
                 print('Linf error        = ', np.linalg.norm(diff.flatten(), ord=np.inf))
 
