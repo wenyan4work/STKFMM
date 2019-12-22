@@ -1,5 +1,6 @@
 # folders
 .vscode/
+build/
 *.dSYM/
 
 # latex files

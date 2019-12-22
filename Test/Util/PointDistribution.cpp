@@ -8,8 +8,8 @@
 #include <mpi.h>
 #include <omp.h>
 
-#include "ChebNodal.h"
-#include "PointDistribution.h"
+#include "ChebNodal.hpp"
+#include "PointDistribution.hpp"
 
 void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord) {
     switch (nPts) {

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef INCLUDE_STKFMM_H
-#define INCLUDE_STKFMM_H
+#ifndef STKFMM_HPP_
+#define STKFMM_HPP_
 
 #include <string>
 #include <unordered_map>
