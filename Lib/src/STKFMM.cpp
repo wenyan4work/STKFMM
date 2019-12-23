@@ -82,7 +82,7 @@ void FMMData::setKernel() {
     kdimDL = kernelFunctionPtr->surf_dim;
 }
 
-void FMMData::readM2LMat(const std::string dataName) {
+void FMMData::readM2LMat(const std::string &dataName) {
     const int size = 3 * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     double *fdata = new double[size * size];
     M2Ldata.resize(size * size);

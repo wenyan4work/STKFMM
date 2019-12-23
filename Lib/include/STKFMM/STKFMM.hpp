@@ -191,7 +191,7 @@ class FMMData {
     MPI_Comm comm;                          ///< MPI_comm communicator
 
     // TODO: work out the Stokes PVel kernel M2L data
-    void readM2LMat(const std::string dataName); ///< read the M2L data
+    void readM2LMat(const std::string &dataName); ///< read the M2L data
 };
 
 /**
