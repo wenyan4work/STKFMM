@@ -1,7 +1,6 @@
 /*
   This file is part of the C++ CmdParser utility.
-  Copyright (c) 2015 - 2016 Florian Rappl
-  https://github.com/FlorianRappl/CmdParser
+  Copyright (c) 2015 - 2019 Florian Rappl
 */
 
 #pragma once
@@ -13,6 +12,28 @@
 #include <functional>
 
 namespace cli {
+	/// Class used to wrap integer types to specify desired numerical base for specific argument parsing
+	template <typename T, int numericalBase = 0> class NumericalBase {
+	public:
+
+		/// This constructor required for correct AgrumentCountChecker initialization
+		NumericalBase() : value(0), base(numericalBase) {}
+
+		/// This constructor required for default value initialization
+		/// \param val comes from default value
+		NumericalBase(T val) : value(val), base(numericalBase) {}
+
+		operator T () const {
+			return this->value;
+		}
+		operator T * () {
+			return this->value;
+		}
+
+		T             value;
+		unsigned  int base;
+	};
+
 	struct CallbackArgs {
 		const std::vector<std::string>& arguments;
 		std::ostream& output;
@@ -57,6 +78,12 @@ namespace cli {
 
 		template<typename T>
 		struct ArgumentCountChecker
+		{
+			static constexpr bool Variadic = false;
+		};
+
+		template<typename T>
+		struct ArgumentCountChecker<cli::NumericalBase<T>>
 		{
 			static constexpr bool Variadic = false;
 		};
@@ -115,11 +142,11 @@ namespace cli {
 			T value;
 		};
 
-		static int parse(const std::vector<std::string>& elements, const int&) {
+		static int parse(const std::vector<std::string>& elements, const int&, int numberBase = 0) {
 			if (elements.size() != 1)
 				throw std::bad_cast();
 
-			return std::stoi(elements[0]);
+			return std::stoi(elements[0], 0, numberBase);
 		}
 
 		static bool parse(const std::vector<std::string>& elements, const bool& defval) {
@@ -150,25 +177,32 @@ namespace cli {
 			return std::stold(elements[0]);
 		}
 
-		static unsigned int parse(const std::vector<std::string>& elements, const unsigned int&) {
+		static unsigned int parse(const std::vector<std::string>& elements, const unsigned int&, int numberBase = 0) {
 			if (elements.size() != 1)
 				throw std::bad_cast();
 
-			return static_cast<unsigned int>(std::stoul(elements[0]));
+			return static_cast<unsigned int>(std::stoul(elements[0], 0, numberBase));
 		}
 
-		static unsigned long parse(const std::vector<std::string>& elements, const unsigned long&) {
+		static unsigned long parse(const std::vector<std::string>& elements, const unsigned long&, int numberBase = 0) {
 			if (elements.size() != 1)
 				throw std::bad_cast();
 
-			return std::stoul(elements[0]);
+			return std::stoul(elements[0], 0, numberBase);
 		}
 
-		static long parse(const std::vector<std::string>& elements, const long&) {
+		static unsigned long long parse(const std::vector<std::string>& elements, const unsigned long long&, int numberBase = 0) {
 			if (elements.size() != 1)
 				throw std::bad_cast();
 
-			return std::stol(elements[0]);
+			return std::stoull(elements[0], 0, numberBase);
+		}
+
+		static long parse(const std::vector<std::string>& elements, const long&, int numberBase = 0) {
+			if (elements.size() != 1)
+				throw std::bad_cast();
+
+			return std::stol(elements[0], 0, numberBase);
 		}
 
 		static std::string parse(const std::vector<std::string>& elements, const std::string&) {
@@ -192,9 +226,28 @@ namespace cli {
 			return values;
 		}
 
+		template <typename T> static T parse(const std::vector<std::string>& elements, const NumericalBase<T>& wrapper) {
+			return parse(elements, wrapper.value, 0);
+		}
+
+		/// Specialization for number wrapped into numerical base
+		/// \tparam T base type of the argument
+		/// \tparam base numerical base
+		/// \param elements
+		/// \param wrapper
+		/// \return parsed number
+		template <typename T, int base> static T parse(const std::vector<std::string>& elements, const NumericalBase<T, base>& wrapper) {
+			return parse(elements, wrapper.value, wrapper.base);
+		}
+
 		template<class T>
 		static std::string stringify(const T& value) {
 			return std::to_string(value);
+		}
+
+		template<class T, int base>
+		static std::string stringify(const NumericalBase<T, base>& wrapper) {
+			return std::to_string(wrapper.value);
 		}
 
 		template<class T>
@@ -232,7 +285,7 @@ namespace cli {
 		}
 
 		~Parser() {
-			for (int i = 0, n = _commands.size(); i < n; ++i) {
+			for (size_t i = 0, n = _commands.size(); i < n; ++i) {
 				delete _commands[i];
 			}
 		}
@@ -308,7 +361,7 @@ namespace cli {
 			if (_arguments.size() > 0) {
 				auto current = find_default();
 
-				for (int i = 0, n = _arguments.size(); i < n; ++i) {
+				for (size_t i = 0, n = _arguments.size(); i < n; ++i) {
 					auto isarg = _arguments[i].size() > 0 && _arguments[i][0] == '-';
 					auto associated = isarg ? find(_arguments[i]) : nullptr;
 
