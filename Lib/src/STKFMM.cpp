@@ -20,7 +20,7 @@ extern pvfmm::PeriodicType pvfmm::periodicType;
 namespace stkfmm {
 
 template <class T>
-void safeDeletePtr(T *ptr) {
+void safeDeletePtr(T *&ptr) {
     if (ptr != nullptr) {
         delete ptr;
         ptr = nullptr;
@@ -261,18 +261,18 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue,
     MPI_Comm_rank(comm, &rank);
 
     if (nTrg * kdimTrg != trgValue.size()) {
-        printf("trg value size error for kernel %u from rank %d\n",
-               kernelChoice, rank);
+        printf("trg value size error for kernel %zu from rank %d\n",
+               EnumClassHash()(kernelChoice), rank);
         exit(1);
     }
     if (nSrc * kdimSL != srcSLValue.size()) {
-        printf("src SL value size error for kernel %u\n from rank %d",
-               kernelChoice, rank);
+        printf("src SL value size error for kernel %zu\n from rank %d",
+               EnumClassHash()(kernelChoice), rank);
         exit(1);
     }
     if (nSurf * kdimDL != srcDLValue.size()) {
-        printf("src DL value size error for kernel %u\n from rank %d",
-               kernelChoice, rank);
+        printf("src DL value size error for kernel %zu\n from rank %d",
+               EnumClassHash()(kernelChoice), rank);
         exit(1);
     }
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
