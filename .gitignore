@@ -9,7 +9,6 @@ build/
 *.pdf
 
 # test logs
-*.txt
 
 # temporary files
 .o-*
