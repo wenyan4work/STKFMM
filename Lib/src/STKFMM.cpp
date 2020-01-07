@@ -83,7 +83,8 @@ void FMMData::setKernel() {
 }
 
 void FMMData::readM2LMat(const std::string &dataName) {
-    const int size = 3 * (6 * (multOrder - 1) * (multOrder - 1) + 2);
+    const int kDim = 1;
+    const int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     double *fdata = new double[size * size];
     M2Ldata.resize(size * size);
 
@@ -158,11 +159,11 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
             // load Laplace 1D, 2D, 3D data
             std::string dataName;
             if (periodicity == PAXIS::PX) {
-                dataName = "M2LLaplace1D3DpX";
+                dataName = "M2LLapCharge1D3DpX";
             } else if (periodicity == PAXIS::PXY) {
-                dataName = "M2LLaplace2D3DpX";
+                dataName = "M2LLapCharge2D3DpX";
             } else if (periodicity == PAXIS::PXYZ) {
-                dataName = "M2LLaplace3D3DpX";
+                dataName = "M2LLapCharge3D3DpX";
             }
             dataName.replace(dataName.length() - 1, 1,
                              std::to_string(multOrder));
@@ -295,8 +296,9 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     const int nTrg = trgCoord.Dim() / 3;
     const int equivN = equivCoord.size() / 3;
 
-    int M = 3 * equivN;
-    int N = 3 * equivN; // checkN = equivN in this code.
+    const int kDim = 1;
+    int M = kDim * equivN;
+    int N = kDim * equivN; // checkN = equivN in this code.
     std::vector<double> M2Lsource(v.Dim());
 
 #pragma omp parallel for
@@ -364,7 +366,7 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
         break;
     }
-    if (pbc != PAXIS::NONE) {
+    if (pbc != PAXIS::NONE && kernelComb != (uint)KERNEL::LAPPGrad) {
         printf("to be implemented\n");
         exit(1);
     }

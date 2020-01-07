@@ -41,6 +41,9 @@ void configure_parser(cli::Parser &parser) {
         "F", "FMM", 1, "0 for test S2T kernel, 1 for test FMM, default 1");
     parser.set_optional<int>(
         "V", "Verify", 1, "1 for O(N^2) verification, 0 for false, default 1");
+    parser.set_optional<int>(
+        "P", "Periodic", 0,
+        "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
 }
 
 void showOption(const cli::Parser &parser) {
@@ -54,6 +57,7 @@ void showOption(const cli::Parser &parser) {
     std::cout << "Random: " << parser.get<int>("R") << std::endl;
     std::cout << "Using FMM: " << parser.get<int>("F") << std::endl;
     std::cout << "O(N^2) Verification: " << parser.get<int>("V") << std::endl;
+    std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
 }
 
 void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
@@ -261,6 +265,14 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
     srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 1);
     randomUniformFill(srcSLValueLocal, -1, 1);
 
+    if (testKernel == KERNEL::LAPPGrad) {
+        std::cout << "Zeroing Laplace Kernel charge\n";
+        double charge = std::accumulate(srcSLValueLocal.begin(),
+                                        srcSLValueLocal.end(), 0.0);
+        for (auto &el : srcSLValueLocal)
+            el -= charge / nSrcSLLocal;
+    }
+
     srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 1);
     randomUniformFill(srcDLValueLocal, -1, 1);
 
@@ -290,9 +302,52 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         if (myRank == 0)
             printf("fmm evaluated, computing true results with simple O(N^2) "
                    "sum\n");
-        calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
-                      srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
-                      srcDLValueLocal, trgValueTrueLocal);
+        // calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
+        //               srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
+        //               srcDLValueLocal, trgValueTrueLocal);
+        double shift[3] = {0.5, 0.0, 0.0};
+        double box = 1.0;
+        int n_periodic = 1;
+        // std::cout << n_periodic << std::endl;
+        for (int i = 0; i < srcSLCoordLocal.size() / 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                srcSLCoordLocal[i * 3 + j] += shift[j];
+            }
+            for (int j = 0; j < n_periodic; ++j) {
+                if (srcSLCoordLocal[i * 3 + j] >= box)
+                    srcSLCoordLocal[i * 3 + j] -= box;
+            }
+        }
+        for (int i = 0; i < srcDLCoordLocal.size() / 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                srcDLCoordLocal[i * 3 + j] += shift[j];
+            }
+            for (int j = 0; j < n_periodic; ++j) {
+                if (srcDLCoordLocal[i * 3 + j] >= box)
+                    srcDLCoordLocal[i * 3 + j] -= box;
+            }
+        }
+        for (int i = 0; i < trgCoordLocal.size() / 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                trgCoordLocal[i * 3 + j] += shift[j];
+            }
+            for (int j = 0; j < n_periodic; ++j) {
+                if (trgCoordLocal[i * 3 + j] >= box)
+                    trgCoordLocal[i * 3 + j] -= box;
+            }
+        }
+        distributePts(srcSLCoordLocal, 3);
+        distributePts(srcDLCoordLocal, 3);
+        distributePts(trgCoordLocal, 3);
+        myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
+                        srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
+                        trgCoordLocal.size() / 3, trgCoordLocal.data());
+
+        myFMM.clearFMM(testKernel);
+        myFMM.setupTree(testKernel);
+        myFMM.evaluateFMM(nSrcSLLocal, srcSLValueLocal.data(), nSrcDLLocal,
+                          srcDLValueLocal.data(), nTrgLocal,
+                          trgValueTrueLocal.data(), testKernel);
         checkError(trgValueLocal, trgValueTrueLocal);
     }
     // output for debug
@@ -312,7 +367,8 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const int k = (temp == 0) ? ~((int)0) : temp;
-    STKFMM myFMM(order, 2000, PAXIS::NONE, k);
+    const int paxis = parser.get<int>("P");
+    STKFMM myFMM(order, 2000, (PAXIS)paxis, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
