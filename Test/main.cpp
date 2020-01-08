@@ -39,8 +39,9 @@ void configure_parser(cli::Parser &parser) {
                              "0 for random, 1 for Chebyshev, default 1");
     parser.set_optional<int>(
         "F", "FMM", 1, "0 for test S2T kernel, 1 for test FMM, default 1");
-    parser.set_optional<int>(
-        "V", "Verify", 1, "1 for O(N^2) verification, 0 for false, default 1");
+    parser.set_optional<int>("V", "Verify", 1,
+                             "2 for translational invariance verification, 1 "
+                             "for O(N^2) verification, 0 for false, default 1");
     parser.set_optional<int>(
         "P", "Periodic", 0,
         "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
@@ -56,8 +57,57 @@ void showOption(const cli::Parser &parser) {
     std::cout << "KERNEL: " << parser.get<int>("K") << std::endl;
     std::cout << "Random: " << parser.get<int>("R") << std::endl;
     std::cout << "Using FMM: " << parser.get<int>("F") << std::endl;
-    std::cout << "O(N^2) Verification: " << parser.get<int>("V") << std::endl;
+    std::cout << "Verification: " << parser.get<int>("V") << std::endl;
     std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
+}
+
+void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
+                    std::vector<double> &srcSLCoordLocal,
+                    std::vector<double> &srcDLCoordLocal,
+                    std::vector<double> &trgCoordLocal,
+                    const std::vector<double> &srcSLValueLocal,
+                    const std::vector<double> &srcDLValueLocal,
+                    std::vector<double> &trgValueShifted) {
+    std::vector<double> srcSLCoordShifted = srcSLCoordLocal;
+    std::vector<double> srcDLCoordShifted = srcDLCoordLocal;
+    std::vector<double> trgCoordShifted = trgCoordLocal;
+
+    double shift[3] = {0.5, 0.5, 0.5};
+    double box = 1.0;
+    int n_periodic = pvfmm::periodicType;
+    auto shiftCoords = [n_periodic, shift, box](std::vector<double> &r) {
+        for (int i = 0; i < r.size() / 3; ++i) {
+            for (int j = 0; j < n_periodic; ++j) {
+                r[i * 3 + j] += shift[j];
+                r[i * 3 + j] -= (r[i * 3 + j] >= box) ? box : 0.0;
+            }
+        }
+    };
+    shiftCoords(srcSLCoordShifted);
+    shiftCoords(srcDLCoordShifted);
+    shiftCoords(trgCoordShifted);
+
+    distributePts(srcSLCoordShifted, 3);
+    distributePts(srcDLCoordShifted, 3);
+    distributePts(trgCoordShifted, 3);
+
+    myFMM.setPoints(srcSLCoordShifted.size() / 3, srcSLCoordShifted.data(),
+                    srcDLCoordShifted.size() / 3, srcDLCoordShifted.data(),
+                    trgCoordShifted.size() / 3, trgCoordShifted.data());
+
+    myFMM.clearFMM(testKernel);
+    myFMM.setupTree(testKernel);
+    myFMM.evaluateFMM(srcSLCoordLocal.size() / 3, srcSLValueLocal.data(),
+                      srcDLCoordLocal.size() / 3, srcDLValueLocal.data(),
+                      trgCoordLocal.size() / 3, trgValueShifted.data(),
+                      testKernel);
+
+    distributePts(srcSLCoordLocal, 3);
+    distributePts(srcDLCoordLocal, 3);
+    distributePts(trgCoordLocal, 3);
+    myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
+                    srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
+                    trgCoordLocal.size() / 3, trgCoordLocal.data());
 }
 
 void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
@@ -172,7 +222,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
 void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
                       std::vector<double> &srcSLCoordLocal,
                       std::vector<double> &srcDLCoordLocal,
-                      std::vector<double> &trgCoordLocal, bool verify = true) {
+                      std::vector<double> &trgCoordLocal, uint verify = 1) {
     // test S2T kernel, on rank 0 only
     int myRank;
     int nProcs;
@@ -214,17 +264,15 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
                          nTrgLocal, trgCoordLocal.data(), trgValueLocal.data(),
                          testKernel); // DL
 
-    if (verify) {
+    if (verify == 1) {
         if (myRank == 0)
             printf("DLS2T kernel evaluated\n");
         calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
                       srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
                       srcDLValueLocal, trgValueTrueLocal);
         checkError(trgValueLocal, trgValueTrueLocal);
-    }
 
-    // output for debug
-    if (verify) {
+        // output for debug
         dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
         dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
         dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
@@ -238,7 +286,7 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
 void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
                       std::vector<double> &srcSLCoordLocal,
                       std::vector<double> &srcDLCoordLocal,
-                      std::vector<double> &trgCoordLocal, bool verify = true) {
+                      std::vector<double> &trgCoordLocal, uint verify = 1) {
     // srcSLCoord, srcDLCoord, trgCoord are distributed
 
     int myRank;
@@ -292,68 +340,31 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
     if (myRank == 0)
         timer.dump();
 
-    // FMM2
-    // randomUniformFill(srcValue, -1, 1);
-    // myFMM.clearFMM(testKernel);
-    // myFMM.setupTree(testKernel);
-    // myFMM.evaluateFMM(srcValue, trgValue, testKernel);
-
-    if (verify) {
+    if (verify == 1) {
         if (myRank == 0)
             printf("fmm evaluated, computing true results with simple O(N^2) "
                    "sum\n");
-        // calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
-        //               srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
-        //               srcDLValueLocal, trgValueTrueLocal);
-        double shift[3] = {0.5, 0.0, 0.0};
-        double box = 1.0;
-        int n_periodic = 1;
-        // std::cout << n_periodic << std::endl;
-        for (int i = 0; i < srcSLCoordLocal.size() / 3; ++i) {
-            for (int j = 0; j < 3; ++j) {
-                srcSLCoordLocal[i * 3 + j] += shift[j];
-            }
-            for (int j = 0; j < n_periodic; ++j) {
-                if (srcSLCoordLocal[i * 3 + j] >= box)
-                    srcSLCoordLocal[i * 3 + j] -= box;
-            }
-        }
-        for (int i = 0; i < srcDLCoordLocal.size() / 3; ++i) {
-            for (int j = 0; j < 3; ++j) {
-                srcDLCoordLocal[i * 3 + j] += shift[j];
-            }
-            for (int j = 0; j < n_periodic; ++j) {
-                if (srcDLCoordLocal[i * 3 + j] >= box)
-                    srcDLCoordLocal[i * 3 + j] -= box;
-            }
-        }
-        for (int i = 0; i < trgCoordLocal.size() / 3; ++i) {
-            for (int j = 0; j < 3; ++j) {
-                trgCoordLocal[i * 3 + j] += shift[j];
-            }
-            for (int j = 0; j < n_periodic; ++j) {
-                if (trgCoordLocal[i * 3 + j] >= box)
-                    trgCoordLocal[i * 3 + j] -= box;
-            }
-        }
-        myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
-                        srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
-                        trgCoordLocal.size() / 3, trgCoordLocal.data());
-
-        myFMM.clearFMM(testKernel);
-        myFMM.setupTree(testKernel);
-        myFMM.evaluateFMM(nSrcSLLocal, srcSLValueLocal.data(), nSrcDLLocal,
-                          srcDLValueLocal.data(), nTrgLocal,
-                          trgValueTrueLocal.data(), testKernel);
+        calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
+                      srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
+                      srcDLValueLocal, trgValueTrueLocal);
         checkError(trgValueLocal, trgValueTrueLocal);
-    }
-    // output for debug
-    if (verify) {
+
+        // output for debug
         dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
         dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
         dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
         dumpPoints("trgPointsTrue.txt", trgCoordLocal, trgValueTrueLocal,
                    kdimTrg);
+    } else if (verify == 2) {
+        if (myRank == 0)
+            printf("fmm evaluated, computing result with periodic dimensions "
+                   "shifted\n");
+
+        calcFMMShifted(myFMM, testKernel, srcSLCoordLocal, srcDLCoordLocal,
+                       trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
+                       trgValueTrueLocal);
+
+        checkError(trgValueLocal, trgValueTrueLocal);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -409,7 +420,7 @@ void testFMM(const cli::Parser &parser, int order) {
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    const bool verify = parser.get<int>("V");
+    const uint verify = parser.get<int>("V");
 
     if (myRank == 0) {
         std::cout << "nSL: " << srcSLCoord.size() / 3 << "\n";
