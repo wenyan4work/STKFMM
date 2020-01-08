@@ -41,8 +41,8 @@ add_subdirectory(Lib)
 add_subdirectory(Test)
 
 # doxygen documentation
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
+if(BUILD_DOC)
+  find_package(Doxygen REQUIRED)
   set(DOXYGEN_GENERATE_LATEX NO)
   set(DOXYGEN_GENERATE_HTML YES)
   set(DOXYGEN_GENERATE_MAN NO)
@@ -62,5 +62,4 @@ if(DOXYGEN_FOUND)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating API documentation with Doxygen"
     VERBATIM)
-
 endif()
