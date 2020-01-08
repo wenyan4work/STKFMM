@@ -85,7 +85,6 @@ void FMMData::setKernel() {
 void FMMData::readM2LMat(const std::string &dataName) {
     const int kDim = 1;
     const int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
-    double *fdata = new double[size * size];
     M2Ldata.resize(size * size);
 
     char *pvfmm_dir = getenv("PVFMM_DIR");
@@ -95,6 +94,10 @@ void FMMData::readM2LMat(const std::string &dataName) {
     st << dataName.c_str();
 
     FILE *fin = fopen(st.str().c_str(), "r");
+    if (fin == nullptr) {
+        std::cout << "M2L data " << dataName << " not found" << std::endl;
+        exit(1);
+    }
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             int iread, jread;
@@ -104,7 +107,7 @@ void FMMData::readM2LMat(const std::string &dataName) {
                 printf("read ij error \n");
                 exit(1);
             }
-            fdata[i * size + j] = fread;
+            M2Ldata[i * size + j] = fread;
         }
     }
 
@@ -140,7 +143,6 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
     setKernel();
     treeDataPtr = new pvfmm::PtFMM_Data<double>;
     // treeDataPtr remain nullptr after constructor
-
     // load periodicity M2L data
     if (periodicity != PAXIS::NONE) {
 
@@ -155,36 +157,19 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         equivCoord =
             surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
 
-        if (kernelChoice == KERNEL::LAPPGrad) {
-            // load Laplace 1D, 2D, 3D data
-            std::string dataName;
-            if (periodicity == PAXIS::PX) {
-                dataName = "M2LLapCharge1D3DpX";
-            } else if (periodicity == PAXIS::PXY) {
-                dataName = "M2LLapCharge2D3DpX";
-            } else if (periodicity == PAXIS::PXYZ) {
-                dataName = "M2LLapCharge3D3DpX";
-            }
-            dataName.replace(dataName.length() - 1, 1,
-                             std::to_string(multOrder));
-            std::cout << "reading M2L data: " << dataName << std::endl;
-            readM2LMat(dataName);
-        } else {
-            // load Stokes 1D, 2D, 3D data
-            std::string dataName;
-            if (periodicity == PAXIS::PX) {
-                // TODO: generate Stokes PVel periodicity data
-                dataName = "M2LStokesPVel1D3DpX";
-            } else if (periodicity == PAXIS::PXY) {
-                dataName = "M2LStokesPVel2D3DpX";
-            } else if (periodicity == PAXIS::PXYZ) {
-                dataName = "M2LStokesPVel3D3DpX";
-            }
-            dataName.replace(dataName.length() - 1, 1,
-                             std::to_string(multOrder));
-            std::cout << "reading M2L data: " << dataName << std::endl;
-            readM2LMat(dataName);
+        // load M2L kernel data
+        std::string dataName;
+        std::string M2Lname = kernelFunctionPtr->k_m2l->ker_name;
+        if (periodicity == PAXIS::PX) {
+            dataName = "M2L_" + M2Lname + "_1D3DpX";
+        } else if (periodicity == PAXIS::PXY) {
+            dataName = "M2L_" + M2Lname + "_2D3DpX";
+        } else if (periodicity == PAXIS::PXYZ) {
+            dataName = "M2L_" + M2Lname + "_3D3DpX";
         }
+        dataName.replace(dataName.length() - 1, 1, std::to_string(multOrder));
+        std::cout << "reading M2L data: " << dataName << std::endl;
+        readM2LMat(dataName);
     }
 }
 

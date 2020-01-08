@@ -336,9 +336,6 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
                     trgCoordLocal[i * 3 + j] -= box;
             }
         }
-        distributePts(srcSLCoordLocal, 3);
-        distributePts(srcDLCoordLocal, 3);
-        distributePts(trgCoordLocal, 3);
         myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
                         srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
                         trgCoordLocal.size() / 3, trgCoordLocal.data());
