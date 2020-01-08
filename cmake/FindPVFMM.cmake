@@ -11,41 +11,54 @@
 # This module looks for PVFMM.
 # It sets up : PVFMM_INCLUDE_DIR, PVFMM_LIBRARIES
 
-find_path(PVFMM_INCLUDE_DIR
+find_path(
+  PVFMM_INCLUDE_DIR
   NAMES pvfmm.hpp
-  PATHS
-    $ENV{HOME}/local/include/pvfmm
-    $ENV{CONDA_PREFIX}/include/pvfmm
-    $ENV{PVFMM_PREFIX}/include/pvfmm
-    $ENV{CPATH}/pvfmm
-    $ENV{C_INCLUDE_PATH}/pvfmm
-    $ENV{CPLUS_INCLUDE_PATH}/pvfmm
-    $ENV{OBJC_INCLUDE_PATH}/pvfmm
-    $ENV{OBJCPLUS_INCLUDE_PATH}/pvfmm
-    /usr/include/pvfmm
-    /usr/local/include/pvfmm
-    /opt/local/include/pvfmm
-    /sw/include/pvfmm
-  DOC "Include Directory for PVFMM"
-)
+  PATHS $ENV{HOME}/local/include/pvfmm
+        $ENV{CONDA_PREFIX}/include/pvfmm
+        $ENV{PVFMM_PREFIX}/include/pvfmm
+        $ENV{CPATH}/pvfmm
+        $ENV{C_INCLUDE_PATH}/pvfmm
+        $ENV{CPLUS_INCLUDE_PATH}/pvfmm
+        $ENV{OBJC_INCLUDE_PATH}/pvfmm
+        $ENV{OBJCPLUS_INCLUDE_PATH}/pvfmm
+        /usr/include/pvfmm
+        /usr/local/include/pvfmm
+        /opt/local/include/pvfmm
+        /sw/include/pvfmm
+  DOC "Include Directory for PVFMM")
 
-find_library(PVFMM_LIBRARIES
-  NAMES pvfmm
-  PATHS
-    $ENV{HOME}/local/lib/pvfmm
-    $ENV{PVFMM_PREFIX}/lib/pvfmm
-    $ENV{CONDA_PREFIX}/lib/pvfmm
-    $ENV{LIBRARY_PATH}/pvfmm
-    $ENV{LD_LIBRARY_PATH}/pvfmm
-    /usr/lib/pvfmm
-    /usr/local/lib/pvfmm
-    /opt/local/lib/pvfmm
-    /sw/lib/pvfmm
-  DOC "PVFMM library"
-)
+find_library(
+  PVFMM_STATIC_LIBRARY
+  NAMES libpvfmm.a
+  PATHS $ENV{HOME}/local/lib/pvfmm
+        $ENV{PVFMM_PREFIX}/lib/pvfmm
+        $ENV{CONDA_PREFIX}/lib/pvfmm
+        $ENV{LIBRARY_PATH}/pvfmm
+        $ENV{LD_LIBRARY_PATH}/pvfmm
+        /usr/lib/pvfmm
+        /usr/local/lib/pvfmm
+        /opt/local/lib/pvfmm
+        /sw/lib/pvfmm
+  DOC "PVFMM static library")
+
+find_library(
+  PVFMM_SHARED_LIBRARY
+  NAMES libpvfmm.so
+  PATHS $ENV{HOME}/local/lib/pvfmm
+        $ENV{PVFMM_PREFIX}/lib/pvfmm
+        $ENV{CONDA_PREFIX}/lib/pvfmm
+        $ENV{LIBRARY_PATH}/pvfmm
+        $ENV{LD_LIBRARY_PATH}/pvfmm
+        /usr/lib/pvfmm
+        /usr/local/lib/pvfmm
+        /opt/local/lib/pvfmm
+        /sw/lib/pvfmm
+  DOC "PVFMM shared library")
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(PVFMM DEFAULT_MSG PVFMM_LIBRARIES PVFMM_INCLUDE_DIR)
+find_package_handle_standard_args(PVFMM DEFAULT_MSG PVFMM_STATIC_LIBRARY
+                                  PVFMM_SHARED_LIBRARY PVFMM_INCLUDE_DIR)
 
 # mark_as_advanced(PVFMM_INCLUDE_DIR PVFMM_LIBRARIES)
 
