@@ -352,7 +352,8 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         break;
     }
     if (pbc != PAXIS::NONE && kernelComb != (uint)KERNEL::LAPPGrad) {
-        printf("to be implemented\n");
+        printf("Periodic boundary conditions are currently only implemented "
+               "for LAPPGrad kernel\n");
         exit(1);
     }
     comm = MPI_COMM_WORLD;

@@ -437,6 +437,12 @@ void testFMM(const cli::Parser &parser, int order) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     const uint verify = parser.get<int>("V");
+    const uint nPeriodic = parser.get<int>("P");
+    if (verify == 1 && nPeriodic > 0) {
+        std::cout << "Periodic boundary conditions currently incompatible with "
+                     "N^2 check\n";
+        exit(1);
+    }
 
     if (myRank == 0) {
         std::cout << "nSL: " << srcSLCoord.size() / 3 << "\n";
