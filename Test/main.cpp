@@ -75,6 +75,7 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
     double shift[3] = {0.5, 0.5, 0.5};
     double box = 1.0;
     int n_periodic = pvfmm::periodicType;
+
     auto shiftCoords = [n_periodic, shift, box](std::vector<double> &r) {
         for (int i = 0; i < r.size() / 3; ++i) {
             for (int j = 0; j < n_periodic; ++j) {
@@ -101,6 +102,11 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                       srcDLCoordLocal.size() / 3, srcDLValueLocal.data(),
                       trgCoordLocal.size() / 3, trgValueShifted.data(),
                       testKernel);
+
+    int kdimSL, kdimDL, kdimTrg;
+    myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
+    dumpPoints("trgPointsShifted.txt", trgCoordShifted, trgValueShifted,
+               kdimTrg);
 
     distributePts(srcSLCoordLocal, 3);
     distributePts(srcDLCoordLocal, 3);
@@ -301,16 +307,11 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
     }
 
-    std::vector<double> srcSLValueLocal;
-    std::vector<double> srcDLValueLocal;
-    std::vector<double> trgValueLocal;
-    std::vector<double> trgValueTrueLocal;
-
     int nSrcSLLocal = srcSLCoordLocal.size() / 3;
     int nSrcDLLocal = srcDLCoordLocal.size() / 3;
     int nTrgLocal = trgCoordLocal.size() / 3;
 
-    srcSLValueLocal.resize(nSrcSLLocal * kdimSL, 1);
+    std::vector<double> srcSLValueLocal(nSrcSLLocal * kdimSL);
     randomUniformFill(srcSLValueLocal, -1, 1);
 
     if (testKernel == KERNEL::LAPPGrad) {
@@ -321,11 +322,10 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
             el -= charge / nSrcSLLocal;
     }
 
-    srcDLValueLocal.resize(nSrcDLLocal * kdimDL, 1);
+    std::vector<double> srcDLValueLocal(nSrcDLLocal * kdimDL);
     randomUniformFill(srcDLValueLocal, -1, 1);
 
-    trgValueLocal.resize(nTrgLocal * kdimTrg, 0);
-    trgValueTrueLocal.resize(nTrgLocal * kdimTrg, 0);
+    std::vector<double> trgValueLocal(nTrgLocal * kdimTrg, 0);
 
     // FMM1
     Timer timer;
@@ -344,6 +344,7 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         if (myRank == 0)
             printf("fmm evaluated, computing true results with simple O(N^2) "
                    "sum\n");
+        std::vector<double> trgValueTrueLocal(nTrgLocal * kdimTrg, 0);
         calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
                       srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
                       srcDLValueLocal, trgValueTrueLocal);
@@ -359,12 +360,17 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         if (myRank == 0)
             printf("fmm evaluated, computing result with periodic dimensions "
                    "shifted\n");
+        std::vector<double> trgValueLocalShifted(nTrgLocal * kdimTrg, 0);
 
         calcFMMShifted(myFMM, testKernel, srcSLCoordLocal, srcDLCoordLocal,
                        trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
-                       trgValueTrueLocal);
+                       trgValueLocalShifted);
 
-        checkError(trgValueLocal, trgValueTrueLocal);
+        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
+
+        checkError(trgValueLocal, trgValueLocalShifted);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
