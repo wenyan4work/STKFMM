@@ -68,43 +68,34 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                     const std::vector<double> &srcSLValueLocal,
                     const std::vector<double> &srcDLValueLocal,
                     std::vector<double> &trgValueShifted,
-                    bool randomize = true) {
-    std::vector<double> srcSLCoordShifted = srcSLCoordLocal;
-    std::vector<double> srcDLCoordShifted = srcDLCoordLocal;
-    std::vector<double> trgCoordShifted = trgCoordLocal;
-
+                    int kdimTrg) {
     double rlow[3], rhigh[3];
     myFMM.getBox(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]);
 
     std::vector<double> shift(3, 0.5);
-    if (randomize)
-        randomUniformFill(shift, 0, 1);
     for (int i = 0; i < 3; ++i)
         shift[i] = (rhigh[i] - rlow[i]) * shift[i] + rlow[i];
 
     int n_periodic = pvfmm::periodicType;
 
-    auto shiftCoords = [n_periodic, shift, rlow,
-                        rhigh](std::vector<double> &r) {
+    auto shiftCoords = [n_periodic, shift, rlow, rhigh](std::vector<double> &r,
+                                                        int sign) {
         for (int i = 0; i < r.size() / 3; ++i) {
             for (int j = 0; j < n_periodic; ++j) {
-                r[i * 3 + j] += shift[j];
-                r[i * 3 + j] -=
-                    (r[i * 3 + j] >= rhigh[i]) ? (rhigh[j] - rlow[j]) : 0.0;
+                r[i * 3 + j] += sign * shift[j];
+                double dr = rhigh[j] - rlow[j];
+                r[i * 3 + j] -= (r[i * 3 + j] >= rhigh[j]) ? dr : 0.0;
+                r[i * 3 + j] += (r[i * 3 + j] <= rlow[j]) ? dr : 0.0;
             }
         }
     };
-    shiftCoords(srcSLCoordShifted);
-    shiftCoords(srcDLCoordShifted);
-    shiftCoords(trgCoordShifted);
+    shiftCoords(srcSLCoordLocal, 1);
+    shiftCoords(srcDLCoordLocal, 1);
+    shiftCoords(trgCoordLocal, 1);
 
-    distributePts(srcSLCoordShifted, 3);
-    distributePts(srcDLCoordShifted, 3);
-    distributePts(trgCoordShifted, 3);
-
-    myFMM.setPoints(srcSLCoordShifted.size() / 3, srcSLCoordShifted.data(),
-                    srcDLCoordShifted.size() / 3, srcDLCoordShifted.data(),
-                    trgCoordShifted.size() / 3, trgCoordShifted.data());
+    myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
+                    srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
+                    trgCoordLocal.size() / 3, trgCoordLocal.data());
 
     myFMM.clearFMM(testKernel);
     myFMM.setupTree(testKernel);
@@ -113,14 +104,12 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                       trgCoordLocal.size() / 3, trgValueShifted.data(),
                       testKernel);
 
-    int kdimSL, kdimDL, kdimTrg;
-    myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
-    dumpPoints("trgPointsShifted.txt", trgCoordShifted, trgValueShifted,
-               kdimTrg);
+    dumpPoints("trgPointsShifted.txt", trgCoordLocal, trgValueShifted, kdimTrg);
 
-    distributePts(srcSLCoordLocal, 3);
-    distributePts(srcDLCoordLocal, 3);
-    distributePts(trgCoordLocal, 3);
+    shiftCoords(srcSLCoordLocal, -1);
+    shiftCoords(srcDLCoordLocal, -1);
+    shiftCoords(trgCoordLocal, -1);
+
     myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
                     srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
                     trgCoordLocal.size() / 3, trgCoordLocal.data());
@@ -374,7 +363,7 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
 
         calcFMMShifted(myFMM, testKernel, srcSLCoordLocal, srcDLCoordLocal,
                        trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
-                       trgValueLocalShifted);
+                       trgValueLocalShifted, kdimTrg);
 
         dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
         dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
