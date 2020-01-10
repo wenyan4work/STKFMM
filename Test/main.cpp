@@ -67,20 +67,30 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                     std::vector<double> &trgCoordLocal,
                     const std::vector<double> &srcSLValueLocal,
                     const std::vector<double> &srcDLValueLocal,
-                    std::vector<double> &trgValueShifted) {
+                    std::vector<double> &trgValueShifted,
+                    bool randomize = true) {
     std::vector<double> srcSLCoordShifted = srcSLCoordLocal;
     std::vector<double> srcDLCoordShifted = srcDLCoordLocal;
     std::vector<double> trgCoordShifted = trgCoordLocal;
 
-    double shift[3] = {0.5, 0.5, 0.5};
-    double box = 1.0;
+    double rlow[3], rhigh[3];
+    myFMM.getBox(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]);
+
+    std::vector<double> shift(3, 0.5);
+    if (randomize)
+        randomUniformFill(shift, 0, 1);
+    for (int i = 0; i < 3; ++i)
+        shift[i] = (rhigh[i] - rlow[i]) * shift[i] + rlow[i];
+
     int n_periodic = pvfmm::periodicType;
 
-    auto shiftCoords = [n_periodic, shift, box](std::vector<double> &r) {
+    auto shiftCoords = [n_periodic, shift, rlow,
+                        rhigh](std::vector<double> &r) {
         for (int i = 0; i < r.size() / 3; ++i) {
             for (int j = 0; j < n_periodic; ++j) {
                 r[i * 3 + j] += shift[j];
-                r[i * 3 + j] -= (r[i * 3 + j] >= box) ? box : 0.0;
+                r[i * 3 + j] -=
+                    (r[i * 3 + j] >= rhigh[i]) ? (rhigh[j] - rlow[j]) : 0.0;
             }
         }
     };

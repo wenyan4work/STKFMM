@@ -316,6 +316,27 @@ class STKFMM {
                 double zlow_, double zhigh_);
 
     /**
+     * @brief Get the FMM box
+     * a cubic box as [xlow,xhigh)x[ylow,yhigh)x[zlow,zhigh)
+     *
+     * @param xlow_
+     * @param xhigh_
+     * @param ylow_
+     * @param yhigh_
+     * @param zlow_
+     * @param zhigh_
+     */
+    void getBox(double &xlow_, double &xhigh_, double &ylow_, double &yhigh_,
+                double &zlow_, double &zhigh_) {
+        xlow_ = xlow;
+        xhigh_ = xhigh;
+        ylow_ = ylow;
+        yhigh_ = yhigh;
+        zlow_ = zlow;
+        zhigh_ = zhigh;
+    };
+
+    /**
      * @brief show activated kernels
      *
      */
