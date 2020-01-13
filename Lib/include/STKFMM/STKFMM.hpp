@@ -41,12 +41,13 @@ enum class PAXIS : unsigned {
  * each kernel has booth single and double layer options
  */
 enum class KERNEL : unsigned {
-    PVel = 1,          ///< Stokes
-    PVelGrad = 2,      ///< Stokes
-    PVelLaplacian = 4, ///< Stokes
-    Traction = 8,      ///< Stokes
-    LAPPGrad = 16,     ///< Laplace
-    StokesRegVel = 32, ///< Regularized Stokes Velocity
+    PVel = 1,               ///< Stokes
+    PVelGrad = 2,           ///< Stokes
+    PVelLaplacian = 4,      ///< Stokes
+    Traction = 8,           ///< Stokes
+    LAPPGrad = 16,          ///< Laplace
+    StokesRegVel = 32,      ///< Regularized Stokes Velocity
+    StokesRegVelOmega = 64, ///< Regularized Stokes Velocity/Rotation
     // TODO: add Vel, RPY, VelWall2D, RPYWall2D
 };
 

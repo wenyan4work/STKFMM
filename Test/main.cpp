@@ -1,7 +1,7 @@
 #include "STKFMM/STKFMM.hpp"
 
-#include "SimpleKernel.hpp"
 #include "STKFMM/StokesRegSingleLayerKernel.hpp"
+#include "SimpleKernel.hpp"
 
 #include "Util/PointDistribution.hpp"
 #include "Util/Timer.hpp"
@@ -68,8 +68,7 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                     std::vector<double> &trgCoordLocal,
                     const std::vector<double> &srcSLValueLocal,
                     const std::vector<double> &srcDLValueLocal,
-                    std::vector<double> &trgValueShifted,
-                    int kdimTrg) {
+                    std::vector<double> &trgValueShifted, int kdimTrg) {
     double rlow[3], rhigh[3];
     myFMM.getBox(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]);
 
@@ -182,6 +181,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
             case KERNEL::StokesRegVel:
                 StokesRegSLVel(s, t, sval, result);
                 break;
+            case KERNEL::StokesRegVelOmega:
+                StokesRegSLVelOmega(s, t, sval, result);
+                break;
             }
 
             for (int k = 0; k < kdimTrg; k++) {
@@ -213,6 +215,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
                 break;
             case KERNEL::StokesRegVel:
                 // TODO: Gracefully handle non-existent StokesRegDLVel
+                break;
+            case KERNEL::StokesRegVelOmega:
+                // TODO: Gracefully handle non-existent StokesRegDLVelOmega
                 break;
             }
 
@@ -470,8 +475,12 @@ void testFMM(const cli::Parser &parser, int order) {
                              trgCoord, verify);
         }
         if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
-            testOneKernelFMM(myFMM, KERNEL::StokesRegVel, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
+            testOneKernelFMM(myFMM, KERNEL::StokesRegVel, srcSLCoord,
+                             srcDLCoord, trgCoord, verify);
+        }
+        if (myFMM.isKernelActive(KERNEL::StokesRegVelOmega)) {
+            testOneKernelFMM(myFMM, KERNEL::StokesRegVelOmega, srcSLCoord,
+                             srcDLCoord, trgCoord, verify);
         }
     } else {
         // test S2T kernel, on rank 0 only
@@ -496,8 +505,12 @@ void testFMM(const cli::Parser &parser, int order) {
                              trgCoord, verify);
         }
         if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
-            testOneKernelS2T(myFMM, KERNEL::StokesRegVel, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
+            testOneKernelS2T(myFMM, KERNEL::StokesRegVel, srcSLCoord,
+                             srcDLCoord, trgCoord, verify);
+        }
+        if (myFMM.isKernelActive(KERNEL::StokesRegVelOmega)) {
+            testOneKernelS2T(myFMM, KERNEL::StokesRegVelOmega, srcSLCoord,
+                             srcDLCoord, trgCoord, verify);
         }
     }
 }

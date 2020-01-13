@@ -20,5 +20,6 @@ void LaplaceDLPGrad(double * s, double * t, double * db, double * pgrad);
 
 //
 void StokesRegSLVel(double *s, double *t, double *f, double *vel);
+void StokesRegSLVelOmega(double *s, double *t, double *f, double *velomega);
 
 #endif

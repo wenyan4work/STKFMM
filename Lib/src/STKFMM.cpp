@@ -143,6 +143,9 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
     case KERNEL::StokesRegVel:
         kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::Vel();
         break;
+    case KERNEL::StokesRegVelOmega:
+        kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::FTVelOmega();
+        break;
     }
     setKernel();
     treeDataPtr = new pvfmm::PtFMM_Data<double>;
@@ -407,6 +410,13 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
                    kernelComb & asInteger(KERNEL::StokesRegVel));
         poolFMM[KERNEL::StokesRegVel] =
             new FMMData(KERNEL::StokesRegVel, pbc, multOrder, maxPts);
+    }
+    if (kernelComb & asInteger(KERNEL::StokesRegVelOmega)) {
+        if (myRank == 0)
+            printf("enable StokesRegVelOmega %u\n",
+                   kernelComb & asInteger(KERNEL::StokesRegVelOmega));
+        poolFMM[KERNEL::StokesRegVelOmega] =
+            new FMMData(KERNEL::StokesRegVelOmega, pbc, multOrder, maxPts);
     }
 
 #ifdef FMMDEBUG
@@ -699,6 +709,14 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
             trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
         }
     } break;
+    case KERNEL::StokesRegVelOmega: {
+        // 3 + 3
+        const int nloop = nTrg * 6;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
+        }
+    } break;
     }
 
     return;
@@ -742,6 +760,9 @@ void STKFMM::showActiveKernels() {
         }
         if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
             printf("StokesRegVel\n");
+        }
+        if (kernelComb & asInteger(KERNEL::StokesRegVelOmega)) {
+            printf("StokesRegVelOmega\n");
         }
     }
 }

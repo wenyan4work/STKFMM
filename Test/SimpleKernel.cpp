@@ -1365,3 +1365,81 @@ void StokesRegSLVel(double *s, double *t, double *f, double *vel) {
     vel[1] += (velocity_numer * fy + fdotr * dy) / (velocity_denom * 8 * M_PI);
     vel[2] += (velocity_numer * fz + fdotr * dz) / (velocity_denom * 8 * M_PI);
 }
+
+void StokesRegSLVelOmega(double *s, double *t, double *f, double *velomega) {
+    double dx = t[0] - s[0];
+    double dy = t[1] - s[1];
+    double dz = t[2] - s[2];
+    double fx = f[0];
+    double fy = f[1];
+    double fz = f[2];
+    double tx = f[3];
+    double ty = f[4];
+    double tz = f[5];
+    double eps = f[6];
+
+    // length squared of r
+    double r2 = dx * dx + dy * dy + dz * dz;
+    double r4 = r2 * r2;
+
+    // regularization parameter squared
+    double eps2 = eps * eps;
+    double eps4 = eps2 * eps2;
+
+    double denom_arg = eps2 + r2;
+    double stokeslet_denom = M_PI * 8 * denom_arg * std::sqrt(denom_arg);
+    double rotlet_denom = 2 * stokeslet_denom * denom_arg;
+    double dipole_denom = 2 * rotlet_denom * denom_arg;
+    double rotlet_coef = (2 * r2 + 5.0 * eps2) / rotlet_denom;
+    double D1 = (10 * eps4 - 7 * eps2 * r2 - 2 * r4) / dipole_denom;
+    double D2 = (21 * eps2 + 6 * r2) / dipole_denom;
+    double H2 = 1.0 / stokeslet_denom;
+    double H1 = (r2 + 2.0 * eps2) * H2;
+
+    double fcurlrx = fy * dz - fz * dy;
+    double fcurlry = fz * dx - fx * dz;
+    double fcurlrz = fx * dy - fy * dx;
+
+    double tcurlrx = ty * dz - tz * dy;
+    double tcurlry = tz * dx - tx * dz;
+    double tcurlrz = tx * dy - ty * dx;
+
+    double fdotr = fx * dx + fy * dy + fz * dz;
+    double tdotr = tx * dx + ty * dy + tz * dz;
+
+    // x component of velocity from stokeslet
+    velomega[0] += H1 * fx + H2 * fdotr * dx;
+
+    // y component of velocity from stokeslet
+    velomega[1] += H1 * fy + H2 * fdotr * dy;
+
+    // z component of velocity from stokeslet
+    velomega[2] += H1 * fz + H2 * fdotr * dz;
+
+    // x component of velocity from rotlet
+    velomega[0] += rotlet_coef * tcurlrx;
+
+    // y component of velocity from rotlet
+    velomega[1] += rotlet_coef * tcurlry;
+
+    // z component of velocity from rotlet
+    velomega[2] += rotlet_coef * tcurlrz;
+
+    // x component of angular velocity from dipole
+    velomega[3] += D1 * tx + D2 * tdotr * dx;
+
+    // y component of angular velocity from dipole
+    velomega[4] += D1 * ty + D2 * tdotr * dy;
+
+    // z component of angular velocity from dipole
+    velomega[5] += D1 * tz + D2 * tdotr * dz;
+
+    // x component of angular velocity from rotlet
+    velomega[3] += rotlet_coef * fcurlrx;
+
+    // y component of angular velocity from rotlet
+    velomega[4] += rotlet_coef * fcurlry;
+
+    // z component of angular velocity from rotlet
+    velomega[5] += rotlet_coef * fcurlrz;
+}
