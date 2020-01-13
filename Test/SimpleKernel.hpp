@@ -18,5 +18,7 @@ void StokesDLPVelLaplacian(double * s, double * t, double * db, double * pvelLap
 void LaplaceSLPGrad(double * s, double * t, double * q, double * pgrad);
 void LaplaceDLPGrad(double * s, double * t, double * db, double * pgrad);
 
+//
+void StokesRegSLVel(double *s, double *t, double *f, double *vel);
 
 #endif

@@ -14,6 +14,7 @@
 #include "STKFMM/LaplaceLayerKernel.hpp"
 #include "STKFMM/STKFMM.hpp"
 #include "STKFMM/StokesLayerKernel.hpp"
+#include "STKFMM/StokesRegSingleLayerKernel.hpp"
 
 extern pvfmm::PeriodicType pvfmm::periodicType;
 
@@ -138,6 +139,9 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         break;
     case KERNEL::LAPPGrad:
         kernelFunctionPtr = &pvfmm::LaplaceLayerKernel<double>::PGrad();
+        break;
+    case KERNEL::StokesRegVel:
+        kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::Vel();
         break;
     }
     setKernel();
@@ -396,6 +400,13 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
                    kernelComb & asInteger(KERNEL::LAPPGrad));
         poolFMM[KERNEL::LAPPGrad] =
             new FMMData(KERNEL::LAPPGrad, pbc, multOrder, maxPts);
+    }
+    if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
+        if (myRank == 0)
+            printf("enable StokesRegVel %u\n",
+                   kernelComb & asInteger(KERNEL::StokesRegVel));
+        poolFMM[KERNEL::StokesRegVel] =
+            new FMMData(KERNEL::StokesRegVel, pbc, multOrder, maxPts);
     }
 
 #ifdef FMMDEBUG
@@ -680,6 +691,14 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         }
 
     } break;
+    case KERNEL::StokesRegVel: {
+        // 3
+        const int nloop = nTrg * 3;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
+        }
+    } break;
     }
 
     return;
@@ -720,6 +739,9 @@ void STKFMM::showActiveKernels() {
         }
         if (kernelComb & asInteger(KERNEL::LAPPGrad)) {
             printf("LAPPGrad\n");
+        }
+        if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
+            printf("StokesRegVel\n");
         }
     }
 }

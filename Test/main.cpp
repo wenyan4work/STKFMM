@@ -1,6 +1,7 @@
 #include "STKFMM/STKFMM.hpp"
 
 #include "SimpleKernel.hpp"
+#include "STKFMM/StokesRegSingleLayerKernel.hpp"
 
 #include "Util/PointDistribution.hpp"
 #include "Util/Timer.hpp"
@@ -158,10 +159,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
 
         // add SL values
         for (int j = 0; j < nSL; j++) {
-            double result[20];
-            for (int ii = 0; ii < 20; ii++) {
-                result[ii] = 0;
-            }
+            double result[20] = {0.0};
             double *s = srcSLCoordGlobal.data() + 3 * j;
             double *sval = srcSLValueGlobal.data() + kdimSL * j;
 
@@ -181,6 +179,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
             case KERNEL::LAPPGrad:
                 LaplaceSLPGrad(s, t, sval, result);
                 break;
+            case KERNEL::StokesRegVel:
+                StokesRegSLVel(s, t, sval, result);
+                break;
             }
 
             for (int k = 0; k < kdimTrg; k++) {
@@ -190,10 +191,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
 
         // add DL values
         for (int j = 0; j < nDL; j++) {
-            double result[20];
-            for (int ii = 0; ii < 20; ii++) {
-                result[ii] = 0;
-            }
+            double result[20] = {0.0};
             double *s = srcDLCoordGlobal.data() + 3 * j;
             double *sval = srcDLValueGlobal.data() + kdimDL * j;
 
@@ -212,6 +210,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
                 break;
             case KERNEL::LAPPGrad:
                 LaplaceDLPGrad(s, t, sval, result);
+                break;
+            case KERNEL::StokesRegVel:
+                // TODO: Gracefully handle non-existent StokesRegDLVel
                 break;
             }
 
@@ -468,6 +469,10 @@ void testFMM(const cli::Parser &parser, int order) {
             testOneKernelFMM(myFMM, KERNEL::LAPPGrad, srcSLCoord, srcDLCoord,
                              trgCoord, verify);
         }
+        if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
+            testOneKernelFMM(myFMM, KERNEL::StokesRegVel, srcSLCoord, srcDLCoord,
+                             trgCoord, verify);
+        }
     } else {
         // test S2T kernel, on rank 0 only
         if (myFMM.isKernelActive(KERNEL::PVel)) {
@@ -488,6 +493,10 @@ void testFMM(const cli::Parser &parser, int order) {
         }
         if (myFMM.isKernelActive(KERNEL::LAPPGrad)) {
             testOneKernelS2T(myFMM, KERNEL::LAPPGrad, srcSLCoord, srcDLCoord,
+                             trgCoord, verify);
+        }
+        if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
+            testOneKernelS2T(myFMM, KERNEL::StokesRegVel, srcSLCoord, srcDLCoord,
                              trgCoord, verify);
         }
     }

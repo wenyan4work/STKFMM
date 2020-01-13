@@ -46,6 +46,7 @@ enum class KERNEL : unsigned {
     PVelLaplacian = 4, ///< Stokes
     Traction = 8,      ///< Stokes
     LAPPGrad = 16,     ///< Laplace
+    StokesRegVel = 32, ///< Regularized Stokes Velocity
     // TODO: add Vel, RPY, VelWall2D, RPYWall2D
 };
 

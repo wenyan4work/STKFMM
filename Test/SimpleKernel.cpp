@@ -1339,3 +1339,29 @@ void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
               Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2),
                     2.5));
 }
+
+void StokesRegSLVel(double *s, double *t, double *f, double *vel) {
+    double dx = t[0] - s[0];
+    double dy = t[1] - s[1];
+    double dz = t[2] - s[2];
+    double fx = f[0];
+    double fy = f[1];
+    double fz = f[2];
+    double eps = f[3];
+
+    // length squared of r
+    double r2 = dx * dx + dy * dy + dz * dz;
+    // regularization parameter squared
+    double eps2 = eps * eps;
+
+    double denom = std::sqrt(eps2 + r2);
+    double velocity_denom = denom * (eps2 + r2);
+    double velocity_numer = r2 + 2 * eps2;
+    double pressure_denom = velocity_denom * (eps2 + r2);
+    double pressure_numer = 2 * r2 + 5 * eps2;
+    double fdotr = dx * fx + dy * fy + dz * fz;
+
+    vel[0] += (velocity_numer * fx + fdotr * dx) / (velocity_denom * 8 * M_PI);
+    vel[1] += (velocity_numer * fy + fdotr * dy) / (velocity_denom * 8 * M_PI);
+    vel[2] += (velocity_numer * fz + fdotr * dz) / (velocity_denom * 8 * M_PI);
+}
