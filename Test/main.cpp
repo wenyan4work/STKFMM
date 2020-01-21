@@ -1,6 +1,5 @@
 #include "STKFMM/STKFMM.hpp"
 
-#include "STKFMM/StokesRegSingleLayerKernel.hpp"
 #include "SimpleKernel.hpp"
 
 #include "Util/PointDistribution.hpp"
@@ -184,6 +183,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
             case KERNEL::StokesRegVelOmega:
                 StokesRegSLVelOmega(s, t, sval, result);
                 break;
+            case KERNEL::RPY:
+                // RPY(s, t, sval, result);
+                break;
             }
 
             for (int k = 0; k < kdimTrg; k++) {
@@ -218,6 +220,9 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
                 break;
             case KERNEL::StokesRegVelOmega:
                 // TODO: Gracefully handle non-existent StokesRegDLVelOmega
+                break;
+            case KERNEL::RPY:
+                // TODO: Gracefully handle non-existent RPY
                 break;
             }
 
@@ -445,6 +450,15 @@ void testFMM(const cli::Parser &parser, int order) {
         std::cout << "nTrg: " << trgCoord.size() / 3 << std::endl;
     }
 
+    std::vector<KERNEL> kernels = {KERNEL::PVel,
+                                   KERNEL::PVelGrad,
+                                   KERNEL::PVelLaplacian,
+                                   KERNEL::Traction,
+                                   KERNEL::LAPPGrad,
+                                   KERNEL::StokesRegVel,
+                                   KERNEL::StokesRegVelOmega,
+                                   KERNEL::RPY};
+
     // test each active kernel
     if (parser.get<int>("F") == 1) {
         distributePts(srcSLCoord, 3);
@@ -454,63 +468,19 @@ void testFMM(const cli::Parser &parser, int order) {
                         srcDLCoord.size() / 3, srcDLCoord.data(),
                         trgCoord.size() / 3, trgCoord.data());
 
-        if (myFMM.isKernelActive(KERNEL::PVel)) {
-            testOneKernelFMM(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::PVelGrad)) {
-            testOneKernelFMM(myFMM, KERNEL::PVelGrad, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::PVelLaplacian)) {
-            testOneKernelFMM(myFMM, KERNEL::PVelLaplacian, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::Traction)) {
-            testOneKernelFMM(myFMM, KERNEL::Traction, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::LAPPGrad)) {
-            testOneKernelFMM(myFMM, KERNEL::LAPPGrad, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
-            testOneKernelFMM(myFMM, KERNEL::StokesRegVel, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::StokesRegVelOmega)) {
-            testOneKernelFMM(myFMM, KERNEL::StokesRegVelOmega, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
+        for (auto testKernel : kernels) {
+            if (myFMM.isKernelActive(testKernel)) {
+                testOneKernelFMM(myFMM, testKernel, srcSLCoord, srcDLCoord,
+                                 trgCoord, verify);
+            }
         }
     } else {
         // test S2T kernel, on rank 0 only
-        if (myFMM.isKernelActive(KERNEL::PVel)) {
-            testOneKernelS2T(myFMM, KERNEL::PVel, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::PVelGrad)) {
-            testOneKernelS2T(myFMM, KERNEL::PVelGrad, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::PVelLaplacian)) {
-            testOneKernelS2T(myFMM, KERNEL::PVelLaplacian, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::Traction)) {
-            testOneKernelS2T(myFMM, KERNEL::Traction, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::LAPPGrad)) {
-            testOneKernelS2T(myFMM, KERNEL::LAPPGrad, srcSLCoord, srcDLCoord,
-                             trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::StokesRegVel)) {
-            testOneKernelS2T(myFMM, KERNEL::StokesRegVel, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
-        }
-        if (myFMM.isKernelActive(KERNEL::StokesRegVelOmega)) {
-            testOneKernelS2T(myFMM, KERNEL::StokesRegVelOmega, srcSLCoord,
-                             srcDLCoord, trgCoord, verify);
+        for (auto testKernel : kernels) {
+            if (myFMM.isKernelActive(testKernel)) {
+                testOneKernelS2T(myFMM, testKernel, srcSLCoord, srcDLCoord,
+                                 trgCoord, verify);
+            }
         }
     }
 }

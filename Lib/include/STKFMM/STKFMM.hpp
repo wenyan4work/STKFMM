@@ -48,6 +48,7 @@ enum class KERNEL : unsigned {
     LAPPGrad = 16,          ///< Laplace
     StokesRegVel = 32,      ///< Regularized Stokes Velocity
     StokesRegVelOmega = 64, ///< Regularized Stokes Velocity/Rotation
+    RPY = 128,              ///< RPY
     // TODO: add Vel, RPY, VelWall2D, RPYWall2D
 };
 

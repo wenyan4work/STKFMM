@@ -12,6 +12,7 @@
 #include <omp.h>
 
 #include "STKFMM/LaplaceLayerKernel.hpp"
+#include "STKFMM/RPYCustomKernel.hpp"
 #include "STKFMM/STKFMM.hpp"
 #include "STKFMM/StokesLayerKernel.hpp"
 #include "STKFMM/StokesRegSingleLayerKernel.hpp"
@@ -145,6 +146,9 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         break;
     case KERNEL::StokesRegVelOmega:
         kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::FTVelOmega();
+        break;
+    case KERNEL::RPY:
+        kernelFunctionPtr = &pvfmm::RPYTestKernel<double>::ulapu();
         break;
     }
     setKernel();
@@ -418,7 +422,11 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         poolFMM[KERNEL::StokesRegVelOmega] =
             new FMMData(KERNEL::StokesRegVelOmega, pbc, multOrder, maxPts);
     }
-
+    if (kernelComb & asInteger(KERNEL::RPY)) {
+        if (myRank == 0)
+            printf("enable RPY %u\n", kernelComb & asInteger(KERNEL::RPY));
+        poolFMM[KERNEL::RPY] = new FMMData(KERNEL::RPY, pbc, multOrder, maxPts);
+    }
 #ifdef FMMDEBUG
     pvfmm::Profile::Enable(true);
 #endif
@@ -717,6 +725,14 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
             trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
         }
     } break;
+    case KERNEL::RPY: {
+        // 3
+        const int nloop = nTrg * 3;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
+        }
+    } break;
     }
 
     return;
@@ -763,6 +779,9 @@ void STKFMM::showActiveKernels() {
         }
         if (kernelComb & asInteger(KERNEL::StokesRegVelOmega)) {
             printf("StokesRegVelOmega\n");
+        }
+        if (kernelComb & asInteger(KERNEL::RPY)) {
+            printf("RPY\n");
         }
     }
 }
