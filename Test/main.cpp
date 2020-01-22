@@ -184,7 +184,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
                 StokesRegSLVelOmega(s, t, sval, result);
                 break;
             case KERNEL::RPY:
-                // RPY(s, t, sval, result);
+                RPY(s, t, sval, result);
                 break;
             }
 

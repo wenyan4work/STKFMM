@@ -185,7 +185,7 @@ inline const Kernel<T> &RPYTestKernel<T>::ulapu() {
 
     static Kernel<T> glapg_ker = BuildKernel<T, stk_ulapu<T, NEWTON_ITE>>(
         "stk_ulapu", 3, std::pair<int, int>(3, 6));
-    glapg_ker.surf_dim = 3;
+    // glapg_ker.surf_dim = 3;
 
     static Kernel<T> grlapgr_ker = BuildKernel<T, rpy_ulapu<T, NEWTON_ITE>>(
         "rpy_ulapu", 3, std::pair<int, int>(4, 6),
@@ -198,7 +198,7 @@ inline const Kernel<T> &RPYTestKernel<T>::ulapu() {
         &g_ker,     // k_l2l
         &glapg_ker, // k_l2t
         NULL);
-    grlapgr_ker.surf_dim = 4;
+    // grlapgr_ker.surf_dim = 4;
     return grlapgr_ker;
 }
 
