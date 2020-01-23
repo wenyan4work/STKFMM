@@ -1458,6 +1458,9 @@ void RPY(double *s, double *t, double *f, double *vlapv) {
     const double dz = t[2] - sz;
 
     double r2 = dx * dx + dy * dy + dz * dz;
+    if (r2 == 0.0)
+        return;
+
     double a2 = a * a;
     // TODO: s = t will obviously explode.
     double invr = 1.0 / sqrt(r2);

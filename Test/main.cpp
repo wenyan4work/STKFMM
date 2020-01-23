@@ -332,6 +332,13 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
             el -= charge / nSrcSLLocal;
     }
 
+    if (testKernel == KERNEL::RPY) {
+        const double eps = 0.01;
+        for (int i = 3; i < srcSLValueLocal.size(); i += 4) {
+            srcSLValueLocal[i] = eps * (srcSLValueLocal[i] + 1);
+        }
+    }
+
     std::vector<double> srcDLValueLocal(nSrcDLLocal * kdimDL);
     randomUniformFill(srcDLValueLocal, -1, 1);
 

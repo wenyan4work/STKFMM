@@ -90,7 +90,10 @@ void rpy_ulapu(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
 
             T r2 = dx * dx + dy * dy + dz * dz;
             T a2 = a * a;
-            // TODO: s = t will obviously explode.
+
+            if (r2 == 0.0)
+                continue;
+
             T invr = 1.0 / sqrt(r2);
             T invr3 = invr / r2;
             T invr5 = invr3 / r2;
