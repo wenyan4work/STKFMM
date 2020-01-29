@@ -727,10 +727,15 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
     } break;
     case KERNEL::RPY: {
         // 3 + 3
-        const int nloop = nTrg * 6;
 #pragma omp parallel for
-        for (int i = 0; i < nloop; i++) {
-            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
+        for (int i = 0; i < nTrg; i++) {
+            for (int j = 0; j < 3; ++j)
+                trgValuePtr[i * 6 + j] +=
+                    trgValueInternal[i * 6 + j] * scaleFactor; // vel 1/r
+            for (int j = 3; j < 6; ++j)
+                trgValuePtr[i * 6 + j] += trgValueInternal[i * 6 + j] *
+                                          scaleFactor * scaleFactor *
+                                          scaleFactor; // laplacian vel
         }
     } break;
     }

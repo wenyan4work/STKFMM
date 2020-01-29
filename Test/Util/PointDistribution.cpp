@@ -124,9 +124,9 @@ void dumpPoints(const std::string &filename, std::vector<double> &coordLocal, st
         exit(1);
     }
     for (int i = 0; i < npts; i++) {
-        fprintf(fp, "%6f %6f %6f;", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
+        fprintf(fp, "%.10f %.10f %.10f;", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
         for (int j = 0; j < valueDimension; j++) {
-            fprintf(fp, " %6f", value[valueDimension * i + j]);
+            fprintf(fp, " %.10f", value[valueDimension * i + j]);
         }
         fprintf(fp, " \n");
     }

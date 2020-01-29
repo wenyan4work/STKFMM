@@ -289,11 +289,15 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
         checkError(trgValueLocal, trgValueTrueLocal);
 
         // output for debug
-        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
-        dumpPoints("trgPointsTrue.txt", trgCoordLocal, trgValueTrueLocal,
-                   kdimTrg);
+        dumpPoints("srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   trgCoordLocal, trgValueLocal, kdimTrg);
+        dumpPoints("trgPointsTrue" + std::to_string(((uint)testKernel)) +
+                       ".txt",
+                   trgCoordLocal, trgValueTrueLocal, kdimTrg);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -333,7 +337,7 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
     }
 
     if (testKernel == KERNEL::RPY) {
-        const double eps = 0.01;
+        const double eps = 0.1;
         for (int i = 3; i < srcSLValueLocal.size(); i += 4) {
             srcSLValueLocal[i] = eps * (srcSLValueLocal[i] + 1);
         }
@@ -368,11 +372,15 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         checkError(trgValueLocal, trgValueTrueLocal);
 
         // output for debug
-        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
-        dumpPoints("trgPointsTrue.txt", trgCoordLocal, trgValueTrueLocal,
-                   kdimTrg);
+        dumpPoints("srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   trgCoordLocal, trgValueLocal, kdimTrg);
+        dumpPoints("trgPointsTrue" + std::to_string(((uint)testKernel)) +
+                       ".txt",
+                   trgCoordLocal, trgValueTrueLocal, kdimTrg);
     } else if (verify == 2) {
         if (myRank == 0)
             printf("fmm evaluated, computing result with periodic dimensions "
@@ -457,14 +465,16 @@ void testFMM(const cli::Parser &parser, int order) {
         std::cout << "nTrg: " << trgCoord.size() / 3 << std::endl;
     }
 
-    std::vector<KERNEL> kernels = {KERNEL::PVel,
-                                   KERNEL::PVelGrad,
-                                   KERNEL::PVelLaplacian,
-                                   KERNEL::Traction,
-                                   KERNEL::LAPPGrad,
-                                   KERNEL::StokesRegVel,
-                                   KERNEL::StokesRegVelOmega,
-                                   KERNEL::RPY};
+    std::vector<KERNEL> kernels = {
+        KERNEL::PVel,
+        KERNEL::PVelGrad,
+        KERNEL::PVelLaplacian,
+        KERNEL::Traction,
+        KERNEL::LAPPGrad,
+        KERNEL::StokesRegVel,
+        KERNEL::StokesRegVelOmega,
+        KERNEL::RPY,
+    };
 
     // test each active kernel
     if (parser.get<int>("F") == 1) {

@@ -1462,7 +1462,7 @@ void RPY(double *s, double *t, double *f, double *vlapv) {
         return;
 
     double a2 = a * a;
-    // TODO: s = t will obviously explode.
+
     double invr = 1.0 / sqrt(r2);
     double invr3 = invr / r2;
     double invr5 = invr3 / r2;

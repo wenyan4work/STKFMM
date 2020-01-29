@@ -40,7 +40,7 @@ void rpy_u(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
 
             T r2 = dx * dx + dy * dy + dz * dz;
             T a2 = a * a;
-            // TODO: s = t will obviously explode.
+
             T invr = 1.0 / sqrt(r2);
             T invr3 = invr / r2;
             T invr5 = invr3 / r2;
@@ -148,7 +148,7 @@ void stk_ulapu(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
             const T dz = trgz - sz;
 
             T r2 = dx * dx + dy * dy + dz * dz;
-            // TODO: s = t will obviously explode.
+
             T invr = 1.0 / sqrt(r2);
             T invr3 = invr / r2;
             T invr5 = invr3 / r2;
