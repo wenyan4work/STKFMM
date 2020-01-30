@@ -103,7 +103,8 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                       trgCoordLocal.size() / 3, trgValueShifted.data(),
                       testKernel);
 
-    dumpPoints("trgPointsShifted.txt", trgCoordLocal, trgValueShifted, kdimTrg);
+    dumpPoints("trgPointsShifted" + std::to_string((uint)testKernel) + ".txt",
+               trgCoordLocal, trgValueShifted, kdimTrg);
 
     shiftCoords(srcSLCoordLocal, -1);
     shiftCoords(srcDLCoordLocal, -1);
@@ -391,9 +392,12 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
                        trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
                        trgValueLocalShifted, kdimTrg);
 
-        dumpPoints("srcSLPoints.txt", srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        dumpPoints("srcDLPoints.txt", srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        dumpPoints("trgPoints.txt", trgCoordLocal, trgValueLocal, kdimTrg);
+        dumpPoints("srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcSLCoordLocal, srcSLValueLocal, kdimSL);
+        dumpPoints("srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   srcDLCoordLocal, srcDLValueLocal, kdimDL);
+        dumpPoints("trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+                   trgCoordLocal, trgValueLocal, kdimTrg);
 
         checkError(trgValueLocal, trgValueLocalShifted);
     }

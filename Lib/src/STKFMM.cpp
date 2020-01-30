@@ -85,8 +85,8 @@ void FMMData::setKernel() {
 }
 
 void FMMData::readM2LMat(const std::string &dataName) {
-    const int kDim = 1;
-    const int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
+    int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
+    int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     M2Ldata.resize(size * size);
 
     char *pvfmm_dir = getenv("PVFMM_DIR");
@@ -106,7 +106,7 @@ void FMMData::readM2LMat(const std::string &dataName) {
             double fread;
             fscanf(fin, "%d %d %lf\n", &iread, &jread, &fread);
             if (i != iread || j != jread) {
-                printf("read ij error \n");
+                printf("read ij error %d %d\n", i, j);
                 exit(1);
             }
             M2Ldata[i * size + j] = fread;
@@ -292,7 +292,7 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     const int nTrg = trgCoord.Dim() / 3;
     const int equivN = equivCoord.size() / 3;
 
-    const int kDim = 1;
+    int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
     int M = kDim * equivN;
     int N = kDim * equivN; // checkN = equivN in this code.
     std::vector<double> M2Lsource(v.Dim());
@@ -362,7 +362,8 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
         break;
     }
-    if (pbc != PAXIS::NONE && kernelComb != (uint)KERNEL::LAPPGrad) {
+    if (pbc != PAXIS::NONE && (kernelComb != (uint)KERNEL::LAPPGrad &&
+                               kernelComb != (uint)KERNEL::RPY)) {
         printf("Periodic boundary conditions are currently only implemented "
                "for LAPPGrad kernel\n");
         exit(1);
@@ -619,7 +620,7 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
     for (int i = 0; i < nloop; i++) {
         srcDLValueInternal[i] = srcDLValuePtr[i] * scaleFactor;
     }
-    if (fmm.kdimSL == 4) {
+    if (fmm.kdimSL == 4 && kernel != KERNEL::RPY) {
         // stokes kernel
 #pragma omp parallel for
         for (int i = 0; i < nSL; i++) {
