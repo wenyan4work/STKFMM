@@ -7,28 +7,42 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <random>
 
-void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord);
+class PointDistribution {
+public:
+  PointDistribution(int seed) : gen_(seed){};
 
-void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord);
+  static void fixedPoints(int nPts, double box, double shift,
+                   std::vector<double> &srcCoord);
 
-void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord);
+  static void chebPoints(int nPts, double box, double shift,
+                         std::vector<double> &ptsCoord);
 
-void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale);
+  void randomPoints(int nPts, double box, double shift,
+                           std::vector<double> &ptsCoord);
 
-void randomUniformFill(std::vector<double> &vec, double low, double high);
+  static void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3],
+                           double scale);
 
-void randomLogNormalFill(std::vector<double> &vec, double a, double b);
+  void randomUniformFill(std::vector<double> &vec, double low, double high);
 
-void dumpPoints(const std::string &filename, std::vector<double> &coord, std::vector<double> &value,
-                const int valueDimension);
+  void randomLogNormalFill(std::vector<double> &vec, double a, double b);
 
-void checkError(const std::vector<double> &value, const std::vector<double> &valueTrue);
+  static void dumpPoints(const std::string &filename, std::vector<double> &coord,
+                  std::vector<double> &value, const int valueDimension);
 
-void distributePts(std::vector<double> &pts, int dimension);
+  static void checkError(const std::vector<double> &value,
+                  const std::vector<double> &valueTrue);
 
-void collectPts(std::vector<double> &pts);
+  static void distributePts(std::vector<double> &pts, int dimension);
 
-void collectPtsAll(std::vector<double> &pts);
+  static void collectPts(std::vector<double> &pts);
+
+  static void collectPtsAll(std::vector<double> &pts);
+
+private:
+  std::mt19937 gen_;
+};
 
 #endif

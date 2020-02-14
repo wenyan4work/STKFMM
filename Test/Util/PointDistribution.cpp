@@ -11,7 +11,9 @@
 #include "ChebNodal.hpp"
 #include "PointDistribution.hpp"
 
-void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord) {
+
+
+void PointDistribution::fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord) {
     switch (nPts) {
     case 1: {
         srcCoord.push_back(0.7 * box + shift);
@@ -46,7 +48,7 @@ void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoo
     }
 }
 
-void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+void PointDistribution::chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
 
     ChebNodal chebData(nPts);
     chebData.points[0] += 0;
@@ -70,7 +72,7 @@ void chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoor
     }
 }
 
-void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+void PointDistribution::randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
     ptsCoord.resize(pow(nPts + 1, 3) * 3);
     randomLogNormalFill(ptsCoord, 1.0, 1.0);
     for (auto &v : ptsCoord) {
@@ -79,7 +81,7 @@ void randomPoints(int nPts, double box, double shift, std::vector<double> &ptsCo
     }
 }
 
-void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale) {
+void PointDistribution::shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale) {
     // user's job to guarantee pts stays in the unit cube after shift
     const int nPts = ptsCoord.size() / 3;
     for (int i = 0; i < nPts; i++) {
@@ -89,27 +91,23 @@ void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double 
     }
 }
 
-void randomUniformFill(std::vector<double> &vec, double low, double high) {
+void PointDistribution::randomUniformFill(std::vector<double> &vec, double low, double high) {
     // random fill every entry between [-1,1)
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dist(low, high);
     for (auto &v : vec) {
-        v = dist(gen);
+        v = dist(gen_);
     }
 }
 
-void randomLogNormalFill(std::vector<double> &vec, double a, double b) {
+void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double a, double b) {
     // random fill according to log normal
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::lognormal_distribution<double> dist(log(a), b);
     for (auto &v : vec) {
-        v = dist(gen);
+        v = dist(gen_);
     }
 }
 
-void dumpPoints(const std::string &filename, std::vector<double> &coordLocal, std::vector<double> &valueLocal,
+void PointDistribution::dumpPoints(const std::string &filename, std::vector<double> &coordLocal, std::vector<double> &valueLocal,
                 const int valueDimension) {
     FILE *fp = fopen(filename.c_str(), "w");
 
@@ -134,7 +132,7 @@ void dumpPoints(const std::string &filename, std::vector<double> &coordLocal, st
     fclose(fp);
 }
 
-void checkError(const std::vector<double> &valueLocal, const std::vector<double> &valueTrueLocal) {
+void PointDistribution::checkError(const std::vector<double> &valueLocal, const std::vector<double> &valueTrueLocal) {
     // value and valueTrue are distributed
     // collect to rank 0 first
     std::vector<double> value = valueLocal;
@@ -177,7 +175,7 @@ void checkError(const std::vector<double> &valueLocal, const std::vector<double>
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-void distributePts(std::vector<double> &pts, int dimension) {
+void PointDistribution::distributePts(std::vector<double> &pts, int dimension) {
     // from rank 0 to all ranks
     int myRank;
     int nProcs;
@@ -216,7 +214,7 @@ void distributePts(std::vector<double> &pts, int dimension) {
     pts = std::move(newVec);
 }
 
-void collectPts(std::vector<double> &pts) {
+void PointDistribution::collectPts(std::vector<double> &pts) {
     // from all ranks to rank 0
     int myRank;
     int nProcs;
@@ -267,7 +265,7 @@ void collectPts(std::vector<double> &pts) {
     pts = std::move(ptsRecv);
 }
 
-void collectPtsAll(std::vector<double> &pts) {
+void PointDistribution::collectPtsAll(std::vector<double> &pts) {
     // first collect to rank 0
     collectPts(pts);
     // broadcast to all rank
