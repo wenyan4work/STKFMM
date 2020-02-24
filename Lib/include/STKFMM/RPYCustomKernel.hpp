@@ -388,9 +388,9 @@ void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             vx = vx * FACV + load_intrin<Vec_t>(&trg_value[0][t]);
             vy = vy * FACV + load_intrin<Vec_t>(&trg_value[1][t]);
             vz = vz * FACV + load_intrin<Vec_t>(&trg_value[2][t]);
-            lapvx = lapvx * FACV + load_intrin<Vec_t>(&trg_value[0][t]);
-            lapvy = lapvy * FACV + load_intrin<Vec_t>(&trg_value[1][t]);
-            lapvz = lapvz * FACV + load_intrin<Vec_t>(&trg_value[2][t]);
+            lapvx = lapvx * FACV + load_intrin<Vec_t>(&trg_value[3][t]);
+            lapvy = lapvy * FACV + load_intrin<Vec_t>(&trg_value[4][t]);
+            lapvz = lapvz * FACV + load_intrin<Vec_t>(&trg_value[5][t]);
 
             store_intrin(&trg_value[0][t], vx);
             store_intrin(&trg_value[1][t], vy);
