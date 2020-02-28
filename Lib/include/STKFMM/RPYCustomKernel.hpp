@@ -5,31 +5,41 @@
 #include <cstdlib>
 #include <vector>
 
+#include <pvfmm.hpp>
+
 namespace pvfmm {
+
+template <typename Vec_t, typename Real_t, int nwtn>
+inline Vec_t rsqrt_wrapper(Vec_t r2) {
+    switch (nwtn) {
+    case 0:
+        return rsqrt_intrin0<Vec_t, Real_t>(r2);
+        break;
+    case 1:
+        return rsqrt_intrin1<Vec_t, Real_t>(r2);
+        break;
+    case 2:
+        return rsqrt_intrin2<Vec_t, Real_t>(r2);
+        break;
+    case 3:
+        return rsqrt_intrin3<Vec_t, Real_t>(r2);
+        break;
+    default:
+        break;
+    }
+}
 
 /**********************************************************
  *                                                        *
  *     Stokes P Vel kernel, source: 4, target: 4          *
  *                                                        *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                    Matrix<Real_t> &trg_coord, Matrix<Real_t> &trg_value) {
 
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -74,7 +84,8 @@ void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                     add_intrin(mul_intrin(dx, dx), mul_intrin(dy, dy)),
                     mul_intrin(dz, dz));
 
-                const Vec_t rinv = mul_intrin(RSQRT_INTRIN(r2), nwtn_factor);
+                const Vec_t rinv = mul_intrin(
+                    rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2), nwtn_factor);
                 const Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 const Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
                 const Vec_t fdotr = add_intrin(
@@ -128,83 +139,17 @@ void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void rpy_u(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
-           T *v_trg, mem::MemoryManager *mem_mgr) {
-#define RPY_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<                                                            \
-        Real_t, 4, 3,                                                          \
-        rpy_u_uKernel<Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(      \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define RPY_KERNEL                                                             \
-    RPY_KER_NWTN(0);                                                           \
-    RPY_KER_NWTN(1);                                                           \
-    RPY_KER_NWTN(2);                                                           \
-    RPY_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        RPY_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        RPY_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        RPY_KERNEL;
-#undef Vec_t
-    }
-
-#undef RPY_KER_NWTN
-#undef RPY_KERNEL
-}
-
 /**********************************************************
  *                                                        *
  * RPY Force,a Vel kernel,source: 4, target: 6            *
  *       fx,fy,fz,a -> ux,uy,uz,lapux,lapuy,lapuz         *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void rpy_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                        Matrix<Real_t> &trg_coord, Matrix<Real_t> &trg_value) {
 
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -251,7 +196,8 @@ void rpy_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                     add_intrin(mul_intrin(dx, dx), mul_intrin(dy, dy)),
                     mul_intrin(dz, dz));
 
-                const Vec_t rinv = mul_intrin(RSQRT_INTRIN(r2), nwtn_factor);
+                const Vec_t rinv = mul_intrin(
+                    rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2), nwtn_factor);
                 const Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 const Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
                 const Vec_t fdotr = add_intrin(
@@ -310,84 +256,17 @@ void rpy_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void rpy_ulapu(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
-               T *v_trg, mem::MemoryManager *mem_mgr) {
-#define RPY_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<                                                            \
-        Real_t, 4, 6,                                                          \
-        rpy_ulapu_uKernel<Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(  \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define RPY_KERNEL                                                             \
-    RPY_KER_NWTN(0);                                                           \
-    RPY_KER_NWTN(1);                                                           \
-    RPY_KER_NWTN(2);                                                           \
-    RPY_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        RPY_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        RPY_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        RPY_KERNEL;
-#undef Vec_t
-    }
-
-#undef RPY_KER_NWTN
-#undef RPY_KERNEL
-}
-
 /**********************************************************
  *                                                        *
  * Stokes Force Vel,lapVel kernel,source: 3, target: 6    *
  *       fx,fy,fz -> ux,uy,uz,lapux,lapuy,lapuz           *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                        Matrix<Real_t> &trg_coord, Matrix<Real_t> &trg_value) {
 
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
-
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
         nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
@@ -430,7 +309,8 @@ void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                     add_intrin(mul_intrin(dx, dx), mul_intrin(dy, dy)),
                     mul_intrin(dz, dz));
 
-                const Vec_t rinv = mul_intrin(RSQRT_INTRIN(r2), nwtn_factor);
+                const Vec_t rinv = mul_intrin(
+                    rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2), nwtn_factor);
                 const Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 const Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
                 const Vec_t fdotr = add_intrin(
@@ -483,59 +363,52 @@ void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void stk_ulapu(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt,
-               T *v_trg, mem::MemoryManager *mem_mgr) {
-#define STK_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<                                                            \
-        Real_t, 3, 6,                                                          \
-        stk_ulapu_uKernel<Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(  \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define STK_KERNEL                                                             \
-    STK_KER_NWTN(0);                                                           \
-    STK_KER_NWTN(1);                                                           \
-    STK_KER_NWTN(2);                                                           \
-    STK_KER_NWTN(3);
+#if defined __MIC__
+#define Vec_ts Real_t
+#define Vec_td Real_t
+#elif defined __AVX__
+#define Vec_ts __m256
+#define Vec_td __m256d
+#elif defined __SSE3__
+#define Vec_ts __m128
+#define Vec_td __m128d
+#else
+#define Vec_ts Real_t
+#define Vec_td Real_t
+#endif
 
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        STK_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        STK_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        STK_KERNEL;
-#undef Vec_t
+#define GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, VEC_T, REAL_T)          \
+    generic_kernel<REAL_T, SRCDIM, TARDIM,                                     \
+                   MICROKERNEL<REAL_T, VEC_T, newton_iter>>(                   \
+        (REAL_T *)r_src, src_cnt, (REAL_T *)v_src, dof, (REAL_T *)r_trg,       \
+        trg_cnt, (REAL_T *)v_trg, mem_mgr)
+
+#define GEN_KERNEL(KERNEL, MICROKERNEL, SRCDIM, TARDIM)                        \
+    template <class T, int newton_iter = 0>                                    \
+    void KERNEL(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,            \
+                int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {          \
+                                                                               \
+        if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {        \
+            typedef float Real_t;                                              \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_ts, Real_t);    \
+        } else if (mem::TypeTraits<T>::ID() ==                                 \
+                   mem::TypeTraits<double>::ID()) {                            \
+            typedef double Real_t;                                             \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_td, Real_t);    \
+        } else {                                                               \
+            typedef T Real_t;                                                  \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Real_t, Real_t);    \
+        }                                                                      \
     }
 
-#undef STK_KER_NWTN
-#undef STK_KERNEL
-}
+GEN_KERNEL(rpy_u, rpy_u_uKernel, 4, 3)
+GEN_KERNEL(rpy_ulapu, rpy_ulapu_uKernel, 4, 6)
+GEN_KERNEL(stk_ulapu, stk_ulapu_uKernel, 3, 6)
+
+#undef Vec_ts
+#undef Vec_td
+#undef GEN_KERNEL
+#undef GEN_KERNEL_HELPER
 
 template <class T>
 struct RPYTestKernel {
