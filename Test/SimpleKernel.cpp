@@ -1444,7 +1444,7 @@ void StokesRegSLVelOmega(double *s, double *t, double *f, double *velomega) {
     velomega[5] += rotlet_coef * fcurlrz;
 }
 
-void RPY(double *s, double *t, double *f, double *vlapv) {
+void StokesSLRPY(double *s, double *t, double *f, double *vlapv) {
     const double fx = f[0];
     const double fy = f[1];
     const double fz = f[2];
@@ -1482,3 +1482,8 @@ void RPY(double *s, double *t, double *f, double *vlapv) {
     for (int i = 0; i < 6; ++i)
         vlapv[i] /= 8.0 * M_PI;
 }
+
+void StokesDLRPY(double *s, double *t, double *f, double *vel) {};
+
+void StokesRegDLVel(double *s, double *t, double *f, double *vel) {};
+void StokesRegDLVelOmega(double *s, double *t, double *f, double *velomega) {};

@@ -104,8 +104,9 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                       trgCoordLocal.size() / 3, trgValueShifted.data(),
                       testKernel);
 
-    PointDistribution::dumpPoints("trgPointsShifted" + std::to_string((uint)testKernel) + ".txt",
-               trgCoordLocal, trgValueShifted, kdimTrg);
+    PointDistribution::dumpPoints("trgPointsShifted" +
+                                      std::to_string((uint)testKernel) + ".txt",
+                                  trgCoordLocal, trgValueShifted, kdimTrg);
 
     shiftCoords(srcSLCoordLocal, -1);
     shiftCoords(srcDLCoordLocal, -1);
@@ -148,6 +149,30 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
     const int nDL = srcDLCoordGlobal.size() / 3;
     const int nTrg = trgCoordLocal.size() / 3;
 
+    typedef void (*kernel_func)(double *, double *, double *, double *);
+    std::unordered_map<KERNEL, kernel_func> SL_kernels(
+        {{KERNEL::PVel, StokesSLPVel},
+         {KERNEL::PVelGrad, StokesSLPVelGrad},
+         {KERNEL::Traction, StokesSLTraction},
+         {KERNEL::PVelLaplacian, StokesSLPVelLaplacian},
+         {KERNEL::LAPPGrad, LaplaceSLPGrad},
+         {KERNEL::StokesRegVel, StokesRegSLVel},
+         {KERNEL::StokesRegVelOmega, StokesRegSLVelOmega},
+         {KERNEL::RPY, StokesSLRPY}});
+
+    std::unordered_map<KERNEL, kernel_func> DL_kernels(
+        {{KERNEL::PVel, StokesDLPVel},
+         {KERNEL::PVelGrad, StokesDLPVelGrad},
+         {KERNEL::Traction, StokesDLTraction},
+         {KERNEL::PVelLaplacian, StokesDLPVelLaplacian},
+         {KERNEL::LAPPGrad, LaplaceDLPGrad},
+         {KERNEL::StokesRegVel, StokesRegDLVel},
+         {KERNEL::StokesRegVelOmega, StokesRegDLVelOmega},
+         {KERNEL::RPY, StokesDLRPY}});
+
+    kernel_func kernelTestSL = SL_kernels[kernel];
+    kernel_func kernelTestDL = DL_kernels[kernel];
+
     // check results
 #pragma omp parallel for
     for (int i = 0; i < nTrg; i++) {
@@ -163,32 +188,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
             double *s = srcSLCoordGlobal.data() + 3 * j;
             double *sval = srcSLValueGlobal.data() + kdimSL * j;
 
-            switch (kernel) {
-            case KERNEL::PVel:
-                StokesSLPVel(s, t, sval, result);
-                break;
-            case KERNEL::PVelGrad:
-                StokesSLPVelGrad(s, t, sval, result);
-                break;
-            case KERNEL::Traction:
-                StokesSLTraction(s, t, sval, result);
-                break;
-            case KERNEL::PVelLaplacian:
-                StokesSLPVelLaplacian(s, t, sval, result);
-                break;
-            case KERNEL::LAPPGrad:
-                LaplaceSLPGrad(s, t, sval, result);
-                break;
-            case KERNEL::StokesRegVel:
-                StokesRegSLVel(s, t, sval, result);
-                break;
-            case KERNEL::StokesRegVelOmega:
-                StokesRegSLVelOmega(s, t, sval, result);
-                break;
-            case KERNEL::RPY:
-                RPY(s, t, sval, result);
-                break;
-            }
+            kernelTestSL(s, t, sval, result);
 
             for (int k = 0; k < kdimTrg; k++) {
                 trgValueTrueLocal[kdimTrg * i + k] += result[k];
@@ -201,32 +201,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
             double *s = srcDLCoordGlobal.data() + 3 * j;
             double *sval = srcDLValueGlobal.data() + kdimDL * j;
 
-            switch (kernel) {
-            case KERNEL::PVel:
-                StokesDLPVel(s, t, sval, result);
-                break;
-            case KERNEL::PVelGrad:
-                StokesDLPVelGrad(s, t, sval, result);
-                break;
-            case KERNEL::Traction:
-                StokesDLTraction(s, t, sval, result);
-                break;
-            case KERNEL::PVelLaplacian:
-                StokesDLPVelLaplacian(s, t, sval, result);
-                break;
-            case KERNEL::LAPPGrad:
-                LaplaceDLPGrad(s, t, sval, result);
-                break;
-            case KERNEL::StokesRegVel:
-                // TODO: Gracefully handle non-existent StokesRegDLVel
-                break;
-            case KERNEL::StokesRegVelOmega:
-                // TODO: Gracefully handle non-existent StokesRegDLVelOmega
-                break;
-            case KERNEL::RPY:
-                // TODO: Gracefully handle non-existent RPY
-                break;
-            }
+            kernelTestDL(s, t, sval, result);
 
             for (int k = 0; k < kdimTrg; k++) {
                 trgValueTrueLocal[kdimTrg * i + k] += result[k];
@@ -511,7 +486,7 @@ void testFMM(const cli::Parser &parser, int order) {
             if (testKernel == KERNEL::RPY) {
                 const double eps = 0.01;
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
-                    srcSLValue[i] = eps; // * (srcSLValue[i] + 1);
+                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
                 }
             }
         }

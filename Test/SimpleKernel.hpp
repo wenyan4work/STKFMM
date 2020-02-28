@@ -23,6 +23,13 @@ void StokesRegSLVel(double *s, double *t, double *f, double *vel);
 void StokesRegSLVelOmega(double *s, double *t, double *f, double *velomega);
 
 //
-void RPY(double *s, double *t, double *f, double *vlapv);
+void StokesRegDLVel(double *s, double *t, double *f, double *vel);
+void StokesRegDLVelOmega(double *s, double *t, double *f, double *velomega);
+
+//
+void StokesSLRPY(double *s, double *t, double *f, double *vlapv);
+
+//
+void StokesDLRPY(double *s, double *t, double *f, double *vlapv);
 
 #endif
