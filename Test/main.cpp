@@ -149,38 +149,29 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
     const int nDL = srcDLCoordGlobal.size() / 3;
     const int nTrg = trgCoordLocal.size() / 3;
 
+    // Create mapping of kernels to 'true value' functions
+    using std::make_pair;
     typedef void (*kernel_func)(double *, double *, double *, double *);
-    std::unordered_map<KERNEL, kernel_func> SL_kernels(
-        {{KERNEL::PVel, StokesSLPVel},
-         {KERNEL::PVelGrad, StokesSLPVelGrad},
-         {KERNEL::Traction, StokesSLTraction},
-         {KERNEL::PVelLaplacian, StokesSLPVelLaplacian},
-         {KERNEL::LAPPGrad, LaplaceSLPGrad},
-         {KERNEL::StokesRegVel, StokesRegSLVel},
-         {KERNEL::StokesRegVelOmega, StokesRegSLVelOmega},
-         {KERNEL::RPY, StokesSLRPY}});
+    // clang-format off
+    std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
+        {{KERNEL::PVel, make_pair(StokesSLPVel, StokesDLPVel)},
+         {KERNEL::PVelGrad, make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
+         {KERNEL::Traction, make_pair(StokesSLTraction, StokesSLTraction)},
+         {KERNEL::PVelLaplacian, make_pair(StokesSLPVelLaplacian, StokesSLPVelLaplacian)},
+         {KERNEL::LAPPGrad, make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
+         {KERNEL::StokesRegVel, make_pair(StokesRegSLVel, StokesRegDLVel)},
+         {KERNEL::StokesRegVelOmega, make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
+         {KERNEL::RPY, make_pair(StokesSLRPY, StokesDLRPY)}});
+    // clang-format on
 
-    std::unordered_map<KERNEL, kernel_func> DL_kernels(
-        {{KERNEL::PVel, StokesDLPVel},
-         {KERNEL::PVelGrad, StokesDLPVelGrad},
-         {KERNEL::Traction, StokesDLTraction},
-         {KERNEL::PVelLaplacian, StokesDLPVelLaplacian},
-         {KERNEL::LAPPGrad, LaplaceDLPGrad},
-         {KERNEL::StokesRegVel, StokesRegDLVel},
-         {KERNEL::StokesRegVelOmega, StokesRegDLVelOmega},
-         {KERNEL::RPY, StokesDLRPY}});
-
-    kernel_func kernelTestSL = SL_kernels[kernel];
-    kernel_func kernelTestDL = DL_kernels[kernel];
+    kernel_func kernelTestSL, kernelTestDL;
+    std::tie(kernelTestSL, kernelTestDL) = SL_kernels[kernel];
 
     // check results
 #pragma omp parallel for
     for (int i = 0; i < nTrg; i++) {
-        double t[3];
         const double *trg = trgCoordLocal.data() + 3 * i;
-        t[0] = trg[0];
-        t[1] = trg[1];
-        t[2] = trg[2];
+        double t[3] = {trg[0], trg[1], trg[2]};
 
         // add SL values
         for (int j = 0; j < nSL; j++) {
