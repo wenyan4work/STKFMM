@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <vector>
 
-#include "LaplaceLayerKernel.hpp"
-
 namespace pvfmm {
 
 /**********************************************************
