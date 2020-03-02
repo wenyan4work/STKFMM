@@ -15,8 +15,7 @@
 #include <cstdlib>
 #include <vector>
 
-// pvfmm headers
-#include <pvfmm.hpp>
+#include <STKFMM/stkfmm_helpers.hpp>
 
 namespace pvfmm {
 
@@ -25,24 +24,12 @@ namespace pvfmm {
  *     Stokes P Vel kernel, source: 4, target: 4          *
  *                                                        *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                          Matrix<Real_t> &trg_coord, Matrix<Real_t> &trg_value) {
 
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -91,7 +78,7 @@ void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
 
                 Vec_t commonCoeff = mul_intrin(fx, dx);
@@ -132,84 +119,20 @@ void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void stokes_pvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                 int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
-#define STK_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 4, 4,                                               \
-                   stokes_pvel_uKernel<Real_t, Vec_t,                          \
-                                       rsqrt_intrin##nwtn<Vec_t, Real_t>>>(    \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define STOKES_KERNEL                                                          \
-    STK_KER_NWTN(0);                                                           \
-    STK_KER_NWTN(1);                                                           \
-    STK_KER_NWTN(2);                                                           \
-    STK_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        STOKES_KERNEL;
-#undef Vec_t
-    }
-
-#undef STK_KER_NWTN
-#undef STOKES_KERNEL
-}
+GEN_KERNEL(stokes_pvel, stokes_pvel_uKernel, 4, 4)
 
 /*********************************************************
  *                                                        *
  *   Stokes P Vel Grad kernel, source: 4, target: 1+3+3+9 *
  *                                                        *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_pvelgrad_uKernel(Matrix<Real_t> &src_coord,
                              Matrix<Real_t> &src_value,
                              Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -273,7 +196,7 @@ void stokes_pvelgrad_uKernel(Matrix<Real_t> &src_coord,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
 
@@ -442,84 +365,20 @@ void stokes_pvelgrad_uKernel(Matrix<Real_t> &src_coord,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void stokes_pvelgrad(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                     int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
-#define STK_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 4, 16,                                              \
-                   stokes_pvelgrad_uKernel<                                    \
-                       Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(     \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define STOKES_KERNEL                                                          \
-    STK_KER_NWTN(0);                                                           \
-    STK_KER_NWTN(1);                                                           \
-    STK_KER_NWTN(2);                                                           \
-    STK_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        STOKES_KERNEL;
-#undef Vec_t
-    }
-
-#undef STK_KER_NWTN
-#undef STOKES_KERNEL
-}
+GEN_KERNEL(stokes_pvelgrad, stokes_pvelgrad_uKernel, 4, 16)
 
 /*********************************************************
  *                                                        *
  *      Stokes traction kernel, source: 4, target: 9      *
  *                                                        *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_traction_uKernel(Matrix<Real_t> &src_coord,
                              Matrix<Real_t> &src_value,
                              Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -568,7 +427,7 @@ void stokes_traction_uKernel(Matrix<Real_t> &src_coord,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t rinv2 = mul_intrin(rinv, rinv);
                 Vec_t rinv4 = mul_intrin(rinv2, rinv2);
 
@@ -655,83 +514,20 @@ void stokes_traction_uKernel(Matrix<Real_t> &src_coord,
 #undef SRC_BLK
 }
 
-template <class T, int newton_iter = 0>
-void stokes_traction(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                     int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
-#define STK_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 4, 9,                                               \
-                   stokes_traction_uKernel<                                    \
-                       Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(     \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define STOKES_KERNEL                                                          \
-    STK_KER_NWTN(0);                                                           \
-    STK_KER_NWTN(1);                                                           \
-    STK_KER_NWTN(2);                                                           \
-    STK_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        STOKES_KERNEL;
-#undef Vec_t
-    }
-
-#undef STK_KER_NWTN
-#undef STOKES_KERNEL
-}
+GEN_KERNEL(stokes_traction, stokes_traction_uKernel, 4, 9)
 
 /*********************************************************
  *                                                        *
  * Stokes Vel Laplacian kernel, source: 3, target: 7      *
  *                                                        *
  **********************************************************/
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_pvellaplacian_uKernel(Matrix<Real_t> &src_coord,
                                   Matrix<Real_t> &src_value,
                                   Matrix<Real_t> &trg_coord,
                                   Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -784,7 +580,7 @@ void stokes_pvellaplacian_uKernel(Matrix<Real_t> &src_coord,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
 
@@ -858,59 +654,7 @@ void stokes_pvellaplacian_uKernel(Matrix<Real_t> &src_coord,
 #undef SRC_BLK
 }
 
-// '##' is the token parsing operator
-template <class T, int newton_iter = 0>
-void stokes_pvellaplacian(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                          int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
-#define STK_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 4, 7,                                               \
-                   stokes_pvellaplacian_uKernel<                               \
-                       Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(     \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define STOKES_KERNEL                                                          \
-    STK_KER_NWTN(0);                                                           \
-    STK_KER_NWTN(1);                                                           \
-    STK_KER_NWTN(2);                                                           \
-    STK_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        STOKES_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        STOKES_KERNEL;
-#undef Vec_t
-    }
-
-#undef STK_KER_NWTN
-#undef STOKES_KERNEL
-}
+GEN_KERNEL(stokes_pvellaplacian, stokes_pvellaplacian_uKernel, 4, 7)
 
 template <class T>
 struct StokesSingleLayerKernel {

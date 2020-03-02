@@ -15,8 +15,8 @@
 #include <cstdlib>
 #include <vector>
 
-// pvfmm headers
-#include <pvfmm.hpp>
+// Kernel building utilities
+#include <STKFMM/stkfmm_helpers.hpp>
 
 /**
  * @brief insert kernel functions to pvfmm namespace
@@ -35,24 +35,12 @@ namespace pvfmm {
  * @param trg_coord
  * @param trg_value
  */
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                            Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -92,7 +80,7 @@ void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t r3inv = mul_intrin(mul_intrin(rinv, rinv), rinv);
 
                 sv = mul_intrin(sv, r3inv);
@@ -139,58 +127,7 @@ void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
  * @param v_trg
  * @param mem_mgr
  */
-template <class T, int newton_iter = 0>
-void laplace_pgrad(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                   int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
-#define LAP_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 1, 4,                                               \
-                   laplace_pgrad_uKernel<Real_t, Vec_t,                        \
-                                         rsqrt_intrin##nwtn<Vec_t, Real_t>>>(  \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define LAPLACE_KERNEL                                                         \
-    LAP_KER_NWTN(0);                                                           \
-    LAP_KER_NWTN(1);                                                           \
-    LAP_KER_NWTN(2);                                                           \
-    LAP_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        LAPLACE_KERNEL;
-#undef Vec_t
-    }
-
-#undef LAP_KER_NWTN
-#undef LAPLACE_KERNEL
-}
+GEN_KERNEL(laplace_pgrad, laplace_pgrad_uKernel, 1, 4)
 
 /**
  * @brief micro kernel for Laplace double layer (dipole) potential
@@ -203,25 +140,13 @@ void laplace_pgrad(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
  * @param trg_coord
  * @param trg_value
  */
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_dipolepotential_uKernel(Matrix<Real_t> &src_coord,
                                      Matrix<Real_t> &src_value,
                                      Matrix<Real_t> &trg_coord,
                                      Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -257,7 +182,7 @@ void laplace_dipolepotential_uKernel(Matrix<Real_t> &src_coord,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t r3inv = mul_intrin(mul_intrin(rinv, rinv), rinv);
 
                 Vec_t rdotn = mul_intrin(sn0, dx);
@@ -295,59 +220,7 @@ void laplace_dipolepotential_uKernel(Matrix<Real_t> &src_coord,
  * @param v_trg
  * @param mem_mgr
  */
-template <class T, int newton_iter = 0>
-void laplace_dipolepotential_poten(T *r_src, int src_cnt, T *v_src, int dof,
-                                   T *r_trg, int trg_cnt, T *v_trg,
-                                   mem::MemoryManager *mem_mgr) {
-#define LAP_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 3, 1,                                               \
-                   laplace_dipolepotential_uKernel<                            \
-                       Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(     \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define LAPLACE_KERNEL                                                         \
-    LAP_KER_NWTN(0);                                                           \
-    LAP_KER_NWTN(1);                                                           \
-    LAP_KER_NWTN(2);                                                           \
-    LAP_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        LAPLACE_KERNEL;
-#undef Vec_t
-    }
-
-#undef LAP_KER_NWTN
-#undef LAPLACE_KERNEL
-}
+GEN_KERNEL(laplace_dipolepotential_poten, laplace_dipolepotential_uKernel, 3, 1)
 
 /**
  * @brief micro kernel for Laplace double layer (dipole) potential + gradient
@@ -361,25 +234,13 @@ void laplace_dipolepotential_poten(T *r_src, int src_cnt, T *v_src, int dof,
  * @param trg_coord
  * @param trg_value
  */
-template <class Real_t, class Vec_t = Real_t,
-          Vec_t (*RSQRT_INTRIN)(Vec_t) = rsqrt_intrin0<Vec_t>>
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord,
                                  Matrix<Real_t> &src_value,
                                  Matrix<Real_t> &trg_coord,
                                  Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    //// Number of newton iterations
-    size_t NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin0<Vec_t, Real_t>)
-        NWTN_ITER = 0;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin1<Vec_t, Real_t>)
-        NWTN_ITER = 1;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin2<Vec_t, Real_t>)
-        NWTN_ITER = 2;
-    if (RSQRT_INTRIN == (Vec_t(*)(Vec_t))rsqrt_intrin3<Vec_t, Real_t>)
-        NWTN_ITER = 3;
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -422,7 +283,7 @@ void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord,
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
-                Vec_t rinv = RSQRT_INTRIN(r2);
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t r3inv = mul_intrin(mul_intrin(rinv, rinv), rinv);
                 Vec_t r5inv = mul_intrin(mul_intrin(rinv, rinv), r3inv);
 
@@ -482,59 +343,7 @@ void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord,
  * @param v_trg
  * @param mem_mgr
  */
-template <class T, int newton_iter = 0>
-void laplace_dipolepgrad_poten(T *r_src, int src_cnt, T *v_src, int dof,
-                               T *r_trg, int trg_cnt, T *v_trg,
-                               mem::MemoryManager *mem_mgr) {
-#define LAP_KER_NWTN(nwtn)                                                     \
-    if (newton_iter == nwtn)                                                   \
-    generic_kernel<Real_t, 3, 4,                                               \
-                   laplace_dipolepgrad_uKernel<                                \
-                       Real_t, Vec_t, rsqrt_intrin##nwtn<Vec_t, Real_t>>>(     \
-        (Real_t *)r_src, src_cnt, (Real_t *)v_src, dof, (Real_t *)r_trg,       \
-        trg_cnt, (Real_t *)v_trg, mem_mgr)
-#define LAPLACE_KERNEL                                                         \
-    LAP_KER_NWTN(0);                                                           \
-    LAP_KER_NWTN(1);                                                           \
-    LAP_KER_NWTN(2);                                                           \
-    LAP_KER_NWTN(3);
-
-    if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {
-        typedef float Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {
-        typedef double Real_t;
-#if defined __MIC__
-#define Vec_t Real_t
-#elif defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-        LAPLACE_KERNEL;
-#undef Vec_t
-    } else {
-        typedef T Real_t;
-#define Vec_t Real_t
-        LAPLACE_KERNEL;
-#undef Vec_t
-    }
-
-#undef LAP_KER_NWTN
-#undef LAPLACE_KERNEL
-}
+GEN_KERNEL(laplace_dipolepgrad_poten, laplace_dipolepgrad_uKernel, 3, 4)
 
 /**
  * @brief LaplaceLayerkernel class
