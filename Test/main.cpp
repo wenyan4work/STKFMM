@@ -473,10 +473,22 @@ void testFMM(const cli::Parser &parser, int order) {
                 for (auto &el : srcSLValue)
                     el -= charge / nSrcSL;
             }
-
-            if (testKernel == KERNEL::RPY) {
+            else if (testKernel == KERNEL::RPY ||
+                testKernel == KERNEL::StokesRegVel) {
                 const double eps = 0.01;
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
+                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
+                }
+            }
+            else if (testKernel == KERNEL::StokesRegVel) {
+                const double eps = 0.01;
+                for (int i = 3; i < srcSLValue.size(); i += 4) {
+                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
+                }
+            }
+            else if (testKernel == KERNEL::StokesRegVelOmega) {
+                const double eps = 0.01;
+                for (int i = 6; i < srcSLValue.size(); i += 7) {
                     srcSLValue[i] = eps * (srcSLValue[i] + 1);
                 }
             }
