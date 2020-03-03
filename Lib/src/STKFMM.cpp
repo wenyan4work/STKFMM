@@ -331,6 +331,12 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
         kerPtr = kernelFunctionPtr->k_l2t->ker_poten;
     }
 
+    if (kerPtr == nullptr) {
+        std::cout << "PPKernel " << (uint)p2p
+                  << " not found for direct evaluation" << std::endl;
+        return;
+    }
+
 #pragma omp parallel for schedule(static, 1) num_threads(nThreads)
     for (int i = 0; i < chunkNumber; i++) {
         // each thread process one chunk
