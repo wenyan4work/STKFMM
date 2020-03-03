@@ -156,7 +156,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
     std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
         {{KERNEL::PVel, make_pair(StokesSLPVel, StokesDLPVel)},
          {KERNEL::PVelGrad, make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
-         {KERNEL::Traction, make_pair(StokesSLTraction, StokesSLTraction)},
+         {KERNEL::Traction, make_pair(StokesSLTraction, StokesDLTraction)},
          {KERNEL::PVelLaplacian, make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)},
          {KERNEL::LAPPGrad, make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
          {KERNEL::StokesRegVel, make_pair(StokesRegSLVel, StokesRegDLVel)},
