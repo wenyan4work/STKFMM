@@ -48,6 +48,9 @@ void configure_parser(cli::Parser &parser) {
         "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
     parser.set_optional<int>("m", "maxPoints", 50,
                              "Points used in multipole appx, default 50");
+    parser.set_optional<double>("e", "epsilon", 0.01,
+                                "Average size of input particles for RPY and "
+                                "StokesReg kernels, default 0.01");
 }
 
 void showOption(const cli::Parser &parser) {
@@ -476,22 +479,19 @@ void testFMM(const cli::Parser &parser, int order) {
                     std::accumulate(srcSLValue.begin(), srcSLValue.end(), 0.0);
                 for (auto &el : srcSLValue)
                     el -= charge / nSrcSL;
-            }
-            else if (testKernel == KERNEL::RPY ||
-                testKernel == KERNEL::StokesRegVel) {
-                const double eps = 0.01;
+            } else if (testKernel == KERNEL::RPY ||
+                       testKernel == KERNEL::StokesRegVel) {
+                const double eps = parser.get<double>("e");
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
                     srcSLValue[i] = eps * (srcSLValue[i] + 1);
                 }
-            }
-            else if (testKernel == KERNEL::StokesRegVel) {
-                const double eps = 0.01;
+            } else if (testKernel == KERNEL::StokesRegVel) {
+                const double eps = parser.get<double>("e");
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
                     srcSLValue[i] = eps * (srcSLValue[i] + 1);
                 }
-            }
-            else if (testKernel == KERNEL::StokesRegVelOmega) {
-                const double eps = 0.01;
+            } else if (testKernel == KERNEL::StokesRegVelOmega) {
+                const double eps = parser.get<double>("e");
                 for (int i = 6; i < srcSLValue.size(); i += 7) {
                     srcSLValue[i] = eps * (srcSLValue[i] + 1);
                 }
