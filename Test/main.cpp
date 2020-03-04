@@ -17,6 +17,30 @@
 
 using namespace stkfmm;
 
+std::vector<KERNEL> kernelVec = {
+    KERNEL::PVel,
+    KERNEL::PVelGrad,
+    KERNEL::PVelLaplacian,
+    KERNEL::Traction,
+    KERNEL::LAPPGrad,
+    KERNEL::StokesRegVel,
+    KERNEL::StokesRegVelOmega,
+    KERNEL::RPY,
+};
+
+typedef void (*kernel_func)(double *, double *, double *, double *);
+// clang-format off
+std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
+    {{KERNEL::PVel, std::make_pair(StokesSLPVel, StokesDLPVel)},
+     {KERNEL::PVelGrad, std::make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
+     {KERNEL::Traction, std::make_pair(StokesSLTraction, StokesDLTraction)},
+     {KERNEL::PVelLaplacian, std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)},
+     {KERNEL::LAPPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
+     {KERNEL::StokesRegVel, std::make_pair(StokesRegSLVel, StokesRegDLVel)},
+     {KERNEL::StokesRegVelOmega, std::make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
+     {KERNEL::RPY, std::make_pair(StokesSLRPY, StokesDLRPY)}});
+// clang-format on
+
 void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>(
         "S", "nSLSource", 1,
@@ -132,9 +156,7 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
                    const std::vector<double> &srcDLValueLocal,
                    std::vector<double> &trgValueTrueLocal) {
     int myRank;
-    int nProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 
     // create a copy for MPI
     std::vector<double> srcSLCoordGlobal = srcSLCoordLocal;
@@ -156,20 +178,6 @@ void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
     const int nTrg = trgCoordLocal.size() / 3;
 
     // Create mapping of kernels to 'true value' functions
-    using std::make_pair;
-    typedef void (*kernel_func)(double *, double *, double *, double *);
-    // clang-format off
-    std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
-        {{KERNEL::PVel, make_pair(StokesSLPVel, StokesDLPVel)},
-         {KERNEL::PVelGrad, make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
-         {KERNEL::Traction, make_pair(StokesSLTraction, StokesDLTraction)},
-         {KERNEL::PVelLaplacian, make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)},
-         {KERNEL::LAPPGrad, make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
-         {KERNEL::StokesRegVel, make_pair(StokesRegSLVel, StokesRegDLVel)},
-         {KERNEL::StokesRegVelOmega, make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
-         {KERNEL::RPY, make_pair(StokesSLRPY, StokesDLRPY)}});
-    // clang-format on
-
     kernel_func kernelTestSL, kernelTestDL;
     std::tie(kernelTestSL, kernelTestDL) = SL_kernels[kernel];
 
@@ -217,9 +225,7 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
                       std::vector<double> &srcDLValueLocal, uint verify = 1) {
     // test S2T kernel, on rank 0 only
     int myRank;
-    int nProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 
     int kdimSL, kdimDL, kdimTrg;
     myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
@@ -279,9 +285,7 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
     // srcSLCoord, srcDLCoord, trgCoord are distributed
 
     int myRank;
-    int nProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 
     // srcCoord and trgCoord are distributed
     int kdimSL, kdimDL, kdimTrg;
@@ -363,16 +367,14 @@ void testFMM(const cli::Parser &parser, int order) {
     const double box = parser.get<double>("B");
     const int temp = parser.get<int>("K");
     const int k = (temp == 0) ? ~((int)0) : temp;
-    const int paxis = parser.get<int>("P");
+    const PAXIS paxis = (PAXIS)parser.get<int>("P");
     const int maxPoints = parser.get<int>("m");
-    STKFMM myFMM(order, maxPoints, (PAXIS)paxis, k);
+    STKFMM myFMM(order, maxPoints, paxis, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
     int myRank;
-    int nProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
     std::vector<double> srcSLCoord;
     std::vector<double> srcDLCoord;
     std::vector<double> trgCoord;
@@ -405,8 +407,6 @@ void testFMM(const cli::Parser &parser, int order) {
         } else {
             srcDLCoord = trgCoord;
         }
-
-    } else {
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -424,17 +424,6 @@ void testFMM(const cli::Parser &parser, int order) {
         std::cout << "nDL: " << srcDLCoord.size() / 3 << "\n";
         std::cout << "nTrg: " << trgCoord.size() / 3 << std::endl;
     }
-
-    std::vector<KERNEL> kernels = {
-        KERNEL::PVel,
-        KERNEL::PVelGrad,
-        KERNEL::PVelLaplacian,
-        KERNEL::Traction,
-        KERNEL::LAPPGrad,
-        KERNEL::StokesRegVel,
-        KERNEL::StokesRegVelOmega,
-        KERNEL::RPY,
-    };
 
     // test each active kernel
     int nSrcSL, nSrcDL;
@@ -457,7 +446,7 @@ void testFMM(const cli::Parser &parser, int order) {
                     srcDLCoord.size() / 3, srcDLCoord.data(),
                     trgCoord.size() / 3, trgCoord.data());
 
-    for (auto testKernel : kernels) {
+    for (auto testKernel : kernelVec) {
         if (!myFMM.isKernelActive(testKernel))
             continue;
 
@@ -511,9 +500,7 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
     int myRank;
-    int nProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 
     cli::Parser parser(argc, argv);
     configure_parser(parser);
