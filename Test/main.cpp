@@ -485,11 +485,6 @@ void testFMM(const cli::Parser &parser, int order) {
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
                     srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
                 }
-            } else if (testKernel == KERNEL::StokesRegVel) {
-                const double eps = parser.get<double>("e");
-                for (int i = 3; i < srcSLValue.size(); i += 4) {
-                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
-                }
             } else if (testKernel == KERNEL::StokesRegVelOmega) {
                 const double eps = parser.get<double>("e");
                 for (int i = 6; i < srcSLValue.size(); i += 7) {
