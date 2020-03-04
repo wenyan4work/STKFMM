@@ -49,7 +49,7 @@ void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>("m", "maxPoints", 50,
                              "Points used in multipole appx, default 50");
     parser.set_optional<double>("e", "epsilon", 0.01,
-                                "Average size of input particles for RPY and "
+                                "Maximum size of input particles for RPY and "
                                 "StokesReg kernels, default 0.01");
 }
 
@@ -483,17 +483,17 @@ void testFMM(const cli::Parser &parser, int order) {
                        testKernel == KERNEL::StokesRegVel) {
                 const double eps = parser.get<double>("e");
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
-                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
+                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
                 }
             } else if (testKernel == KERNEL::StokesRegVel) {
                 const double eps = parser.get<double>("e");
                 for (int i = 3; i < srcSLValue.size(); i += 4) {
-                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
+                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
                 }
             } else if (testKernel == KERNEL::StokesRegVelOmega) {
                 const double eps = parser.get<double>("e");
                 for (int i = 6; i < srcSLValue.size(); i += 7) {
-                    srcSLValue[i] = eps * (srcSLValue[i] + 1);
+                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
                 }
             }
         }
