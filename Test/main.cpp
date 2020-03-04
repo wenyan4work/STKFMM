@@ -46,6 +46,8 @@ void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>(
         "P", "Periodic", 0,
         "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
+    parser.set_optional<int>("m", "maxPoints", 50,
+                             "Points used in multipole appx, default 50");
 }
 
 void showOption(const cli::Parser &parser) {
@@ -60,6 +62,7 @@ void showOption(const cli::Parser &parser) {
     std::cout << "Using FMM: " << parser.get<int>("F") << std::endl;
     std::cout << "Verification: " << parser.get<int>("V") << std::endl;
     std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
+    std::cout << "maxPoints: " << parser.get<int>("m") << std::endl;
 }
 
 void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
@@ -358,7 +361,8 @@ void testFMM(const cli::Parser &parser, int order) {
     const int temp = parser.get<int>("K");
     const int k = (temp == 0) ? ~((int)0) : temp;
     const int paxis = parser.get<int>("P");
-    STKFMM myFMM(order, 2000, (PAXIS)paxis, k);
+    const int maxPoints = parser.get<int>("m");
+    STKFMM myFMM(order, maxPoints, (PAXIS)paxis, k);
     myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
     myFMM.showActiveKernels();
 
