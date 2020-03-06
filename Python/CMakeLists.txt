@@ -26,6 +26,8 @@ if(PyInterface)
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/example.py
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/example.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/kernels.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/timer.py
             ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/example.py)
   # Custom target for activate the custom command above

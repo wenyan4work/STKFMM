@@ -4,7 +4,7 @@ try:
     from mpi4py import MPI
 except ImportError:
     print('It didn\'t find mpi4py!')
-from Python import PySTKFMM
+import PySTKFMM
 import kernels as kr
 import timer
 
