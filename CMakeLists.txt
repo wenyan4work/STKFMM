@@ -40,6 +40,10 @@ enable_testing()
 add_subdirectory(Lib)
 add_subdirectory(Test)
 
+if(PyInterface)
+  add_subdirectory(Python)
+endif()
+
 # doxygen documentation
 if(BUILD_DOC)
   find_package(Doxygen REQUIRED)

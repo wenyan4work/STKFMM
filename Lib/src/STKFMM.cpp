@@ -1,5 +1,5 @@
 /*
- * FMMWrapper.cpp
+ * STKFMM.cpp
  *
  *  Created on: Oct 20, 2016
  *      Author: wyan

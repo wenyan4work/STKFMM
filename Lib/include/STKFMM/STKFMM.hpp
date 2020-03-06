@@ -1,5 +1,5 @@
 /*
- * FMMWrapper.h
+ * STKFMM.hpp
  *
  *  Created on: Oct 6, 2016
  *      Author: wyan
@@ -49,7 +49,7 @@ enum class KERNEL : unsigned {
     StokesRegVel = 32,      ///< Regularized Stokes Velocity
     StokesRegVelOmega = 64, ///< Regularized Stokes Velocity/Rotation
     RPY = 128,              ///< RPY
-    // TODO: add Vel, RPY, VelWall2D, RPYWall2D
+    // TODO: add Vel, VelWall2D, RPYWall2D
 };
 
 /**

@@ -1,11 +1,10 @@
-from __future__ import division, print_function
 import numpy as np
 import sys
 try:
     from mpi4py import MPI
 except ImportError:
     print('It didn\'t find mpi4py!')
-import stkfmm 
+from Python import PySTKFMM
 import kernels as kr
 import timer
 
@@ -36,11 +35,11 @@ if __name__ == '__main__':
     print('# Start')
 
     # FMM parameters
-    mult_order = 14
+    mult_order = 10
     max_pts = 128
-    pbc = stkfmm.PAXIS.NONE
-    kernels = [stkfmm.KERNEL.PVel, stkfmm.KERNEL.PVelGrad, stkfmm.KERNEL.PVelLaplacian, stkfmm.KERNEL.Traction, stkfmm.KERNEL.LAPPGrad]
-    kernels_index = [stkfmm.KERNEL(k) for k in kernels]
+    pbc = PySTKFMM.PAXIS.NONE
+    kernels = [PySTKFMM.KERNEL.PVel, PySTKFMM.KERNEL.PVelGrad, PySTKFMM.KERNEL.PVelLaplacian, PySTKFMM.KERNEL.Traction, PySTKFMM.KERNEL.LAPPGrad]
+    kernels_index = [PySTKFMM.KERNEL(k) for k in kernels]
     verify = True
 
     # Get MPI parameters
@@ -62,13 +61,13 @@ if __name__ == '__main__':
         # Create FMM
         print('\n\n==============================')
         timer.timer('create_fmm')
-        myFMM = stkfmm.STKFMM(mult_order, max_pts, pbc, kernels_index[k])
+        myFMM = PySTKFMM.STKFMM(mult_order, max_pts, pbc, kernels_index[k])
         timer.timer('create_fmm')
         timer.timer('show_active_kernels')
-        stkfmm.showActiveKernels(myFMM)
+        myFMM.showActiveKernels()
         timer.timer('show_active_kernels')
         timer.timer('get_kernel_dimension')
-        kdimSL, kdimDL, kdimTrg = stkfmm.getKernelDimension(myFMM, kernel)
+        kdimSL, kdimDL, kdimTrg = myFMM.getKernelDimension(kernel)
         timer.timer('get_kernel_dimension')
 
         # Create sources and target values
@@ -81,27 +80,27 @@ if __name__ == '__main__':
 
         # Set tree
         timer.timer('set_box')
-        stkfmm.setBox(myFMM, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0)
+        myFMM.setBox(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)
         timer.timer('set_box')
         timer.timer('set_points')
-        stkfmm.setPoints(myFMM, nsrc_SL, src_SL_coord, nsrc_DL, src_DL_coord, ntrg, trg_coord)
+        myFMM.setPoints(nsrc_SL, src_SL_coord, nsrc_DL, src_DL_coord, ntrg, trg_coord)
         timer.timer('set_points')
         timer.timer('setup_tree')
-        stkfmm.setupTree(myFMM, kernel)
+        myFMM.setupTree(kernel)
         timer.timer('setup_tree')
 
         # Evaluate FMM
         timer.timer('evaluate_fmm')
-        stkfmm.evaluateFMM(myFMM, nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
+        myFMM.evaluateFMM(nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
         timer.timer('evaluate_fmm')
 
         # Clear FMM and evaluate again
         trg_value[:,:] = 0
         timer.timer('clear_fmm')
-        stkfmm.clearFMM(myFMM, kernel)
+        myFMM.clearFMM(kernel)
         timer.timer('clear_fmm')
         timer.timer('evaluate_fmm')
-        stkfmm.evaluateFMM(myFMM, nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
+        myFMM.evaluateFMM(nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
         timer.timer('evaluate_fmm')
 
         if verify:
