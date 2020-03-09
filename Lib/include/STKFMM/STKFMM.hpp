@@ -359,16 +359,13 @@ class STKFMM {
     /**
      * @brief Get kernel dimension
      *
-     * @param kdimSL_ single layer kernel dimension
-     * @param kdimDL_ double layer kernel dimension
-     * @param kdimTrg_ target kernel dimension
      * @param kernel_ one of the activated kernels
+     * @return [single layer kernel dimension, double layer kernel dimension, target kernel dimension]
      */
-    void getKernelDimension(int &kdimSL_, int &kdimDL_, int &kdimTrg_,
-                            KERNEL kernel_) {
-        kdimSL_ = poolFMM[kernel_]->kdimSL;
-        kdimDL_ = poolFMM[kernel_]->kdimDL;
-        kdimTrg_ = poolFMM[kernel_]->kdimTrg;
+    std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
+        return std::tuple<int, int, int>(poolFMM[kernel_]->kdimSL,
+                                         poolFMM[kernel_]->kdimDL,
+                                         poolFMM[kernel_]->kdimTrg);
     }
 
   private:

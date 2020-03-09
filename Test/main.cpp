@@ -228,7 +228,8 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
     int kdimSL, kdimDL, kdimTrg;
-    myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
+    std::tie(kdimSL, kdimDL, kdimTrg) = myFMM.getKernelDimension(testKernel);
+
     if (myRank == 0)
         printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
     int nSrcSLLocal = srcSLCoordLocal.size() / 3;
@@ -289,7 +290,8 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
 
     // srcCoord and trgCoord are distributed
     int kdimSL, kdimDL, kdimTrg;
-    myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
+    std::tie(kdimSL, kdimDL, kdimTrg) =
+        myFMM.getKernelDimension(testKernel);
     if (myRank == 0) {
         printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
     }
@@ -451,7 +453,8 @@ void testFMM(const cli::Parser &parser, int order) {
             continue;
 
         int kdimSL, kdimDL, kdimTrg;
-        myFMM.getKernelDimension(kdimSL, kdimDL, kdimTrg, testKernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) =
+            myFMM.getKernelDimension(testKernel);
 
         std::vector<double> srcSLValue;
         std::vector<double> srcDLValue;
