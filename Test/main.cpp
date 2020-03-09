@@ -134,7 +134,9 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                       trgCoordLocal.size() / 3, trgValueShifted.data(),
                       testKernel);
 
+    int multOrder = myFMM.getMultOrder();
     PointDistribution::dumpPoints("trgPointsShifted" +
+                                      std::to_string(multOrder) + "_" +
                                       std::to_string((uint)testKernel) + ".txt",
                                   trgCoordLocal, trgValueShifted, kdimTrg);
 
@@ -260,17 +262,22 @@ void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
         PointDistribution::checkError(trgValueLocal, trgValueTrueLocal);
 
         // output for debug
+        int multOrder = myFMM.getMultOrder();
         PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcSLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcSLCoordLocal, srcSLValueLocal, kdimSL);
         PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcDLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcDLCoordLocal, srcDLValueLocal, kdimDL);
         PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "trgPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             trgCoordLocal, trgValueLocal, kdimTrg);
         PointDistribution::dumpPoints(
-            "trgPointsTrue" + std::to_string(((uint)testKernel)) + ".txt",
+            "trgPointsTrue" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             trgCoordLocal, trgValueTrueLocal, kdimTrg);
     }
 
@@ -326,17 +333,22 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         PointDistribution::checkError(trgValueLocal, trgValueTrueLocal);
 
         // output for debug
+        int multOrder = myFMM.getMultOrder();
         PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcSLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcSLCoordLocal, srcSLValueLocal, kdimSL);
         PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcDLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcDLCoordLocal, srcDLValueLocal, kdimDL);
         PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "trgPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             trgCoordLocal, trgValueLocal, kdimTrg);
         PointDistribution::dumpPoints(
-            "trgPointsTrue" + std::to_string(((uint)testKernel)) + ".txt",
+            "trgPointsTrue" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             trgCoordLocal, trgValueTrueLocal, kdimTrg);
     } else if (verify == 2) {
         if (myRank == 0)
@@ -347,15 +359,18 @@ void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
         calcFMMShifted(myFMM, testKernel, srcSLCoordLocal, srcDLCoordLocal,
                        trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
                        trgValueLocalShifted, kdimTrg);
-
+        int multOrder = myFMM.getMultOrder();
         PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcSLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcSLCoordLocal, srcSLValueLocal, kdimSL);
         PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "srcDLPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             srcDLCoordLocal, srcDLValueLocal, kdimDL);
         PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(((uint)testKernel)) + ".txt",
+            "trgPoints" + std::to_string(multOrder) + "_" +
+                std::to_string(((uint)testKernel)) + ".txt",
             trgCoordLocal, trgValueLocal, kdimTrg);
 
         PointDistribution::checkError(trgValueLocal, trgValueLocalShifted);

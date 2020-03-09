@@ -17,15 +17,21 @@
 class ChebNodal {
   public:
     int chebN; // points.size() = pChebN+1
+    bool includeEnd;
     std::vector<double> points;
     std::vector<double> weights;
 
   public:
-    ChebNodal(int chebN) : chebN(chebN) {
+    ChebNodal(int chebN, bool includeEnd = true)
+        : chebN(chebN), includeEnd(includeEnd) {
         points.resize(chebN + 1);
         weights.resize(chebN + 1);
 
         calcWeight();
+        if (!includeEnd) {
+            points.resize(points.size() - 1);
+            weights.resize(weights.size() - 1);
+        }
     }
 
     ~ChebNodal() = default;

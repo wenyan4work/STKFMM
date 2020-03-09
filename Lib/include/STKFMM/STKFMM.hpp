@@ -368,6 +368,14 @@ class STKFMM {
                                          poolFMM[kernel_]->kdimTrg);
     }
 
+
+    /**
+     * @brief Get multipole order
+     *
+     * @return multipole order
+     */
+    int getMultOrder() { return multOrder; }
+
   private:
     const int multOrder;       ///< multipole order
     const int maxPts;          ///< max number of points to use

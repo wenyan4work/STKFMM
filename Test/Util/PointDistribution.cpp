@@ -49,8 +49,8 @@ void PointDistribution::fixedPoints(int nPts, double box, double shift, std::vec
 }
 
 void PointDistribution::chebPoints(int nPts, double box, double shift, std::vector<double> &ptsCoord) {
-
-    ChebNodal chebData(nPts);
+    // Get Chebyshev node without far endpoint (to prevent overlap with PBC)
+    ChebNodal chebData(nPts, false);
     chebData.points[0] += 0;
     chebData.points.back() -= 1e-14; // prevent PVFMM crash with point located at the edge
 
