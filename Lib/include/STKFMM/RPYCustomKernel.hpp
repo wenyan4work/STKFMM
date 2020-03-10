@@ -11,8 +11,8 @@ namespace pvfmm {
 
 /**********************************************************
  *                                                        *
- *     Stokes P Vel kernel, source: 4, target: 4          *
- *                                                        *
+ *     RPY velocity kernel, source: 4, target: 3          *
+ *           fx,fy,fz,a -> ux,uy,uz                       *
  **********************************************************/
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
@@ -121,7 +121,7 @@ void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 
 /**********************************************************
  *                                                        *
- * RPY Force,a Vel kernel,source: 4, target: 6            *
+ * RPY Force,a Vel,lapVel kernel, source: 4, target: 6    *
  *       fx,fy,fz,a -> ux,uy,uz,lapux,lapuy,lapuz         *
  **********************************************************/
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
