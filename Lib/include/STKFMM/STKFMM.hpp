@@ -322,21 +322,11 @@ class STKFMM {
      * @brief Get the FMM box
      * a cubic box as [xlow,xhigh)x[ylow,yhigh)x[zlow,zhigh)
      *
-     * @param xlow_
-     * @param xhigh_
-     * @param ylow_
-     * @param yhigh_
-     * @param zlow_
-     * @param zhigh_
+     * @return [xlow, xhigh, ylow, yhigh, zlow, zhigh]
      */
-    void getBox(double &xlow_, double &xhigh_, double &ylow_, double &yhigh_,
-                double &zlow_, double &zhigh_) {
-        xlow_ = xlow;
-        xhigh_ = xhigh;
-        ylow_ = ylow;
-        yhigh_ = yhigh;
-        zlow_ = zlow;
-        zhigh_ = zhigh;
+    std::tuple<double, double, double, double, double, double> getBox() {
+        return std::tuple<double, double, double, double, double, double>(
+            xlow, xhigh, ylow, yhigh, zlow, zhigh);
     };
 
     /**
@@ -360,14 +350,14 @@ class STKFMM {
      * @brief Get kernel dimension
      *
      * @param kernel_ one of the activated kernels
-     * @return [single layer kernel dimension, double layer kernel dimension, target kernel dimension]
+     * @return [single layer kernel dimension, double layer kernel dimension,
+     *          target kernel dimension]
      */
     std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
         return std::tuple<int, int, int>(poolFMM[kernel_]->kdimSL,
                                          poolFMM[kernel_]->kdimDL,
                                          poolFMM[kernel_]->kdimTrg);
     }
-
 
     /**
      * @brief Get multipole order

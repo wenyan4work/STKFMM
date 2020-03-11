@@ -38,6 +38,7 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def(py::init<int, int, stkfmm::PAXIS, unsigned>())
         .def("setBox", &stkfmm::STKFMM::setBox)
         .def("showActiveKernels", &stkfmm::STKFMM::showActiveKernels)
+        .def("getBox", &stkfmm::STKFMM::getBox)
         .def("setPoints",
              [](stkfmm::STKFMM &fmm, const int nSL,
                 py::array_t<double> src_SL_coord, const int nDL,

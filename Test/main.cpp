@@ -100,7 +100,8 @@ void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
                     const std::vector<double> &srcDLValueLocal,
                     std::vector<double> &trgValueShifted, int kdimTrg) {
     double rlow[3], rhigh[3];
-    myFMM.getBox(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]);
+    std::tie(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]) =
+        myFMM.getBox();
 
     std::vector<double> shift(3, 0.5);
     for (int i = 0; i < 3; ++i)
