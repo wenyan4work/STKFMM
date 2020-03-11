@@ -343,9 +343,152 @@ void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
+/**********************************************************
+ *                                                        *
+ *   Laplace quadrupole kernel,source: 4, target: 4       *
+ *       fx,fy,fz,b -> phi,gradphix,gradphiy,gradphiz     *
+ **********************************************************/
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
+void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
+                                Matrix<Real_t> &src_value,
+                                Matrix<Real_t> &trg_coord,
+                                Matrix<Real_t> &trg_value) {
+
+#define SRC_BLK 500
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
+    }
+    const Vec_t FACV =
+        set_intrin<Vec_t, Real_t>(1.0 / (8 * const_pi<Real_t>()));
+    Vec_t nwtn_factor = set_intrin<Vec_t, Real_t>(1.0 / nwtn_scal);
+    Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
+    Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
+
+    const size_t src_cnt_ = src_coord.Dim(1);
+    const size_t trg_cnt_ = trg_coord.Dim(1);
+
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            const Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t phi = zero_intrin<Vec_t>();
+            Vec_t gradphix = zero_intrin<Vec_t>();
+            Vec_t gradphiy = zero_intrin<Vec_t>();
+            Vec_t gradphiz = zero_intrin<Vec_t>();
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                const Vec_t dx = tx - bcast_intrin<Vec_t>(&src_coord[0][s]);
+                const Vec_t dy = ty - bcast_intrin<Vec_t>(&src_coord[1][s]);
+                const Vec_t dz = tz - bcast_intrin<Vec_t>(&src_coord[2][s]);
+                const Vec_t dx2 = mul_intrin(dx, dx);
+                const Vec_t dy2 = mul_intrin(dy, dy);
+                const Vec_t dz2 = mul_intrin(dz, dz);
+                const Vec_t dxdydz = mul_intrin(mul_intrin(dx, dy), dz);
+
+                Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
+                Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
+                Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
+                Vec_t b2 = bcast_intrin<Vec_t>(&src_value[2][s]);
+                // All terms scale as b2 * f, so premultiply
+                b2 = mul_intrin(b2, b2);
+                fx = mul_intrin(b2, fx);
+                fy = mul_intrin(b2, fy);
+                fz = mul_intrin(b2, fz);
+
+                const Vec_t r2 = add_intrin(
+                    add_intrin(mul_intrin(dx, dx), mul_intrin(dy, dy)),
+                    mul_intrin(dz, dz));
+
+                const Vec_t rinv = mul_intrin(
+                    rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2), nwtn_factor);
+                const Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
+                const Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv), rinv3);
+                const Vec_t three_rinv5 = mul_intrin(three, rinv5);
+
+                // TODO: verify and optimize Laplace Quadrupole interaction
+                Vec_t Gzx = mul_intrin(mul_intrin(dx, dz), rinv3);
+                Vec_t Gzy = mul_intrin(mul_intrin(dy, dz), rinv3);
+                Vec_t Gxx_Gyy =
+                    add_intrin(add_intrin(rinv, rinv),
+                               mul_intrin(rinv3, add_intrin(dx2, dy2)));
+
+                phi =
+                    add_intrin(phi, add_intrin(add_intrin(mul_intrin(Gzx, fx),
+                                                          mul_intrin(Gzy, fy)),
+                                               mul_intrin(Gxx_Gyy, fz)));
+                gradphix = add_intrin(
+                    gradphix,
+                    mul_intrin(sub_intrin(mul_intrin(dz, rinv3),
+                                          mul_intrin(dx2, dz), three_rinv5),
+                               fx));
+                gradphix = sub_intrin(
+                    gradphix, mul_intrin(mul_intrin(dxdydz, three_rinv5), fy));
+                gradphix = sub_intrin(
+                    gradphix, mul_intrin(mul_intrin(three_rinv5, fz),
+                                         add_intrin(mul_intrin(dx, dx2),
+                                                    mul_intrin(dx, dy2))));
+
+                gradphiy = sub_intrin(
+                    gradphiy, mul_intrin(mul_intrin(dxdydz, three_rinv5), fx));
+                gradphiy = add_intrin(
+                    gradphiy,
+                    mul_intrin(sub_intrin(mul_intrin(dz, rinv3),
+                                          mul_intrin(dy2, dz), three_rinv5),
+                               fy));
+                gradphiy = sub_intrin(
+                    gradphiy, mul_intrin(mul_intrin(three_rinv5, fz),
+                                         add_intrin(mul_intrin(dy, dy2),
+                                                    mul_intrin(dy, dx2))));
+
+                gradphiz = add_intrin(
+                    gradphiz,
+                    mul_intrin(sub_intrin(mul_intrin(dx, rinv3),
+                                          mul_intrin(dz2, dx), three_rinv5),
+                               fx));
+                gradphiz = add_intrin(
+                    gradphiz,
+                    mul_intrin(sub_intrin(mul_intrin(dy, rinv3),
+                                          mul_intrin(dz2, dy), three_rinv5),
+                               fy));
+                gradphiz = sub_intrin(
+                    gradphiz,
+                    mul_intrin(
+                        add_intrin(mul_intrin(mul_intrin(2, dz), rinv3),
+                                   mul_intrin(three_rinv5,
+                                              add_intrin(mul_intrin(dx2, dz),
+                                                         mul_intrin(dy2, dz)))),
+                        fz));
+            }
+
+            phi = add_intrin(mul_intrin(phi, FACV),
+                             load_intrin<Vec_t>(&trg_value[0][t]));
+            gradphix = add_intrin(mul_intrin(gradphix, FACV),
+                                  load_intrin<Vec_t>(&trg_value[1][t]));
+            gradphiy = add_intrin(mul_intrin(gradphiy, FACV),
+                                  load_intrin<Vec_t>(&trg_value[2][t]));
+            gradphiz = add_intrin(mul_intrin(gradphiz, FACV),
+                                  load_intrin<Vec_t>(&trg_value[3][t]));
+
+            store_intrin(&trg_value[0][t], phi);
+            store_intrin(&trg_value[1][t], gradphix);
+            store_intrin(&trg_value[2][t], gradphiy);
+            store_intrin(&trg_value[3][t], gradphiz);
+        }
+    }
+#undef SRC_BLK
+}
+
 GEN_KERNEL(rpy_u, rpy_u_uKernel, 4, 3)
 GEN_KERNEL(rpy_ulapu, rpy_ulapu_uKernel, 4, 6)
 GEN_KERNEL(stk_ulapu, stk_ulapu_uKernel, 3, 6)
+GEN_KERNEL(laplace_phigradphi, laplace_phigradphi_uKernel, 4, 4)
 
 template <class T>
 struct RPYTestKernel {
