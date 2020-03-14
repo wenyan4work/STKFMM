@@ -35,7 +35,7 @@ find_package(Eigen3 REQUIRED)
 
 enable_testing()
 
-# add_subdirectory(M2L)
+add_subdirectory(M2L)
 add_subdirectory(Lib)
 add_subdirectory(Test)
 
