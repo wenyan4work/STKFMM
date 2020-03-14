@@ -4,8 +4,10 @@ target_include_directories(
   STKFMM
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-         ${PVFMM_INCLUDE_DIR} ${MKL_INCLUDE_DIRS})
-target_compile_definitions(STKFMM PUBLIC "PVFMM_FFTW3_MKL")
+         ${PVFMM_INCLUDE_DIR}/pvfmm ${PVFMM_DEP_INCLUDE_DIR})
+target_link_libraries(STKFMM PUBLIC ${PVFMM_LIB_DIR}/${PVFMM_SHARED_LIB}
+                                    ${PVFMM_DEP_LIB})
+
 target_compile_options(STKFMM PUBLIC ${OpenMP_CXX_FLAGS}
                                      ${MPI_CXX_INCLUDE_DIRS})
 

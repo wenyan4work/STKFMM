@@ -16,7 +16,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using GCC
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  # using intel
+  # using intel, disable offloading
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qno-offload")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -qno-offload")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -25,18 +25,17 @@ endif()
 
 set(MPI_CXX_SKIP_MPICXX
     true
-    CACHE BOOL
-          "If true, the MPI-2 C++ bindings are disabled using definitions.")
+    CACHE BOOL "The MPI-2 C++ bindings are disabled.")
 # required compiler features
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 # library
-find_package(PVFMM REQUIRED)
+find_package(pvfmm REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(MKL REQUIRED)
 
 enable_testing()
 
+# add_subdirectory(M2L)
 add_subdirectory(Lib)
 add_subdirectory(Test)
 

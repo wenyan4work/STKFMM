@@ -1,4 +1,4 @@
-# python interface
+# python interface, not working yet
 # PVFMM should be compiled with -fPIC
 if(PyInterface)
 
@@ -18,7 +18,7 @@ if(PyInterface)
     PyPeriodicFMM
     PUBLIC $<INSTALL_INTERFACE:include>
            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-           ${PVFMM_INCLUDE_DIR} ${MKL_INCLUDE_DIRS}
+           ${PVFMM_INCLUDE_DIR} ${PVFMM_DEP_INCLUDE_DIR}
     PRIVATE ${PYTHON_INCLUDE_DIRS})
   target_compile_definitions(PyPeriodicFMM PUBLIC "PVFMM_FFTW3_MKL")
   target_compile_options(PyPeriodicFMM PUBLIC ${OpenMP_CXX_FLAGS}
