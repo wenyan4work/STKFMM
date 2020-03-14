@@ -248,7 +248,6 @@ int main(int argc, char **argv) {
         std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
     // dump M2L
     for (int i = 0; i < equivN; i++) {
@@ -257,6 +256,8 @@ int main(int argc, char **argv) {
                       << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
+
+    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
     // Test
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>

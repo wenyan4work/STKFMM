@@ -319,8 +319,7 @@ int main(int argc, char **argv) {
         std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
-    //    exit(1);
+
     // dump M2L
     for (int i = 0; i < 3 * equivN; i++) {
         for (int j = 0; j < 3 * equivN; j++) {
@@ -328,6 +327,8 @@ int main(int argc, char **argv) {
                       << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
+
+    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
     /*
      * pointForce=[(np.array([1.0,0,0]),np.array([0.1,0.55,0.2]))

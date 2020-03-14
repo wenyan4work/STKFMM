@@ -9,9 +9,9 @@
 
 #include <Eigen/Dense>
 
+#include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <chrono>
 
 #define DIRECTLAYER 2
 #define PI314 (static_cast<double>(3.1415926535897932384626433))
@@ -179,15 +179,6 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     Eigen::setNbThreads(1);
 
-    // testing Ewald routine
-    double Madelung2D =
-        gKernelEwald(EVec3(0, 0, 0), EVec3(0.5, 0.5, 0)) * (-1) +
-        gKernelEwald(EVec3(0, 0, 0), EVec3(0, 0, 0)) * 1;
-    std::cout << std::setprecision(16) << "Madelung2D: " << Madelung2D
-              << " Error: " << Madelung2D + 2.2847222932891311 << std::endl;
-
-    //   exit(1);
-
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
     const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
@@ -263,7 +254,6 @@ int main(int argc, char **argv) {
         std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
     // dump M2L
     for (int i = 0; i < equivN; i++) {
@@ -272,6 +262,15 @@ int main(int argc, char **argv) {
                       << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
+
+    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
+
+    // testing Ewald routine
+    double Madelung2D =
+        gKernelEwald(EVec3(0, 0, 0), EVec3(0.5, 0.5, 0)) * (-1) +
+        gKernelEwald(EVec3(0, 0, 0), EVec3(0, 0, 0)) * 1;
+    std::cout << std::setprecision(16) << "Madelung2D: " << Madelung2D
+              << " Error: " << Madelung2D + 2.2847222932891311 << std::endl;
 
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
         chargePoint(2);
