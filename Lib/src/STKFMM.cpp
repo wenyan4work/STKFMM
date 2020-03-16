@@ -148,7 +148,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::FTVelOmega();
         break;
     case KERNEL::RPY:
-        kernelFunctionPtr = &pvfmm::RPYTestKernel<double>::ulapu();
+        kernelFunctionPtr = &pvfmm::RPYKernel<double>::ulapu();
         break;
     }
     setKernel();

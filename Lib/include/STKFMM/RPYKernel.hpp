@@ -491,7 +491,7 @@ GEN_KERNEL(stk_ulapu, stk_ulapu_uKernel, 3, 6)
 GEN_KERNEL(laplace_phigradphi, laplace_phigradphi_uKernel, 4, 4)
 
 template <class T>
-struct RPYTestKernel {
+struct RPYKernel {
     inline static const Kernel<T> &ulapu(); //   3+1->6
   private:
     static constexpr int NEWTON_ITE = sizeof(T) / 4;
@@ -500,7 +500,7 @@ struct RPYTestKernel {
 // 1 newton for float, 2 newton for double
 // the string for stk_ker must be exactly the same as in kernel.txx of pvfmm
 template <class T>
-inline const Kernel<T> &RPYTestKernel<T>::ulapu() {
+inline const Kernel<T> &RPYKernel<T>::ulapu() {
 
     static Kernel<T> g_ker = StokesKernel<T>::velocity();
     static Kernel<T> gr_ker = BuildKernel<T, rpy_u<T, NEWTON_ITE>>(
