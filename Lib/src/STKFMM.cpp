@@ -12,7 +12,7 @@
 #include <omp.h>
 
 #include "STKFMM/LaplaceLayerKernel.hpp"
-#include "STKFMM/RPYCustomKernel.hpp"
+#include "STKFMM/RPYKernel.hpp"
 #include "STKFMM/STKFMM.hpp"
 #include "STKFMM/StokesLayerKernel.hpp"
 #include "STKFMM/StokesRegSingleLayerKernel.hpp"
