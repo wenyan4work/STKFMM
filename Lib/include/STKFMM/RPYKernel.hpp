@@ -361,7 +361,7 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
         nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
     }
     const Vec_t FACV =
-        set_intrin<Vec_t, Real_t>(1.0 / (8 * const_pi<Real_t>()));
+        set_intrin<Vec_t, Real_t>(1.0 / (4.0 * const_pi<Real_t>()));
     Vec_t nwtn_factor = set_intrin<Vec_t, Real_t>(1.0 / nwtn_scal);
     Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
     Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
@@ -395,7 +395,7 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
                 Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
                 Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
                 Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
-                Vec_t b2 = bcast_intrin<Vec_t>(&src_value[2][s]);
+                Vec_t b2 = bcast_intrin<Vec_t>(&src_value[3][s]);
                 // All terms scale as b2 * f, so premultiply
                 b2 = mul_intrin(b2, b2);
                 fx = mul_intrin(b2, fx);
@@ -417,16 +417,18 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
                 Vec_t Gzy = mul_intrin(mul_intrin(dy, dz), rinv3);
                 Vec_t Gxx_Gyy =
                     add_intrin(add_intrin(rinv, rinv),
-                               mul_intrin(rinv3, add_intrin(dx2, dy2)));
+                               mul_intrin(add_intrin(dx2, dy2), rinv3));
 
                 phi =
                     add_intrin(phi, add_intrin(add_intrin(mul_intrin(Gzx, fx),
                                                           mul_intrin(Gzy, fy)),
                                                mul_intrin(Gxx_Gyy, fz)));
+
                 gradphix = add_intrin(
                     gradphix,
                     mul_intrin(sub_intrin(mul_intrin(dz, rinv3),
-                                          mul_intrin(dx2, dz), three_rinv5),
+                                          mul_intrin(mul_intrin(dx2, dz),
+                                                     three_rinv5)),
                                fx));
                 gradphix = sub_intrin(
                     gradphix, mul_intrin(mul_intrin(dxdydz, three_rinv5), fy));
@@ -440,7 +442,8 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
                 gradphiy = add_intrin(
                     gradphiy,
                     mul_intrin(sub_intrin(mul_intrin(dz, rinv3),
-                                          mul_intrin(dy2, dz), three_rinv5),
+                                          mul_intrin(mul_intrin(dy2, dz),
+                                                     three_rinv5)),
                                fy));
                 gradphiy = sub_intrin(
                     gradphiy, mul_intrin(mul_intrin(three_rinv5, fz),
@@ -450,17 +453,19 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord,
                 gradphiz = add_intrin(
                     gradphiz,
                     mul_intrin(sub_intrin(mul_intrin(dx, rinv3),
-                                          mul_intrin(dz2, dx), three_rinv5),
+                                          mul_intrin(mul_intrin(dz2, dx),
+                                                     three_rinv5)),
                                fx));
                 gradphiz = add_intrin(
                     gradphiz,
                     mul_intrin(sub_intrin(mul_intrin(dy, rinv3),
-                                          mul_intrin(dz2, dy), three_rinv5),
+                                          mul_intrin(mul_intrin(dz2, dy),
+                                                     three_rinv5)),
                                fy));
                 gradphiz = sub_intrin(
                     gradphiz,
                     mul_intrin(
-                        add_intrin(mul_intrin(mul_intrin(2, dz), rinv3),
+                        add_intrin(mul_intrin(mul_intrin(two, dz), rinv3),
                                    mul_intrin(three_rinv5,
                                               add_intrin(mul_intrin(dx2, dz),
                                                          mul_intrin(dy2, dz)))),

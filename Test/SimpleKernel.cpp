@@ -1493,28 +1493,28 @@ void LaplacePhiGradPhi(double *s, double *t, double *fin, double *phigradphi) {
     auto r = [s, t](int i) { return t[i] - s[i]; };
 
     phigradphi[0] =
-        (2 * ((f(0) * r(0) + f(1) * r(1)) * r(2) +
-              f(2) * (2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)))) /
+        (2 * (f(0) * r(0) + f(1) * r(1)) * r(2) +
+         f(2) * (6 * (Power(r(0), 2) + Power(r(1), 2)) + 4 * Power(r(2), 2))) /
         Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 1.5);
     phigradphi[1] =
-        (2 * (f(2) * r(0) *
-                  (-2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)) +
-              r(2) * (-3 * f(1) * r(0) * r(1) +
-                      f(0) * (-2 * Power(r(0), 2) + Power(r(1), 2) +
-                              Power(r(2), 2))))) /
+        (-6 * f(2) * r(0) * (Power(r(0), 2) + Power(r(1), 2)) +
+         2 * r(2) *
+             (-3 * f(1) * r(0) * r(1) +
+              f(0) * (-2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)))) /
         Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
     phigradphi[2] =
-        (2 * (f(2) * r(0) *
-                  (-2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)) +
-              r(2) * (-3 * f(1) * r(0) * r(1) +
-                      f(0) * (-2 * Power(r(0), 2) + Power(r(1), 2) +
-                              Power(r(2), 2))))) /
+        (-6 * f(2) * r(1) * (Power(r(0), 2) + Power(r(1), 2)) +
+         2 * r(2) *
+             (-3 * f(0) * r(0) * r(1) +
+              f(1) * (Power(r(0), 2) - 2 * Power(r(1), 2) + Power(r(2), 2)))) /
         Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
     phigradphi[3] =
-        (2 *
-         (f(0) * r(0) * (Power(r(0), 2) + Power(r(1), 2) - 2 * Power(r(2), 2)) +
-          f(1) * r(1) * (Power(r(0), 2) + Power(r(1), 2) - 2 * Power(r(2), 2)) -
-          f(2) * r(2) *
-              (4 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)))) /
+        (2 * (f(0) * r(0) + f(1) * r(1)) * (Power(r(0), 2) + Power(r(1), 2)) -
+         10 * f(2) * (Power(r(0), 2) + Power(r(1), 2)) * r(2) -
+         4 * (f(0) * r(0) + f(1) * r(1)) * Power(r(2), 2) -
+         4 * f(2) * Power(r(2), 3)) /
         Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
+
+    for (int i = 0; i < 4; ++i)
+        phigradphi[i] *= f(3)*f(3) / (8 * M_PI);
 }
