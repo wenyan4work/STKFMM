@@ -1483,7 +1483,38 @@ void StokesSLRPY(double *s, double *t, double *f, double *vlapv) {
         vlapv[i] /= 8.0 * M_PI;
 }
 
-void StokesDLRPY(double *s, double *t, double *f, double *vel) {};
+void StokesDLRPY(double *s, double *t, double *f, double *vel){};
 
-void StokesRegDLVel(double *s, double *t, double *f, double *vel) {};
-void StokesRegDLVelOmega(double *s, double *t, double *f, double *velomega) {};
+void StokesRegDLVel(double *s, double *t, double *f, double *vel){};
+void StokesRegDLVelOmega(double *s, double *t, double *f, double *velomega){};
+
+void LaplacePhiGradPhi(double *s, double *t, double *fin, double *phigradphi) {
+    auto f = [fin](int i) { return fin[i]; };
+    auto r = [s, t](int i) { return t[i] - s[i]; };
+
+    phigradphi[0] =
+        (2 * ((f(0) * r(0) + f(1) * r(1)) * r(2) +
+              f(2) * (2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)))) /
+        Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 1.5);
+    phigradphi[1] =
+        (2 * (f(2) * r(0) *
+                  (-2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)) +
+              r(2) * (-3 * f(1) * r(0) * r(1) +
+                      f(0) * (-2 * Power(r(0), 2) + Power(r(1), 2) +
+                              Power(r(2), 2))))) /
+        Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
+    phigradphi[2] =
+        (2 * (f(2) * r(0) *
+                  (-2 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)) +
+              r(2) * (-3 * f(1) * r(0) * r(1) +
+                      f(0) * (-2 * Power(r(0), 2) + Power(r(1), 2) +
+                              Power(r(2), 2))))) /
+        Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
+    phigradphi[3] =
+        (2 *
+         (f(0) * r(0) * (Power(r(0), 2) + Power(r(1), 2) - 2 * Power(r(2), 2)) +
+          f(1) * r(1) * (Power(r(0), 2) + Power(r(1), 2) - 2 * Power(r(2), 2)) -
+          f(2) * r(2) *
+              (4 * Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2)))) /
+        Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
+}
