@@ -29,11 +29,10 @@ namespace stkfmm {
  *
  */
 enum class PAXIS : unsigned {
-    NONE, ///< non-periodic, free-space
-    // TODO: add periodic BC
-    PX,  ///< periodic along x axis
-    PXY, ///< periodic along XY axis
-    PXYZ ///< periodic along XYZ axis
+    NONE = 0, ///< non-periodic, free-space
+    PX = 1,   ///< periodic along x axis
+    PXY = 2,  ///< periodic along XY axis
+    PXYZ = 3  ///< periodic along XYZ axis
 };
 
 /**
@@ -118,6 +117,8 @@ class FMMData {
      *
      */
     ~FMMData();
+
+    static const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_);
 
     /**
      * @brief Set kernel function in pvfmm data structure
@@ -211,7 +212,7 @@ class STKFMM {
      * @return std::underlying_type<Enumeration>::type
      */
     template <typename Enumeration>
-    auto asInteger(Enumeration const value) ->
+    static auto asInteger(Enumeration const value) ->
         typename std::underlying_type<Enumeration>::type {
         return static_cast<typename std::underlying_type<Enumeration>::type>(
             value);
@@ -353,11 +354,7 @@ class STKFMM {
      * @return [single layer kernel dimension, double layer kernel dimension,
      *          target kernel dimension]
      */
-    std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
-        return std::tuple<int, int, int>(poolFMM[kernel_]->kdimSL,
-                                         poolFMM[kernel_]->kdimDL,
-                                         poolFMM[kernel_]->kdimTrg);
-    }
+    static std::tuple<int, int, int> getKernelDimension(KERNEL kernel_);
 
     /**
      * @brief Get multipole order

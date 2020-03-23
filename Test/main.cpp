@@ -7,15 +7,29 @@
 #include "Util/cmdparser.hpp"
 
 #include <algorithm>
-#include <chrono>
+#include <cassert>
 #include <iomanip>
 #include <iostream>
-#include <random>
 #include <vector>
 
 #include <mpi.h>
 
 using namespace stkfmm;
+constexpr int maxP = 16;
+
+struct FMMpoint {
+    std::vector<double> srcLocalSL;
+    std::vector<double> srcLocalDL;
+    std::vector<double> trgLocal;
+};
+
+struct FMMsrcval {
+    std::vector<double> srcLocalSL;
+    std::vector<double> srcLocalDL;
+};
+
+using FMMinput = std::unordered_map<KERNEL, FMMsrcval>;
+using FMMresult = std::unordered_map<KERNEL, std::vector<double>>;
 
 std::vector<KERNEL> kernelVec = {
     KERNEL::PVel,
@@ -44,44 +58,43 @@ std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
 void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>(
         "S", "nSLSource", 1,
-        "1 for point force, 2 for force dipole, 4 for 4 point forces, other "
-        "for same as target, default=1");
+        "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
     parser.set_optional<int>(
         "D", "nDLSource", 1,
-        "1 for point force, 2 for force dipole, 4 for 4 point forces, other "
-        "for same as target, default=1");
-    parser.set_optional<int>("s", "Seed", 1, "RNG Seed");
+        "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
     parser.set_optional<int>("T", "nTarget", 2,
-                             "total target number = (T+1)^3, default T=2");
+                             "total number of targets = (T+1)^3, default T=2");
+    parser.set_optional<int>("s", "Seed", 1, "RNG Seed");
     parser.set_optional<double>("B", "box", 1.0,
                                 "box edge length, default B=1.0");
     parser.set_optional<double>("M", "move", 0.0,
                                 "box origin shift move, default M=0");
     parser.set_optional<int>("K", "Kernel Combination", 0,
-                             "any positive number for arbitrary combination of "
-                             "kernels, default=0 means all kernels");
+                             "activated kernels, default=0 means all kernels");
     parser.set_optional<int>("R", "Random", 1,
                              "0 for random, 1 for Chebyshev, default 1");
+    parser.set_optional<int>("F", "FMM", 1,
+                             "0 to test S2T kernel, 1 to test FMM, default 1");
     parser.set_optional<int>(
-        "F", "FMM", 1, "0 for test S2T kernel, 1 for test FMM, default 1");
-    parser.set_optional<int>("V", "Verify", 1,
-                             "2 for translational invariance verification, 1 "
-                             "for O(N^2) verification, 0 for false, default 1");
+        "V", "Verify", 1,
+        "1 for O(N^2) and 0 for p=16 verification, default 1");
     parser.set_optional<int>(
         "P", "Periodic", 0,
         "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
-    parser.set_optional<int>("m", "maxPoints", 50,
-                             "Points used in multipole appx, default 50");
-    parser.set_optional<double>("e", "epsilon", 0.01,
-                                "Maximum size of input particles for RPY and "
-                                "StokesReg kernels, default 0.01");
+    parser.set_optional<int>(
+        "m", "maxPoints", 50,
+        "Max number of points in adaptive Octree, default 50");
+    parser.set_optional<double>(
+        "e", "epsilon", 0.01,
+        "Maximum size of particle for RPY and StokesReg kernels, default 0.01");
 }
 
 void showOption(const cli::Parser &parser) {
     std::cout << "Running setting: " << std::endl;
-    std::cout << "nSLSource: " << parser.get<int>("S") << std::endl;
-    std::cout << "nDLSource: " << parser.get<int>("D") << std::endl;
+    std::cout << "nSL Source: " << parser.get<int>("S") << std::endl;
+    std::cout << "nDL Source: " << parser.get<int>("D") << std::endl;
     std::cout << "nTarget: " << parser.get<int>("T") << std::endl;
+    std::cout << "RNG Seed: " << parser.get<int>("s") << std::endl;
     std::cout << "Box: " << parser.get<double>("B") << std::endl;
     std::cout << "Shift: " << parser.get<double>("M") << std::endl;
     std::cout << "KERNEL: " << parser.get<int>("K") << std::endl;
@@ -90,312 +103,22 @@ void showOption(const cli::Parser &parser) {
     std::cout << "Verification: " << parser.get<int>("V") << std::endl;
     std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
     std::cout << "maxPoints: " << parser.get<int>("m") << std::endl;
+    std::cout << "eps" << parser.get<double>("e") << std::endl;
 }
 
-void calcFMMShifted(STKFMM &myFMM, KERNEL testKernel,
-                    std::vector<double> &srcSLCoordLocal,
-                    std::vector<double> &srcDLCoordLocal,
-                    std::vector<double> &trgCoordLocal,
-                    const std::vector<double> &srcSLValueLocal,
-                    const std::vector<double> &srcDLValueLocal,
-                    std::vector<double> &trgValueShifted, int kdimTrg) {
-    double rlow[3], rhigh[3];
-    std::tie(rlow[0], rhigh[0], rlow[1], rhigh[1], rlow[2], rhigh[2]) =
-        myFMM.getBox();
-
-    std::vector<double> shift(3, 0.5);
-    for (int i = 0; i < 3; ++i)
-        shift[i] = (rhigh[i] - rlow[i]) * shift[i] + rlow[i];
-
-    int n_periodic = pvfmm::periodicType;
-
-    auto shiftCoords = [n_periodic, shift, rlow, rhigh](std::vector<double> &r,
-                                                        int sign) {
-        for (int i = 0; i < r.size() / 3; ++i) {
-            for (int j = 0; j < n_periodic; ++j) {
-                r[i * 3 + j] += sign * shift[j];
-                double dr = rhigh[j] - rlow[j];
-                r[i * 3 + j] -= (r[i * 3 + j] >= rhigh[j]) ? dr : 0.0;
-                r[i * 3 + j] += (r[i * 3 + j] <= rlow[j]) ? dr : 0.0;
-            }
-        }
-    };
-    shiftCoords(srcSLCoordLocal, 1);
-    shiftCoords(srcDLCoordLocal, 1);
-    shiftCoords(trgCoordLocal, 1);
-
-    myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
-                    srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
-                    trgCoordLocal.size() / 3, trgCoordLocal.data());
-
-    myFMM.clearFMM(testKernel);
-    myFMM.setupTree(testKernel);
-    myFMM.evaluateFMM(srcSLCoordLocal.size() / 3, srcSLValueLocal.data(),
-                      srcDLCoordLocal.size() / 3, srcDLValueLocal.data(),
-                      trgCoordLocal.size() / 3, trgValueShifted.data(),
-                      testKernel);
-
-    int multOrder = myFMM.getMultOrder();
-    PointDistribution::dumpPoints("trgPointsShifted" +
-                                      std::to_string(multOrder) + "_" +
-                                      std::to_string((uint)testKernel) + ".txt",
-                                  trgCoordLocal, trgValueShifted, kdimTrg);
-
-    shiftCoords(srcSLCoordLocal, -1);
-    shiftCoords(srcDLCoordLocal, -1);
-    shiftCoords(trgCoordLocal, -1);
-
-    myFMM.setPoints(srcSLCoordLocal.size() / 3, srcSLCoordLocal.data(),
-                    srcDLCoordLocal.size() / 3, srcDLCoordLocal.data(),
-                    trgCoordLocal.size() / 3, trgCoordLocal.data());
-}
-
-void calcTrueValue(KERNEL kernel, const int kdimSL, const int kdimDL,
-                   const int kdimTrg,
-                   const std::vector<double> &srcSLCoordLocal,
-                   const std::vector<double> &srcDLCoordLocal,
-                   const std::vector<double> &trgCoordLocal,
-                   const std::vector<double> &srcSLValueLocal,
-                   const std::vector<double> &srcDLValueLocal,
-                   std::vector<double> &trgValueTrueLocal) {
-    int myRank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-
-    // create a copy for MPI
-    std::vector<double> srcSLCoordGlobal = srcSLCoordLocal;
-    std::vector<double> srcDLCoordGlobal = srcDLCoordLocal;
-    std::vector<double> srcSLValueGlobal = srcSLValueLocal;
-    std::vector<double> srcDLValueGlobal = srcDLValueLocal;
-    std::vector<double> trgCoordGlobal = trgCoordLocal;
-
-    // src is fully repeated on every node
-    // trg remains distributed
-    PointDistribution::collectPtsAll(srcSLCoordGlobal);
-    PointDistribution::collectPtsAll(srcDLCoordGlobal);
-    PointDistribution::collectPtsAll(srcSLValueGlobal);
-    PointDistribution::collectPtsAll(srcDLValueGlobal);
-
-    // on every node, from global src to local trg
-    const int nSL = srcSLCoordGlobal.size() / 3;
-    const int nDL = srcDLCoordGlobal.size() / 3;
-    const int nTrg = trgCoordLocal.size() / 3;
-
-    // Create mapping of kernels to 'true value' functions
-    kernel_func kernelTestSL, kernelTestDL;
-    std::tie(kernelTestSL, kernelTestDL) = SL_kernels[kernel];
-
-    // check results
-#pragma omp parallel for
-    for (int i = 0; i < nTrg; i++) {
-        const double *trg = trgCoordLocal.data() + 3 * i;
-        double t[3] = {trg[0], trg[1], trg[2]};
-
-        // add SL values
-        for (int j = 0; j < nSL; j++) {
-            double result[20] = {0.0};
-            double *s = srcSLCoordGlobal.data() + 3 * j;
-            double *sval = srcSLValueGlobal.data() + kdimSL * j;
-
-            kernelTestSL(s, t, sval, result);
-
-            for (int k = 0; k < kdimTrg; k++) {
-                trgValueTrueLocal[kdimTrg * i + k] += result[k];
-            }
-        }
-
-        // add DL values
-        for (int j = 0; j < nDL; j++) {
-            double result[20] = {0.0};
-            double *s = srcDLCoordGlobal.data() + 3 * j;
-            double *sval = srcDLValueGlobal.data() + kdimDL * j;
-
-            kernelTestDL(s, t, sval, result);
-
-            for (int k = 0; k < kdimTrg; k++) {
-                trgValueTrueLocal[kdimTrg * i + k] += result[k];
-            }
-        }
-    }
-
-    return;
-}
-
-void testOneKernelS2T(STKFMM &myFMM, KERNEL testKernel,
-                      std::vector<double> &srcSLCoordLocal,
-                      std::vector<double> &srcDLCoordLocal,
-                      std::vector<double> &trgCoordLocal,
-                      std::vector<double> &srcSLValueLocal,
-                      std::vector<double> &srcDLValueLocal, uint verify = 1) {
-    // test S2T kernel, on rank 0 only
-    int myRank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-
-    int kdimSL, kdimDL, kdimTrg;
-    std::tie(kdimSL, kdimDL, kdimTrg) = myFMM.getKernelDimension(testKernel);
-
-    if (myRank == 0)
-        printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
-    int nSrcSLLocal = srcSLCoordLocal.size() / 3;
-    int nSrcDLLocal = srcDLCoordLocal.size() / 3;
-    int nTrgLocal = trgCoordLocal.size() / 3;
-
-    std::vector<double> trgValueLocal(nTrgLocal * kdimTrg);
-    std::vector<double> trgValueTrueLocal(nTrgLocal * kdimTrg);
-
-    myFMM.evaluateKernel(-1, PPKERNEL::SLS2T, nSrcSLLocal,
-                         srcSLCoordLocal.data(), srcSLValueLocal.data(),
-                         nTrgLocal, trgCoordLocal.data(), trgValueLocal.data(),
-                         testKernel); // SL
-    if (myRank == 0)
-        printf("SLS2T kernel evaluated\n");
-
-    myFMM.evaluateKernel(-1, PPKERNEL::DLS2T, nSrcDLLocal,
-                         srcDLCoordLocal.data(), srcDLValueLocal.data(),
-                         nTrgLocal, trgCoordLocal.data(), trgValueLocal.data(),
-                         testKernel); // DL
-
-    if (verify == 1) {
-        if (myRank == 0)
-            printf("DLS2T kernel evaluated\n");
-        calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
-                      srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
-                      srcDLValueLocal, trgValueTrueLocal);
-        PointDistribution::checkError(trgValueLocal, trgValueTrueLocal);
-
-        // output for debug
-        int multOrder = myFMM.getMultOrder();
-        PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            trgCoordLocal, trgValueLocal, kdimTrg);
-        PointDistribution::dumpPoints(
-            "trgPointsTrue" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            trgCoordLocal, trgValueTrueLocal, kdimTrg);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-}
-
-void testOneKernelFMM(STKFMM &myFMM, KERNEL testKernel,
-                      std::vector<double> &srcSLCoordLocal,
-                      std::vector<double> &srcDLCoordLocal,
-                      std::vector<double> &trgCoordLocal,
-                      std::vector<double> &srcSLValueLocal,
-                      std::vector<double> &srcDLValueLocal, uint verify = 1) {
-    // srcSLCoord, srcDLCoord, trgCoord are distributed
-
-    int myRank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-
-    // srcCoord and trgCoord are distributed
-    int kdimSL, kdimDL, kdimTrg;
-    std::tie(kdimSL, kdimDL, kdimTrg) =
-        myFMM.getKernelDimension(testKernel);
-    if (myRank == 0) {
-        printf("kdim: SL %d, DL %d, TRG %d\n", kdimSL, kdimDL, kdimTrg);
-    }
-
-    int nSrcSLLocal = srcSLCoordLocal.size() / 3;
-    int nSrcDLLocal = srcDLCoordLocal.size() / 3;
-    int nTrgLocal = trgCoordLocal.size() / 3;
-
-    std::vector<double> trgValueLocal(nTrgLocal * kdimTrg, 0);
-
-    // FMM1
-    Timer timer;
-    timer.tick();
-    myFMM.setupTree(testKernel);
-    timer.tock("Tree setup ");
-    timer.tick();
-    myFMM.evaluateFMM(nSrcSLLocal, srcSLValueLocal.data(), nSrcDLLocal,
-                      srcDLValueLocal.data(), nTrgLocal, trgValueLocal.data(),
-                      testKernel);
-    timer.tock("FMM Evaluation ");
-    if (myRank == 0)
-        timer.dump();
-
-    if (verify == 1) {
-        if (myRank == 0)
-            printf("fmm evaluated, computing true results with simple O(N^2) "
-                   "sum\n");
-        std::vector<double> trgValueTrueLocal(nTrgLocal * kdimTrg, 0);
-        calcTrueValue(testKernel, kdimSL, kdimDL, kdimTrg, srcSLCoordLocal,
-                      srcDLCoordLocal, trgCoordLocal, srcSLValueLocal,
-                      srcDLValueLocal, trgValueTrueLocal);
-        PointDistribution::checkError(trgValueLocal, trgValueTrueLocal);
-
-        // output for debug
-        int multOrder = myFMM.getMultOrder();
-        PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            trgCoordLocal, trgValueLocal, kdimTrg);
-        PointDistribution::dumpPoints(
-            "trgPointsTrue" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            trgCoordLocal, trgValueTrueLocal, kdimTrg);
-    } else if (verify == 2) {
-        if (myRank == 0)
-            printf("fmm evaluated, computing result with periodic dimensions "
-                   "shifted\n");
-        std::vector<double> trgValueLocalShifted(nTrgLocal * kdimTrg, 0);
-
-        calcFMMShifted(myFMM, testKernel, srcSLCoordLocal, srcDLCoordLocal,
-                       trgCoordLocal, srcSLValueLocal, srcDLValueLocal,
-                       trgValueLocalShifted, kdimTrg);
-        int multOrder = myFMM.getMultOrder();
-        PointDistribution::dumpPoints(
-            "srcSLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcSLCoordLocal, srcSLValueLocal, kdimSL);
-        PointDistribution::dumpPoints(
-            "srcDLPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            srcDLCoordLocal, srcDLValueLocal, kdimDL);
-        PointDistribution::dumpPoints(
-            "trgPoints" + std::to_string(multOrder) + "_" +
-                std::to_string(((uint)testKernel)) + ".txt",
-            trgCoordLocal, trgValueLocal, kdimTrg);
-
-        PointDistribution::checkError(trgValueLocal, trgValueLocalShifted);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-}
-
-void testFMM(const cli::Parser &parser, int order) {
+// generate (distributed) FMM points
+void genPoint(const cli::Parser &parser, FMMpoint &point) {
     const double shift = parser.get<double>("M");
     const double box = parser.get<double>("B");
-    const int temp = parser.get<int>("K");
-    const int k = (temp == 0) ? ~((int)0) : temp;
-    const PAXIS paxis = (PAXIS)parser.get<int>("P");
-    const int maxPoints = parser.get<int>("m");
-    STKFMM myFMM(order, maxPoints, paxis, k);
-    myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
-    myFMM.showActiveKernels();
-
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    std::vector<double> srcSLCoord;
-    std::vector<double> srcDLCoord;
-    std::vector<double> trgCoord;
+
+    auto &srcLocalSL = point.srcLocalSL;
+    auto &srcLocalDL = point.srcLocalDL;
+    auto &trgLocal = point.trgLocal;
+    srcLocalSL.clear();
+    srcLocalDL.clear();
+    trgLocal.clear();
 
     PointDistribution pd(parser.get<int>("s"));
 
@@ -403,115 +126,326 @@ void testFMM(const cli::Parser &parser, int order) {
         // set trg coord
         const int nPts = parser.get<int>("T");
         if (parser.get<int>("R") > 0) {
-            pd.randomPoints(nPts, box, shift, trgCoord);
+            pd.randomPoints(nPts, box, shift, trgLocal);
         } else {
-            PointDistribution::chebPoints(nPts, box, shift, trgCoord);
+            PointDistribution::chebPoints(nPts, box, shift, trgLocal);
         }
+
         // set src SL coord
         const int nSL = parser.get<int>("S");
         if (nSL == 0) {
-            srcSLCoord.clear();
+            srcLocalSL.clear();
         } else if (nSL == 1 || nSL == 2 || nSL == 4) {
-            PointDistribution::fixedPoints(nSL, box, shift, srcSLCoord);
+            PointDistribution::fixedPoints(nSL, box, shift, srcLocalSL);
         } else {
-            srcSLCoord = trgCoord;
+            srcLocalSL = trgLocal;
         }
 
         const int nDL = parser.get<int>("D");
         if (nDL == 0) {
-            srcDLCoord.clear();
+            srcLocalDL.clear();
         } else if (nDL == 1 || nDL == 2 || nDL == 4) {
-            PointDistribution::fixedPoints(nDL, box, shift, srcDLCoord);
+            PointDistribution::fixedPoints(nDL, box, shift, srcLocalDL);
         } else {
-            srcDLCoord = trgCoord;
+            srcLocalDL = trgLocal;
         }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    const uint verify = parser.get<int>("V");
-    const uint nPeriodic = parser.get<int>("P");
-    if (verify == 1 && nPeriodic > 0) {
-        std::cout << "Periodic boundary conditions currently incompatible with "
-                     "N^2 check\n";
-        exit(1);
-    }
+    // distribute points
+    PointDistribution::distributePts(srcLocalSL, 3);
+    PointDistribution::distributePts(srcLocalDL, 3);
+    PointDistribution::distributePts(trgLocal, 3);
+    MPI_Barrier(MPI_COMM_WORLD);
+}
 
-    if (myRank == 0) {
-        std::cout << "nSL: " << srcSLCoord.size() / 3 << "\n";
-        std::cout << "nDL: " << srcDLCoord.size() / 3 << "\n";
-        std::cout << "nTrg: " << trgCoord.size() / 3 << std::endl;
-    }
+// generate SrcValue, distributed with given points
+void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
+                 FMMinput &inputs) {
+    inputs.clear();
+    const int nSL = point.srcLocalSL.size() / 3;
+    const int nDL = point.srcLocalDL.size() / 3;
+    const int nTrg = point.trgLocal.size() / 3;
+    const int pbc = parser.get<int>("P");
+    const int kernelComb = parser.get<int>("K");
 
-    // test each active kernel
-    int nSrcSL, nSrcDL;
+    PointDistribution pd(parser.get<int>("s"));
 
-    if (myRank == 0) {
-        nSrcSL = srcSLCoord.size() / 3;
-        nSrcDL = srcDLCoord.size() / 3;
-        MPI_Bcast(&nSrcSL, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(&nSrcDL, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    } else {
-        nSrcSL = nSrcDL = 0;
-        MPI_Bcast(&nSrcSL, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(&nSrcDL, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    }
-
-    PointDistribution::distributePts(srcSLCoord, 3);
-    PointDistribution::distributePts(srcDLCoord, 3);
-    PointDistribution::distributePts(trgCoord, 3);
-    myFMM.setPoints(srcSLCoord.size() / 3, srcSLCoord.data(),
-                    srcDLCoord.size() / 3, srcDLCoord.data(),
-                    trgCoord.size() / 3, trgCoord.data());
-
-    for (auto testKernel : kernelVec) {
-        if (!myFMM.isKernelActive(testKernel))
+    // loop over each activated kernel
+    for (const auto &kernel : kernelVec) {
+        if (kernelComb != 0 && !(STKFMM::asInteger(kernel) & kernelComb)) {
             continue;
-
+        }
+        FMMsrcval value;
         int kdimSL, kdimDL, kdimTrg;
-        std::tie(kdimSL, kdimDL, kdimTrg) =
-            myFMM.getKernelDimension(testKernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        value.srcLocalSL.resize(kdimSL * nSL);
+        value.srcLocalDL.resize(kdimDL * nDL);
 
-        std::vector<double> srcSLValue;
-        std::vector<double> srcDLValue;
+        // generate random values
+        pd.randomUniformFill(value.srcLocalSL, -1, 1);
+        pd.randomUniformFill(value.srcLocalDL, -1, 1);
 
-        if (myRank == 0) {
-            srcSLValue.resize(nSrcSL * kdimSL);
-            srcDLValue.resize(nSrcDL * kdimDL);
-            pd.randomUniformFill(srcSLValue, -1, 1);
-            pd.randomUniformFill(srcDLValue, -1, 1);
+        // special requirements
+        if (kernel == KERNEL::LAPPGrad && pbc) { // must be neutral for periodic
+            double netCharge = 0;
+            int nSLGlobal = nSL;
+            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM,
+                          MPI_COMM_WORLD);
+            std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(),
+                            netCharge);
+            MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM,
+                          MPI_COMM_WORLD);
+            netCharge /= nSLGlobal;
+            for (auto &v : value.srcLocalSL) {
+                v -= netCharge;
+            }
+        }
 
-            if (testKernel == KERNEL::LAPPGrad) {
-                std::cout << "Zeroing Laplace Kernel charge\n";
-                double charge =
-                    std::accumulate(srcSLValue.begin(), srcSLValue.end(), 0.0);
-                for (auto &el : srcSLValue)
-                    el -= charge / nSrcSL;
-            } else if (testKernel == KERNEL::RPY ||
-                       testKernel == KERNEL::StokesRegVel) {
-                const double eps = parser.get<double>("e");
-                for (int i = 3; i < srcSLValue.size(); i += 4) {
-                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
+        if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad ||
+             kernel == KERNEL::PVelLaplacian || kernel == KERNEL::Traction) &&
+            pbc) {
+            // must be force-neutral for x-y-z-trD
+            int nSLGlobal = nSL;
+            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM,
+                          MPI_COMM_WORLD);
+            assert(kdimSL == 4);
+            double fnet[4] = {0, 0, 0, 0};
+            for (int i = 0; i < nSL; i++) {
+                for (int j = 0; j < 4; j++) {
+                    fnet[j] += value.srcLocalSL[4 * i + j];
                 }
-            } else if (testKernel == KERNEL::StokesRegVelOmega) {
-                const double eps = parser.get<double>("e");
-                for (int i = 6; i < srcSLValue.size(); i += 7) {
-                    srcSLValue[i] = 0.5 * eps * (srcSLValue[i] + 1);
+            }
+            MPI_Allreduce(MPI_IN_PLACE, fnet, 4, MPI_DOUBLE, MPI_SUM,
+                          MPI_COMM_WORLD);
+            fnet[0] /= nSLGlobal;
+            fnet[1] /= nSLGlobal;
+            fnet[2] /= nSLGlobal;
+            fnet[3] /= nSLGlobal;
+            for (int i = 0; i < nSL; i++) {
+                for (int j = 0; j < 4; j++) {
+                    value.srcLocalSL[4 * i + j] -= fnet[j];
                 }
             }
         }
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        PointDistribution::distributePts(srcSLValue, kdimSL);
-        PointDistribution::distributePts(srcDLValue, kdimDL);
-
-        if (parser.get<int>("F") == 1) {
-            testOneKernelFMM(myFMM, testKernel, srcSLCoord, srcDLCoord,
-                             trgCoord, srcSLValue, srcDLValue, verify);
-        } else {
-            testOneKernelS2T(myFMM, testKernel, srcSLCoord, srcDLCoord,
-                             trgCoord, srcSLValue, srcDLValue, verify);
+        if (kernel == KERNEL::StokesRegVel ||
+            kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+            // sphere radius/regularization must be small
+            const double reg = parser.get<double>("e");
+            auto setreg = [&](double &v) { v = std::abs(v) * reg; };
+            for (int i = 0; i < nSL; i++) {
+                setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
+            }
         }
+
+        inputs[kernel] = value;
+    }
+}
+
+// generate TrueValueN2
+void genTrueValueN2(const cli::Parser &parser, const FMMpoint &point,
+                    FMMinput &inputs, FMMresult &results) {
+    int myRank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
+    // create a copy for MPI
+    std::vector<double> srcSLCoordGlobal = point.srcLocalSL;
+    std::vector<double> srcDLCoordGlobal = point.srcLocalDL;
+    std::vector<double> trgCoordLocal = point.trgLocal;
+
+    // src is fully replicated on every node
+    // trg remains distributed
+    PointDistribution::collectPtsAll(srcSLCoordGlobal);
+    PointDistribution::collectPtsAll(srcDLCoordGlobal);
+
+    // loop over all activated kernels
+    for (auto &data : inputs) {
+        KERNEL kernel = data.first;
+        auto &value = data.second;
+        int kdimSL, kdimDL, kdimTrg;
+        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+
+        std::vector<double> srcSLValueGlobal = value.srcLocalSL;
+        std::vector<double> srcDLValueGlobal = value.srcLocalDL;
+        PointDistribution::collectPtsAll(srcSLValueGlobal);
+        PointDistribution::collectPtsAll(srcDLValueGlobal);
+
+        // on every node, from global src to local trg
+        const int nSL = srcSLCoordGlobal.size() / 3;
+        const int nDL = srcDLCoordGlobal.size() / 3;
+        const int nTrg = trgCoordLocal.size() / 3;
+
+        // Create mapping of kernels to 'true value' functions
+        kernel_func kernelTestSL, kernelTestDL;
+        std::tie(kernelTestSL, kernelTestDL) = SL_kernels[kernel];
+
+        std::vector<double> trgLocal(nTrg * kdimTrg, 0);
+        // check results
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            const double *trg = trgCoordLocal.data() + 3 * i;
+            double t[3] = {trg[0], trg[1], trg[2]};
+
+            // add SL values
+            for (int j = 0; j < nSL; j++) {
+                double result[20] = {0.0};
+                double *s = srcSLCoordGlobal.data() + 3 * j;
+                double *sval = srcSLValueGlobal.data() + kdimSL * j;
+
+                kernelTestSL(s, t, sval, result);
+
+                for (int k = 0; k < kdimTrg; k++) {
+                    trgLocal[kdimTrg * i + k] += result[k];
+                }
+            }
+
+            // add DL values
+            for (int j = 0; j < nDL; j++) {
+                double result[20] = {0.0};
+                double *s = srcDLCoordGlobal.data() + 3 * j;
+                double *sval = srcDLValueGlobal.data() + kdimDL * j;
+
+                kernelTestDL(s, t, sval, result);
+
+                for (int k = 0; k < kdimTrg; k++) {
+                    trgLocal[kdimTrg * i + k] += result[k];
+                }
+            }
+        }
+        results[kernel] = trgLocal;
+    }
+}
+
+// generate TrueValue with p=16 fmm
+void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
+            FMMinput &inputs, FMMresult &results, bool translation = false) {
+    results.clear();
+    const double shift = parser.get<double>("M");
+    const double box = parser.get<double>("B");
+    const int temp = parser.get<int>("K");
+    const int k = (temp == 0) ? ~((int)0) : temp;
+    const PAXIS paxis = (PAXIS)parser.get<int>("P");
+    const int maxPoints = parser.get<int>("m");
+    STKFMM myFMM(p, maxPoints, paxis, k);
+    myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
+    myFMM.showActiveKernels();
+    const int nSL = point.srcLocalSL.size() / 3;
+    const int nDL = point.srcLocalDL.size() / 3;
+    const int nTrg = point.trgLocal.size() / 3;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (translation) {
+        // random shift along pbc directions
+        double trans[3] = {0, 0, 0};
+        if (!rank) {
+            // Standard mersenne_twister_engine seeded
+            std::mt19937 gen(parser.get<int>("s"));
+            std::uniform_real_distribution<double> dis(-1, 1);
+            if (paxis == PAXIS::PX)
+                trans[0] = dis(gen);
+            else if (paxis == PAXIS::PXY) {
+                trans[0] = dis(gen);
+                trans[1] = dis(gen);
+            } else if (paxis == PAXIS::PXYZ) {
+                trans[0] = dis(gen);
+                trans[1] = dis(gen);
+                trans[2] = dis(gen);
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Bcast(trans, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        FMMpoint point_trans = point;
+        auto translate = [&](std::vector<double> &coord, const int np) {
+            for (int i = 0; i < np; i++) {
+                for (int j = 0; j < 3; j++) {
+                    auto &pos = coord[3 * i + j];
+                    pos += trans[j] * box;
+                    while (pos < shift)
+                        pos += box;
+                    while (pos >= shift + box)
+                        pos -= box;
+                }
+            }
+        };
+        translate(point_trans.srcLocalSL, nSL);
+        translate(point_trans.srcLocalDL, nDL);
+        translate(point_trans.trgLocal, nTrg);
+        myFMM.setPoints(nSL, point_trans.srcLocalSL.data(), nDL,
+                        point_trans.srcLocalDL.data(), nTrg,
+                        point_trans.trgLocal.data());
+    } else {
+        myFMM.setPoints(nSL, point.srcLocalSL.data(), nDL,
+                        point.srcLocalDL.data(), nTrg, point.trgLocal.data());
+    }
+
+    for (auto &data : inputs) {
+        auto &kernel = data.first;
+        auto &value = data.second;
+        int kdimSL, kdimDL, kdimTrg;
+        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        std::vector<double> trgLocal(nTrg * kdimTrg, 0);
+        if (parser.get<int>("F")) {
+
+            myFMM.clearFMM(kernel);
+            myFMM.setupTree(kernel);
+            myFMM.evaluateFMM(nSL, value.srcLocalSL.data(), nDL,
+                              value.srcLocalDL.data(), nTrg, trgLocal.data(),
+                              kernel);
+        } else {
+            auto srcLocalCoord = point.srcLocalSL;
+            auto trgLocalCoord = point.trgLocal;
+            myFMM.evaluateKernel(0, PPKERNEL::SLS2T, nSL, srcLocalCoord.data(),
+                                 value.srcLocalSL.data(), nTrg,
+                                 trgLocalCoord.data(), trgLocal.data(), kernel);
+        }
+        results[kernel] = trgLocal;
+    }
+}
+
+void dumpValue(const std::string &tag, const FMMpoint &point, FMMinput &inputs,
+               FMMresult &results) {
+    auto writedata = [&](std::string name, const std::vector<double> &coord_,
+                         const std::vector<double> &value_, const int kdim) {
+        auto coord = coord_;
+        auto value = value_;
+        PointDistribution::dumpPoints(name + ".txt", coord, value, kdim);
+    };
+
+    for (auto &data : inputs) {
+        auto &kernel = data.first;
+        auto &value = data.second;
+        std::vector<double> trgLocal;
+        int kdimSL, kdimDL, kdimTrg;
+        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        auto it = results.find(kernel);
+        if (it != results.end()) {
+            trgLocal = it->second;
+        } else {
+            printf("result not found for kernel %d\n",
+                   STKFMM::asInteger(kernel));
+        }
+        writedata(tag + "_srcSL_K" + std::to_string(STKFMM::asInteger(kernel)),
+                  point.srcLocalSL, value.srcLocalSL, kdimSL);
+        writedata(tag + "_srcDL_K" + std::to_string(STKFMM::asInteger(kernel)),
+                  point.srcLocalDL, value.srcLocalDL, kdimDL);
+        writedata(tag + "_trg_K" + std::to_string(STKFMM::asInteger(kernel)),
+                  point.trgLocal, trgLocal, kdimTrg);
+    }
+}
+
+void checkError(const FMMresult &A, const FMMresult &B) {
+    for (auto &data : A) {
+        auto kernel = data.first;
+        auto it = B.find(kernel);
+        if (it == B.end()) {
+            printf("check result error, reference not found\n");
+            exit(1);
+        }
+        PointDistribution::checkError(data.second, it->second);
     }
 }
 
@@ -528,12 +462,41 @@ int main(int argc, char **argv) {
     if (myRank == 0)
         showOption(parser);
 
-    for (int p = 6; p <= 14; p += 2) {
+    FMMpoint point;
+    FMMinput inputs;
+    FMMresult true_results;
+
+    genPoint(parser, point);
+    genSrcValue(parser, point, inputs);
+
+    if (parser.get<int>("V")) {
+        genTrueValueN2(parser, point, inputs, true_results);
+    } else {
+        runFMM(parser, maxP, point, inputs, true_results);
+    }
+
+    dumpValue("true", point, inputs, true_results);
+
+    for (int p = 6; p < maxP; p += 2) {
         if (myRank == 0) {
             printf("------------------------------------\n");
             printf("Testing order p = %d\n", p);
         }
-        testFMM(parser, p);
+        FMMresult results;
+        // check error vs trueValues
+        runFMM(parser, p, point, inputs, results);
+        checkError(results, true_results);
+        dumpValue("p" + std::to_string(p), point, inputs, results);
+
+        // check error vs translational shift
+        const int pbc = parser.get<int>("P");
+        if (pbc) {
+            FMMresult shift_results;
+            runFMM(parser, p, point, inputs, shift_results, true);
+            checkError(results, shift_results);
+            dumpValue("trans_p" + std::to_string(p), point, inputs, results);
+        }
+
         if (myRank == 0)
             printf("------------------------------------\n");
     }

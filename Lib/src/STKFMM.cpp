@@ -116,16 +116,9 @@ void FMMData::readM2LMat(const std::string &dataName) {
     fclose(fin);
 }
 
-// constructor
-FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
-                 int maxPts_)
-    : kernelChoice(kernelChoice_), periodicity(periodicity_),
-      multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
-      matrixPtr(nullptr), treeDataPtr(nullptr) {
-    comm = MPI_COMM_WORLD;
-    matrixPtr = new pvfmm::PtFMM<double>();
-    // choose a kernel
-    switch (kernelChoice) {
+const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
+    const pvfmm::Kernel<double> *kernelFunctionPtr;
+    switch (kernelChoice_) {
     case KERNEL::PVel:
         kernelFunctionPtr = &pvfmm::StokesLayerKernel<double>::PVel();
         break;
@@ -150,7 +143,24 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
     case KERNEL::RPY:
         kernelFunctionPtr = &pvfmm::RPYKernel<double>::ulapu();
         break;
+    default:
+        kernelFunctionPtr = nullptr;
+        printf("Error: Kernel not found.\n");
+        break;
     }
+    return kernelFunctionPtr;
+}
+
+// constructor
+FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
+                 int maxPts_)
+    : kernelChoice(kernelChoice_), periodicity(periodicity_),
+      multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
+      matrixPtr(nullptr), treeDataPtr(nullptr) {
+    comm = MPI_COMM_WORLD;
+    matrixPtr = new pvfmm::PtFMM<double>();
+    // choose a kernel
+    kernelFunctionPtr = getKernelFunction(kernelChoice);
     setKernel();
     treeDataPtr = new pvfmm::PtFMM_Data<double>;
     // treeDataPtr remain nullptr after constructor
@@ -811,6 +821,15 @@ void STKFMM::showActiveKernels() {
             printf("RPY\n");
         }
     }
+}
+
+std::tuple<int, int, int> STKFMM::getKernelDimension(KERNEL kernel_) {
+    const pvfmm::Kernel<double> *kernelFunctionPtr =
+        FMMData::getKernelFunction(kernel_);
+    int kdimSL = kernelFunctionPtr->ker_dim[0];
+    int kdimTrg = kernelFunctionPtr->ker_dim[1];
+    int kdimDL = kernelFunctionPtr->surf_dim;
+    return std::tuple<int, int, int>(kdimSL, kdimDL, kdimTrg);
 }
 
 void STKFMM::clearFMM(KERNEL kernelChoice) {

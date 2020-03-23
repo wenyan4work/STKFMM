@@ -7,42 +7,45 @@
 #include <random>
 #include <string>
 #include <vector>
-#include <random>
 
 class PointDistribution {
-public:
-  PointDistribution(int seed) : gen_(seed){};
+    std::mt19937 gen_;
 
-  static void fixedPoints(int nPts, double box, double shift,
-                   std::vector<double> &srcCoord);
+  public:
+    PointDistribution(int seed) : gen_(seed){};
 
-  static void chebPoints(int nPts, double box, double shift,
-                         std::vector<double> &ptsCoord);
+    // non-static methods depending on rng seed
+    void randomPoints(int nPts, double box, double shift,
+                      std::vector<double> &ptsCoord);
 
-  void randomPoints(int nPts, double box, double shift,
+    void randomUniformFill(std::vector<double> &vec, double low, double high);
+
+    void randomLogNormalFill(std::vector<double> &vec, double a, double b);
+
+    // static methods
+    static void fixedPoints(int nPts, double box, double shift,
+                            std::vector<double> &srcCoord);
+
+    static void shiftAndScalePoints(std::vector<double> &ptsCoord,
+                                    double shift[3], double scale);
+
+    static void chebPoints(int nPts, double box, double shift,
                            std::vector<double> &ptsCoord);
 
-  static void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3],
-                           double scale);
+    static void dumpPoints(const std::string &filename,
+                           std::vector<double> &coord,
+                           std::vector<double> &value,
+                           const int valueDimension);
 
-  void randomUniformFill(std::vector<double> &vec, double low, double high);
+    static void checkError(const std::vector<double> &value,
+                           const std::vector<double> &valueTrue);
 
-  void randomLogNormalFill(std::vector<double> &vec, double a, double b);
+    static void distributePts(std::vector<double> &pts, int dimension);
 
-  static void dumpPoints(const std::string &filename, std::vector<double> &coord,
-                  std::vector<double> &value, const int valueDimension);
+    static void collectPts(std::vector<double> &pts);
 
-  static void checkError(const std::vector<double> &value,
-                  const std::vector<double> &valueTrue);
+    static void collectPtsAll(std::vector<double> &pts);
 
-  static void distributePts(std::vector<double> &pts, int dimension);
-
-  static void collectPts(std::vector<double> &pts);
-
-  static void collectPtsAll(std::vector<double> &pts);
-
-private:
-  std::mt19937 gen_;
 };
 
 #endif
