@@ -21,6 +21,121 @@ namespace pvfmm {
 
 /*********************************************************
  *                                                        *
+ *   Stokes Double Vel kernel, source: 9, target: 3     *
+ *                                                        *
+ **********************************************************/
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
+void stokes_doublevel93_uKernel(Matrix<Real_t> &src_coord,
+                                Matrix<Real_t> &src_value,
+                                Matrix<Real_t> &trg_coord,
+                                Matrix<Real_t> &trg_value) {
+#define SRC_BLK 500
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
+
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
+    }
+    const Real_t FACV = 1 / (8 * const_pi<Real_t>() * nwtn_scal * nwtn_scal *
+                             nwtn_scal * nwtn_scal * nwtn_scal);
+    const Vec_t facv =
+        set_intrin<Vec_t, Real_t>(FACV); // vi = 1/8pi (-3rirjrk/r^5) Djk
+    const Vec_t facp = set_intrin<Vec_t, Real_t>(
+        FACV * 2); // p = 1/4pi (-3 rjrk/r^5 + delta_jk) Djk
+    const Vec_t nthree = set_intrin<Vec_t, Real_t>(-3.0);
+
+    size_t src_cnt_ = src_coord.Dim(1);
+    size_t trg_cnt_ = trg_coord.Dim(1);
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            const Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t vx = zero_intrin<Vec_t>();
+            Vec_t vy = zero_intrin<Vec_t>();
+            Vec_t vz = zero_intrin<Vec_t>();
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                Vec_t dx =
+                    sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                Vec_t dy =
+                    sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                Vec_t dz =
+                    sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+                // sxx,sxy,sxz,...,szz
+                Vec_t sxx = bcast_intrin<Vec_t>(&src_value[0][s]);
+                Vec_t sxy = bcast_intrin<Vec_t>(&src_value[1][s]);
+                Vec_t sxz = bcast_intrin<Vec_t>(&src_value[2][s]);
+                Vec_t syx = bcast_intrin<Vec_t>(&src_value[3][s]);
+                Vec_t syy = bcast_intrin<Vec_t>(&src_value[4][s]);
+                Vec_t syz = bcast_intrin<Vec_t>(&src_value[5][s]);
+                Vec_t szx = bcast_intrin<Vec_t>(&src_value[6][s]);
+                Vec_t szy = bcast_intrin<Vec_t>(&src_value[7][s]);
+                Vec_t szz = bcast_intrin<Vec_t>(&src_value[8][s]);
+
+                Vec_t r2 = mul_intrin(dx, dx);
+                r2 = add_intrin(r2, mul_intrin(dy, dy));
+                r2 = add_intrin(r2, mul_intrin(dz, dz));
+
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
+                Vec_t rinv2 = mul_intrin(rinv, rinv);
+                Vec_t rinv4 = mul_intrin(rinv2, rinv2);
+
+                Vec_t rinv5 = mul_intrin(rinv, rinv4);
+
+                // commonCoeff = -3 rj rk Djk
+                Vec_t commonCoeff = mul_intrin(sxx, mul_intrin(dx, dx));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(sxy, mul_intrin(dx, dy)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(sxz, mul_intrin(dx, dz)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(syx, mul_intrin(dy, dx)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(syy, mul_intrin(dy, dy)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(syz, mul_intrin(dy, dz)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(szx, mul_intrin(dz, dx)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(szy, mul_intrin(dz, dy)));
+                commonCoeff = add_intrin(commonCoeff,
+                                         mul_intrin(szz, mul_intrin(dz, dz)));
+                commonCoeff = mul_intrin(commonCoeff, nthree);
+
+                Vec_t trace = add_intrin(add_intrin(sxx, syy), szz);
+                vx = add_intrin(vx,
+                                mul_intrin(rinv5, mul_intrin(dx, commonCoeff)));
+                vy = add_intrin(vy,
+                                mul_intrin(rinv5, mul_intrin(dy, commonCoeff)));
+                vz = add_intrin(vz,
+                                mul_intrin(rinv5, mul_intrin(dz, commonCoeff)));
+            }
+
+            vx = add_intrin(mul_intrin(vx, facv),
+                            load_intrin<Vec_t>(&trg_value[0][t]));
+            vy = add_intrin(mul_intrin(vy, facv),
+                            load_intrin<Vec_t>(&trg_value[1][t]));
+            vz = add_intrin(mul_intrin(vz, facv),
+                            load_intrin<Vec_t>(&trg_value[2][t]));
+
+            store_intrin(&trg_value[0][t], vx);
+            store_intrin(&trg_value[1][t], vy);
+            store_intrin(&trg_value[2][t], vz);
+        }
+    }
+#undef SRC_BLK
+}
+
+GEN_KERNEL(stokes_doublevel93, stokes_doublevel93_uKernel, 9, 3);
+
+/*********************************************************
+ *                                                        *
  *   Stokes Double P Vel kernel, source: 9, target: 4     *
  *                                                        *
  **********************************************************/
@@ -1433,37 +1548,6 @@ void stokes_dgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 }
 
 GEN_KERNEL(stokes_dgrad, stokes_dgrad_uKernel, 9, 9)
-
-template <class T>
-struct StokesDoubleLayerKernel {
-    inline static const Kernel<T> &PVel();     // tested
-    inline static const Kernel<T> &PVelGrad(); // tested
-
-  private:
-    static constexpr int NEWTON_ITE =
-        sizeof(T) /
-        4; // generate NEWTON_ITE at compile time. 1 for float and 2 for double
-};
-
-template <class T>
-inline const Kernel<T> &StokesDoubleLayerKernel<T>::PVel() {
-    static Kernel<T> s2t_ker = BuildKernel<T, stokes_doublepvel<T, NEWTON_ITE>>(
-        "stokes_double_pvel", 3, std::pair<int, int>(9, 4));
-    return s2t_ker;
-}
-
-template <class T>
-inline const Kernel<T> &StokesDoubleLayerKernel<T>::PVelGrad() {
-    static Kernel<T> double_ker =
-        BuildKernel<T, stokes_doublepvel<T, NEWTON_ITE>>(
-            "stokes_double_pvel", 3, std::pair<int, int>(9, 4));
-    static Kernel<T> s2t_ker =
-        BuildKernel<T, stokes_doublepvelgrad<T, NEWTON_ITE>>(
-            "stokes_double_pvelgrad", 3, std::pair<int, int>(9, 16),
-            &double_ker, &double_ker, NULL, &double_ker, &double_ker, NULL,
-            &double_ker, NULL);
-    return s2t_ker;
-}
 
 } // namespace pvfmm
 #endif
