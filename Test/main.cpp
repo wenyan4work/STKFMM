@@ -391,10 +391,17 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
         if (parser.get<int>("F")) {
 
             myFMM.clearFMM(kernel);
+            Timer timer;
+            timer.tick();
             myFMM.setupTree(kernel);
+            timer.tock("setupTree");
+            timer.tick();
             myFMM.evaluateFMM(nSL, value.srcLocalSL.data(), nDL,
                               value.srcLocalDL.data(), nTrg, trgLocal.data(),
                               kernel);
+            timer.tock("evaluateFMM");
+            if (!rank)
+                timer.dump();
         } else {
             auto srcLocalCoord = point.srcLocalSL;
             auto trgLocalCoord = point.trgLocal;
