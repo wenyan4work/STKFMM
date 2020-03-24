@@ -173,7 +173,7 @@ void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
 /**********************************************************
  *                                                        *
  *Stokes Reg Force Torque Vel Omega kernel, source: 7, target: 6*
- *    fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz, wx,wy,wz         *
+ *    fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz,wx,wy,wz         *
  **********************************************************/
 template <class T, int newton_iter = 0>
 void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,

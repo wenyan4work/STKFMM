@@ -103,7 +103,7 @@ void showOption(const cli::Parser &parser) {
     std::cout << "Verification: " << parser.get<int>("V") << std::endl;
     std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
     std::cout << "maxPoints: " << parser.get<int>("m") << std::endl;
-    std::cout << "eps" << parser.get<double>("e") << std::endl;
+    std::cout << "eps: " << parser.get<double>("e") << std::endl;
 }
 
 // generate (distributed) FMM points
@@ -157,6 +157,7 @@ void genPoint(const cli::Parser &parser, FMMpoint &point) {
     PointDistribution::distributePts(srcLocalSL, 3);
     PointDistribution::distributePts(srcLocalDL, 3);
     PointDistribution::distributePts(trgLocal, 3);
+
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
@@ -456,6 +457,14 @@ void checkError(const FMMresult &A, const FMMresult &B) {
     }
 }
 
+// void printRank0(const std::string&message){
+//     int rank;
+//     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+//     if(!rank){
+//         std::cout<<message<<std::endl;
+//     }
+// }
+
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
@@ -485,13 +494,13 @@ int main(int argc, char **argv) {
     dumpValue("true", point, inputs, true_results);
 
     for (int p = 6; p < maxP; p += 2) {
-        if (myRank == 0) {
-            printf("------------------------------------\n");
-            printf("Testing order p = %d\n", p);
-        }
         FMMresult results;
         // check error vs trueValues
         runFMM(parser, p, point, inputs, results);
+        if (myRank == 0) {
+            printf("*********Testing order p = %d*********\n", p);
+            printf("---------Error vs \"True\" Value------\n");
+        }
         checkError(results, true_results);
         dumpValue("p" + std::to_string(p), point, inputs, results);
 
@@ -500,6 +509,9 @@ int main(int argc, char **argv) {
         if (pbc) {
             FMMresult shift_results;
             runFMM(parser, p, point, inputs, shift_results, true);
+            if (myRank == 0) {
+                printf("---------Error vs Translation------\n");
+            }
             checkError(results, shift_results);
             dumpValue("trans_p" + std::to_string(p), point, inputs, results);
         }

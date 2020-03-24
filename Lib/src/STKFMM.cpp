@@ -157,16 +157,18 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
     : kernelChoice(kernelChoice_), periodicity(periodicity_),
       multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
       matrixPtr(nullptr), treeDataPtr(nullptr) {
+
     comm = MPI_COMM_WORLD;
     matrixPtr = new pvfmm::PtFMM<double>();
+
     // choose a kernel
     kernelFunctionPtr = getKernelFunction(kernelChoice);
     setKernel();
     treeDataPtr = new pvfmm::PtFMM_Data<double>;
     // treeDataPtr remain nullptr after constructor
+
     // load periodicity M2L data
     if (periodicity != PAXIS::NONE) {
-
         // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
         double scaleLEquiv =
             PVFMM_RAD1; // RAD1 = 2.95 defined in pvfmm_common.h
@@ -189,7 +191,6 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
             dataName = "M2L_" + M2Lname + "_3D3DpX";
         }
         dataName.replace(dataName.length() - 1, 1, std::to_string(multOrder));
-        std::cout << "reading M2L data: " << dataName << std::endl;
         readM2LMat(dataName);
     }
 }
@@ -291,11 +292,8 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
         return;
     }
 
-    pvfmm::Vector<double> v =
-        treePtr->RootNode()
-            ->FMMData()
-            ->upward_equiv; // the value calculated by pvfmm
-    // assert(v.Dim() == 3 * this->equivN);
+    // the value calculated by pvfmm
+    pvfmm::Vector<double> v = treePtr->RootNode()->FMMData()->upward_equiv;
 
     // add to trg_value
     auto &trgCoord = treeDataPtr->trg_coord;
@@ -378,12 +376,7 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
         break;
     }
-    if (pbc != PAXIS::NONE && (kernelComb != (uint)KERNEL::LAPPGrad &&
-                               kernelComb != (uint)KERNEL::RPY)) {
-        printf("Periodic boundary conditions are currently only implemented "
-               "for LAPPGrad kernel\n");
-        exit(1);
-    }
+
     comm = MPI_COMM_WORLD;
     int myRank;
     MPI_Comm_rank(comm, &myRank);
