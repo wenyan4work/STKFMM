@@ -69,10 +69,9 @@ void stokes_vel43_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                 const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
                 const Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
                 const Vec_t tr =
-                    bcast_intrin<Vec_t>(&src_value[3][s]); // trace of
-                doublet
+                    bcast_intrin<Vec_t>(&src_value[3][s]); // trace of doublet
 
-                    Vec_t r2 = mul_intrin(dx, dx);
+                Vec_t r2 = mul_intrin(dx, dx);
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
 
