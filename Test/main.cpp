@@ -507,13 +507,14 @@ int main(int argc, char **argv) {
         // check error vs translational shift
         const int pbc = parser.get<int>("P");
         if (pbc) {
-            FMMresult shift_results;
-            runFMM(parser, p, point, inputs, shift_results, true);
+            FMMresult trans_results;
+            runFMM(parser, p, point, inputs, trans_results, true);
             if (myRank == 0) {
                 printf("---------Error vs Translation------\n");
             }
-            checkError(results, shift_results);
-            dumpValue("trans_p" + std::to_string(p), point, inputs, results);
+            checkError(results, trans_results);
+            dumpValue("trans_p" + std::to_string(p), point, inputs,
+                      trans_results);
         }
 
         if (myRank == 0)
