@@ -20,23 +20,29 @@
 namespace Laplace3D3D {
 
 using EVec3 = Eigen::Vector3d;
-
-inline double ERFC(double x) { return std::erfc(x); }
-inline double ERF(double x) { return std::erf(x); }
+using EVec4 = Eigen::Vector4d;
+constexpr double eps = 1e-10;
 
 // real and wave sum of 2D Laplace kernel Ewald
+
+inline double freal(double xi, double r) { return std::erfc(xi * r) / r; }
+
+inline double frealp(double xi, double r) {
+    return -(2. * exp(-r * r * (xi * xi)) * xi) / (sqrt(M_PI) * r) -
+           std::erfc(r * xi) / (r * r);
+}
 
 // xm: target, xn: source
 inline double realSum(const double xi, const EVec3 &xn, const EVec3 &xm) {
     EVec3 rmn = xm - xn;
     double rnorm = rmn.norm();
-    if (rnorm < 1e-10) {
+    if (rnorm < eps) {
         return 0;
     }
-    return ERFC(rnorm * xi) / rnorm;
+    return freal(xi, rnorm);
 }
 
-inline double gKernelEwald(const EVec3 &xm, const EVec3 &xn) {
+inline double potEwald(const EVec3 &xm, const EVec3 &xn) {
     const double xi = 2; // recommend for box=1 to get machine precision
     EVec3 target = xm;
     EVec3 source = xn;
@@ -83,19 +89,116 @@ inline double gKernelEwald(const EVec3 &xm, const EVec3 &xn) {
     return Kreal + Kwave + Kself - PI314 / xi2;
 }
 
-inline double gKernel(const EVec3 &target, const EVec3 &source) {
-    EVec3 rst = target - source;
-    double rnorm = rst.norm();
-    return rnorm < 1e-10 ? 0 : 1 / rnorm;
+inline void realGradSum(double xi, const EVec3 &target, const EVec3 &source,
+                        EVec3 &v) {
+    EVec3 rvec = target - source;
+    double rnorm = rvec.norm();
+    if (rnorm < eps) {
+        v.setZero();
+    } else {
+        v = (frealp(xi, rnorm) / rnorm) * rvec;
+    }
 }
 
-inline double gKernelNF(const EVec3 &target, const EVec3 &source,
-                        int N = DIRECTLAYER) {
-    double gNF = 0;
+inline void gradkernel(const EVec3 &target, const EVec3 &source,
+                       EVec3 &answer) {
+    EVec3 rst = target - source;
+    double rnorm = rst.norm();
+    if (rnorm < eps) {
+        answer.setZero();
+        return;
+    }
+    double rnorm3 = rnorm * rnorm * rnorm;
+    answer = -rst / rnorm3;
+}
+
+// grad of Laplace potential, without 1/4pi prefactor, periodic of -r_k/r^3
+inline void gradEwald(const EVec3 &target_, const EVec3 &source_,
+                      EVec3 &answer) {
+    EVec3 target = target_;
+    EVec3 source = source_;
+    target[0] = target[0] - floor(target[0]); // periodic BC
+    target[1] = target[1] - floor(target[1]);
+    target[2] = target[2] - floor(target[2]);
+    source[0] = source[0] - floor(source[0]);
+    source[1] = source[1] - floor(source[1]);
+    source[2] = source[2] - floor(source[2]);
+
+    double xi = 0.54;
+
+    // real sum
+    int rLim = 10;
+    EVec3 Kreal = EVec3::Zero();
+    for (int i = -rLim; i < rLim + 1; i++) {
+        for (int j = -rLim; j < rLim + 1; j++) {
+            for (int k = -rLim; k < rLim + 1; k++) {
+                EVec3 v = EVec3::Zero();
+                realGradSum(xi, target, source + EVec3(i, j, k), v);
+                Kreal += v;
+            }
+        }
+    }
+
+    // wave sum
+    int wLim = 10;
+    EVec3 rmn = target - source;
+    double xi2 = xi * xi;
+    EVec3 Kwave(0., 0., 0.);
+    for (int i = -wLim; i < wLim + 1; i++) {
+        for (int j = -wLim; j < wLim + 1; j++) {
+            for (int k = -wLim; k < wLim + 1; k++) {
+                if (i == 0 && j == 0 && k == 0)
+                    continue;
+                EVec3 kvec = EVec3(i, j, k) * (2 * M_PI);
+                double k2 = kvec.dot(kvec);
+                double knorm = kvec.norm();
+                Kwave +=
+                    -kvec * (sin(kvec.dot(rmn)) * exp(-k2 / (4 * xi2)) / k2);
+            }
+        }
+    }
+
+    answer = Kreal + Kwave;
+}
+
+inline double pot(const EVec3 &target, const EVec3 &source) {
+    EVec3 rst = target - source;
+    double rnorm = rst.norm();
+    return rnorm < eps ? 0 : 1 / rnorm;
+}
+
+inline EVec4 gKernel(const EVec3 &target, const EVec3 &source) {
+    EVec3 rst = target - source;
+    EVec4 pgrad = EVec4::Zero();
+    double rnorm = rst.norm();
+    if (rnorm < eps) {
+        pgrad.setZero();
+    } else {
+        pgrad[0] = 1 / rnorm;
+        double rnorm3 = rnorm * rnorm * rnorm;
+        pgrad.block<3, 1>(1, 0) = -rst / rnorm3;
+    }
+    return pgrad;
+}
+
+inline EVec4 gKernelEwald(const EVec3 &target, const EVec3 &source) {
+    EVec4 pgrad = EVec4::Zero();
+    pgrad[0] = potEwald(target, source);
+    EVec3 grad;
+    gradEwald(target, source, grad);
+    pgrad[1] = grad[0];
+    pgrad[2] = grad[1];
+    pgrad[3] = grad[2];
+    return pgrad;
+}
+
+inline EVec4 gKernelNF(const EVec3 &target, const EVec3 &source,
+                       int N = DIRECTLAYER) {
+    EVec4 gNF = EVec4::Zero();
     for (int i = -N; i < N + 1; i++) {
         for (int j = -N; j < N + 1; j++) {
             for (int k = -N; k < N + 1; k++) {
-                double gFree = gKernel(target, source + EVec3(i, j, k));
+                EVec4 gFree = gKernel(target, source + EVec3(i, j, k));
                 gNF += gFree;
             }
         }
@@ -104,8 +207,9 @@ inline double gKernelNF(const EVec3 &target, const EVec3 &source,
 }
 
 // Out of Direct Sum Layer, far field part
-inline double gKernelFF(const EVec3 &target, const EVec3 &source) {
-    double fEwald = gKernelEwald(target, source);
+inline EVec4 gKernelFF(const EVec3 &target, const EVec3 &source) {
+    EVec4 fEwald = gKernelEwald(target, source);
+    // EVec4 fEwald = gKernelNF(target, source, 5);
     fEwald -= gKernelNF(target, source);
 
     //   {
@@ -210,7 +314,7 @@ int main(int argc, char **argv) {
     const int checkN = pointLCheck.size() / 3;
     Eigen::MatrixXd M2L(equivN, equivN); // Laplace, 1->1
 
-    Eigen::MatrixXd A(1 * checkN, 1 * equivN);
+    Eigen::MatrixXd A(4 * checkN, 1 * equivN);
     for (int k = 0; k < checkN; k++) {
         Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
                                pointLCheck[3 * k + 2]);
@@ -218,7 +322,7 @@ int main(int argc, char **argv) {
             const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
                                          pointLEquiv[3 * l + 1],
                                          pointLEquiv[3 * l + 2]);
-            A(k, l) = gKernel(Cpoint, Lpoint);
+            A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Lpoint);
         }
     }
     Eigen::MatrixXd ApinvU(A.cols(), A.rows());
@@ -231,12 +335,13 @@ int main(int argc, char **argv) {
                                      pointMEquiv[3 * i + 2]);
         const EVec3 Npoint(0.5, 0.5, 0.5);
         // assemble linear system
-        Eigen::VectorXd f(checkN);
+        Eigen::VectorXd f(checkN * 4);
         for (int k = 0; k < checkN; k++) {
             Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
                                    pointLCheck[3 * k + 2]);
             // sum the images
-            f[k] = gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
+            f.block<4, 1>(4 * k, 0) =
+                gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
         }
 
         M2L.col(i) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
@@ -274,17 +379,20 @@ int main(int argc, char **argv) {
     ApinvVT.resize(A.cols(), A.rows());
     Eigen::VectorXd f(checkN);
     for (int k = 0; k < checkN; k++) {
+        // EVec4 temp = EVec4::Zero();
         double temp = 0;
         Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
                                pointMCheck[3 * k + 2]);
         for (size_t p = 0; p < chargePoint.size(); p++) {
-            temp = temp + gKernel(Cpoint, chargePoint[p]) * (chargeValue[p]);
+            temp = temp + pot(Cpoint, chargePoint[p]) * (chargeValue[p]);
         }
-        f(k) = temp;
+        // f.block<4, 1>(4 * k, 0) = temp;
+        f[k] = temp;
         for (int l = 0; l < equivN; l++) {
             Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
                                    pointMEquiv[3 * l + 2]);
-            A(k, l) = gKernel(Mpoint, Cpoint);
+            // A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Mpoint);
+            A(k, l) = pot(Cpoint, Mpoint);
         }
     }
     pinv(A, ApinvU, ApinvVT);
@@ -298,9 +406,9 @@ int main(int argc, char **argv) {
 
         Eigen::Vector3d samplePoint =
             EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
-        double Usample = 0;
-        double UsampleSP = 0;
-        double UFF = 0;
+        EVec4 Usample = EVec4::Zero();
+        EVec4 UsampleSP = EVec4::Zero();
+        EVec4 UFF = EVec4::Zero();
 
         for (int i = -DIRECTLAYER; i < 1 + DIRECTLAYER; i++) {
             for (int j = -DIRECTLAYER; j < 1 + DIRECTLAYER; j++) {
