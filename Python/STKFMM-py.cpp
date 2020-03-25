@@ -47,7 +47,7 @@ PYBIND11_MODULE(PySTKFMM, m) {
                  fmm.setPoints(nSL, src_SL_coord.data(), nDL,
                                src_DL_coord.data(), nTrg, trg_coord.data());
              })
-        .def("getKernelDimension", &stkfmm::STKFMM::getKernelDimension)
+        .def_static("getKernelDimension", &stkfmm::STKFMM::getKernelDimension)
         .def("setupTree", &stkfmm::STKFMM::setupTree)
         .def("evaluateFMM",
              [](stkfmm::STKFMM &fmm, const int nSL,
