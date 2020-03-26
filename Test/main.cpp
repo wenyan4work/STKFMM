@@ -190,12 +190,11 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
 
         // special requirements
         if (kernel == KERNEL::LAPPGrad && pbc) { // must be neutral for periodic
-            double netCharge = 0;
             int nSLGlobal = nSL;
             MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM,
                           MPI_COMM_WORLD);
-            std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(),
-                            netCharge);
+            double netCharge = std::accumulate(value.srcLocalSL.begin(),
+                                               value.srcLocalSL.end(), 0.0);
             MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM,
                           MPI_COMM_WORLD);
             netCharge /= nSLGlobal;
