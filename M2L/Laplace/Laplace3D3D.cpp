@@ -209,14 +209,27 @@ inline EVec4 gKernelNF(const EVec3 &target, const EVec3 &source,
 // Out of Direct Sum Layer, far field part
 inline EVec4 gKernelFF(const EVec3 &target, const EVec3 &source) {
     EVec4 fEwald = gKernelEwald(target, source);
-    // EVec4 fEwald = gKernelNF(target, source, 5);
     fEwald -= gKernelNF(target, source);
+    return fEwald;
+}
 
-    //   {
-    //     std::cout << "source:" << source << std::endl
-    //               << "target:" << target << std::endl
-    //               << "gKernalFF" << fEwald << std::endl;
-    //   }
+inline double potNF(const EVec3 &target, const EVec3 &source,
+                    int N = DIRECTLAYER) {
+    double gNF = 0;
+    for (int i = -N; i < N + 1; i++) {
+        for (int j = -N; j < N + 1; j++) {
+            for (int k = -N; k < N + 1; k++) {
+                gNF += pot(target, source + EVec3(i, j, k));
+            }
+        }
+    }
+    return gNF;
+}
+
+// Out of Direct Sum Layer, far field part
+inline double potFF(const EVec3 &target, const EVec3 &source) {
+    double fEwald = potEwald(target, source);
+    fEwald -= potNF(target, source);
     return fEwald;
 }
 
@@ -314,7 +327,7 @@ int main(int argc, char **argv) {
     const int checkN = pointLCheck.size() / 3;
     Eigen::MatrixXd M2L(equivN, equivN); // Laplace, 1->1
 
-    Eigen::MatrixXd A(4 * checkN, 1 * equivN);
+    Eigen::MatrixXd A(checkN, 1 * equivN);
     for (int k = 0; k < checkN; k++) {
         Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
                                pointLCheck[3 * k + 2]);
@@ -322,7 +335,8 @@ int main(int argc, char **argv) {
             const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
                                          pointLEquiv[3 * l + 1],
                                          pointLEquiv[3 * l + 2]);
-            A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Lpoint);
+            // A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Lpoint);
+            A(k, l) = pot(Cpoint, Lpoint);
         }
     }
     Eigen::MatrixXd ApinvU(A.cols(), A.rows());
@@ -340,8 +354,9 @@ int main(int argc, char **argv) {
             Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
                                    pointLCheck[3 * k + 2]);
             // sum the images
-            f.block<4, 1>(4 * k, 0) =
-                gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
+            // f.block<4, 1>(4 * k, 0) =
+            //     gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
+            f[k] = potFF(Cpoint, Mpoint) - potFF(Cpoint, Npoint);
         }
 
         M2L.col(i) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
@@ -364,38 +379,41 @@ int main(int argc, char **argv) {
 
     std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
+    // operator A
+    A.resize(checkN, equivN);
+    ApinvU.resize(A.cols(), A.rows());
+    ApinvVT.resize(A.cols(), A.rows());
+    for (int k = 0; k < checkN; k++) {
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
+                               pointMCheck[3 * k + 2]);
+        for (int l = 0; l < equivN; l++) {
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
+                                   pointMEquiv[3 * l + 2]);
+            A(k, l) = pot(Cpoint, Mpoint);
+        }
+    }
+    pinv(A, ApinvU, ApinvVT);
+
     // Test
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
         chargePoint(2);
     std::vector<double> chargeValue(2);
-    chargePoint[0] = Eigen::Vector3d(0.5, 0.5, 0.5);
+    chargePoint[0] = Eigen::Vector3d(0.6, 0.6, 0.6);
     chargeValue[0] = -1;
-    chargePoint[1] = Eigen::Vector3d(0, 0, 0);
+    chargePoint[1] = Eigen::Vector3d(0.1, 0.1, 0.1);
     chargeValue[1] = 1;
 
     // solve M
-    A.resize(checkN, equivN);
-    ApinvU.resize(A.cols(), A.rows());
-    ApinvVT.resize(A.cols(), A.rows());
     Eigen::VectorXd f(checkN);
     for (int k = 0; k < checkN; k++) {
-        // EVec4 temp = EVec4::Zero();
         double temp = 0;
         Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
                                pointMCheck[3 * k + 2]);
         for (size_t p = 0; p < chargePoint.size(); p++) {
             temp = temp + pot(Cpoint, chargePoint[p]) * (chargeValue[p]);
         }
-        // f.block<4, 1>(4 * k, 0) = temp;
         f[k] = temp;
-        for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
-            // A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Mpoint);
-            A(k, l) = pot(Cpoint, Mpoint);
-        }
     }
-    pinv(A, ApinvU, ApinvVT);
     Eigen::VectorXd Msource = (ApinvU.transpose() * (ApinvVT.transpose() * f));
 
     std::cout << "Msource: " << Msource << std::endl;
