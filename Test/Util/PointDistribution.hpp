@@ -38,14 +38,14 @@ class PointDistribution {
                            const int valueDimension);
 
     static void checkError(const std::vector<double> &value,
-                           const std::vector<double> &valueTrue);
+                           const std::vector<double> &valueTrue,
+                           const int kdim = 0);
 
     static void distributePts(std::vector<double> &pts, int dimension);
 
     static void collectPts(std::vector<double> &pts);
 
     static void collectPtsAll(std::vector<double> &pts);
-
 };
 
 #endif

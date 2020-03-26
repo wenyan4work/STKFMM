@@ -444,7 +444,8 @@ void dumpValue(const std::string &tag, const FMMpoint &point, FMMinput &inputs,
     }
 }
 
-void checkError(const FMMresult &A, const FMMresult &B) {
+void checkError(const FMMresult &A, const FMMresult &B,
+                bool component = false) {
     for (auto &data : A) {
         auto kernel = data.first;
         auto it = B.find(kernel);
@@ -452,17 +453,15 @@ void checkError(const FMMresult &A, const FMMresult &B) {
             printf("check result error, reference not found\n");
             exit(1);
         }
-        PointDistribution::checkError(data.second, it->second);
+        if (component) {
+            int kdimSL, kdimDL, kdimTrg;
+            std::tie(kdimSL, kdimDL, kdimTrg) =
+                STKFMM::getKernelDimension(kernel);
+            PointDistribution::checkError(data.second, it->second, kdimTrg);
+        } else
+            PointDistribution::checkError(data.second, it->second);
     }
 }
-
-// void printRank0(const std::string&message){
-//     int rank;
-//     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-//     if(!rank){
-//         std::cout<<message<<std::endl;
-//     }
-// }
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
@@ -511,7 +510,7 @@ int main(int argc, char **argv) {
             if (myRank == 0) {
                 printf("---------Error vs Translation------\n");
             }
-            checkError(results, trans_results);
+            checkError(results, trans_results, true);
             dumpValue("trans_p" + std::to_string(p), point, inputs,
                       trans_results);
         }
