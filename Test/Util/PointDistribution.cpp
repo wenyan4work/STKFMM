@@ -125,14 +125,14 @@ void PointDistribution::dumpPoints(const std::string &filename,
 
     const int npts = coord.size() / 3;
     if (value.size() != valueDimension * npts) {
-        printf("size errir in dump points, %s\n", filename.c_str());
+        printf("size error in dump points, %s\n", filename.c_str());
         exit(1);
     }
     for (int i = 0; i < npts; i++) {
-        fprintf(fp, "%.10e %.10e %.10e;", coord[3 * i], coord[3 * i + 1],
+        fprintf(fp, "%.10e, %.10e, %.10e", coord[3 * i], coord[3 * i + 1],
                 coord[3 * i + 2]);
         for (int j = 0; j < valueDimension; j++) {
-            fprintf(fp, " %.10e", value[valueDimension * i + j]);
+            fprintf(fp, ", %.10e", value[valueDimension * i + j]);
         }
         fprintf(fp, " \n");
     }

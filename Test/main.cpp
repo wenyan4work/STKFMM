@@ -228,6 +228,25 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
                     value.srcLocalSL[4 * i + j] -= fnet[j];
                 }
             }
+            // must be trace-free for double layer
+            int nDLGlobal = nDL;
+            MPI_Allreduce(MPI_IN_PLACE, &nDLGlobal, 1, MPI_INT, MPI_SUM,
+                          MPI_COMM_WORLD);
+            assert(kdimDL == 9);
+            double trD = 0;
+            for (int i = 0; i < nDL; i++) {
+                trD += value.srcLocalDL[9 * i + 0];
+                trD += value.srcLocalDL[9 * i + 4];
+                trD += value.srcLocalDL[9 * i + 8];
+            }
+            MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM,
+                          MPI_COMM_WORLD);
+            trD /= (3 * nDL);
+            for (int i = 0; i < nDL; i++) {
+                value.srcLocalDL[9 * i + 0] -= trD;
+                value.srcLocalDL[9 * i + 4] -= trD;
+                value.srcLocalDL[9 * i + 8] -= trD;
+            }
         }
 
         if (kernel == KERNEL::StokesRegVel ||
@@ -320,7 +339,7 @@ void genTrueValueN2(const cli::Parser &parser, const FMMpoint &point,
 
 // generate TrueValue with p=16 fmm
 void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
-            FMMinput &inputs, FMMresult &results, bool translation = false) {
+            FMMinput &inputs, FMMresult &results) {
     results.clear();
     const double shift = parser.get<double>("M");
     const double box = parser.get<double>("B");
@@ -338,49 +357,8 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (translation) {
-        // random shift along pbc directions
-        double trans[3] = {0, 0, 0};
-        if (!rank) {
-            // Standard mersenne_twister_engine seeded
-            std::mt19937 gen(parser.get<int>("s"));
-            std::uniform_real_distribution<double> dis(-1, 1);
-            if (paxis == PAXIS::PX)
-                trans[0] = dis(gen);
-            else if (paxis == PAXIS::PXY) {
-                trans[0] = dis(gen);
-                trans[1] = dis(gen);
-            } else if (paxis == PAXIS::PXYZ) {
-                trans[0] = dis(gen);
-                trans[1] = dis(gen);
-                trans[2] = dis(gen);
-            }
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_Bcast(trans, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        FMMpoint point_trans = point;
-        auto translate = [&](std::vector<double> &coord, const int np) {
-            for (int i = 0; i < np; i++) {
-                for (int j = 0; j < 3; j++) {
-                    auto &pos = coord[3 * i + j];
-                    pos += trans[j] * box;
-                    while (pos < shift)
-                        pos += box;
-                    while (pos >= shift + box)
-                        pos -= box;
-                }
-            }
-        };
-        translate(point_trans.srcLocalSL, nSL);
-        translate(point_trans.srcLocalDL, nDL);
-        translate(point_trans.trgLocal, nTrg);
-        myFMM.setPoints(nSL, point_trans.srcLocalSL.data(), nDL,
-                        point_trans.srcLocalDL.data(), nTrg,
-                        point_trans.trgLocal.data());
-    } else {
-        myFMM.setPoints(nSL, point.srcLocalSL.data(), nDL,
-                        point.srcLocalDL.data(), nTrg, point.trgLocal.data());
-    }
+    myFMM.setPoints(nSL, point.srcLocalSL.data(), nDL, point.srcLocalDL.data(),
+                    nTrg, point.trgLocal.data());
 
     for (auto &data : inputs) {
         auto &kernel = data.first;
@@ -413,8 +391,55 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
     }
 }
 
-void dumpValue(const std::string &tag, const FMMpoint &point, FMMinput &inputs,
-               FMMresult &results) {
+void translatePoints(const cli::Parser &parser, FMMpoint &point) {
+    const double box = parser.get<double>("B");
+    const PAXIS paxis = (PAXIS)parser.get<int>("P");
+    const double shift = parser.get<double>("M");
+
+    const int nSL = point.srcLocalSL.size() / 3;
+    const int nDL = point.srcLocalDL.size() / 3;
+    const int nTrg = point.trgLocal.size() / 3;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double trans[3] = {0, 0, 0};
+    if (!rank) {
+        // Standard mersenne_twister_engine seeded
+        std::mt19937 gen(parser.get<int>("s"));
+        std::uniform_real_distribution<double> dis(-1, 1);
+        if (paxis == PAXIS::PX)
+            trans[0] = dis(gen);
+        else if (paxis == PAXIS::PXY) {
+            trans[0] = dis(gen);
+            trans[1] = dis(gen);
+        } else if (paxis == PAXIS::PXYZ) {
+            trans[0] = dis(gen);
+            trans[1] = dis(gen);
+            trans[2] = dis(gen);
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Bcast(trans, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    auto translate = [&](std::vector<double> &coord, const int np) {
+        for (int i = 0; i < np; i++) {
+            for (int j = 0; j < 3; j++) {
+                auto &pos = coord[3 * i + j];
+                pos += trans[j] * box;
+                while (pos < shift)
+                    pos += box;
+                while (pos >= shift + box)
+                    pos -= box;
+            }
+        }
+    };
+    translate(point.srcLocalSL, nSL);
+    translate(point.srcLocalDL, nDL);
+    translate(point.trgLocal, nTrg);
+}
+
+void dumpValue(const std::string &tag, const FMMpoint &point,
+               const FMMinput &inputs, const FMMresult &results) {
     auto writedata = [&](std::string name, const std::vector<double> &coord_,
                          const std::vector<double> &value_, const int kdim) {
         auto coord = coord_;
@@ -505,13 +530,15 @@ int main(int argc, char **argv) {
         // check error vs translational shift
         const int pbc = parser.get<int>("P");
         if (pbc) {
+            FMMpoint trans_point = point;
             FMMresult trans_results;
-            runFMM(parser, p, point, inputs, trans_results, true);
+            translatePoints(parser, trans_point);
+            runFMM(parser, p, trans_point, inputs, trans_results);
             if (myRank == 0) {
                 printf("---------Error vs Translation------\n");
             }
             checkError(results, trans_results, true);
-            dumpValue("trans_p" + std::to_string(p), point, inputs,
+            dumpValue("trans_p" + std::to_string(p), trans_point, inputs,
                       trans_results);
         }
 
