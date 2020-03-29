@@ -651,12 +651,12 @@ int main(int argc, char **argv) {
     //     }
 
     // dump M2L
-    // for (int i = 0; i < 4 * equivN; i++) {
-    //     for (int j = 0; j < 4 * equivN; j++) {
-    //         std::cout << i << " " << j << " " << std::scientific
-    //                   << std::setprecision(18) << M2L(i, j) << std::endl;
-    //     }
-    // }
+    for (int i = 0; i < 4 * equivN; i++) {
+        for (int j = 0; j < 4 * equivN; j++) {
+            std::cout << i << " " << j << " " << std::scientific
+                      << std::setprecision(18) << M2L(i, j) << std::endl;
+        }
+    }
 
     // A operator
     A.resize(4 * checkN, 4 * equivN);
