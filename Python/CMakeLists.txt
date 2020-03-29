@@ -37,4 +37,9 @@ if(PyInterface)
 
   add_test(NAME PyInterface COMMAND python example.py)
 
+  install(
+    TARGETS PySTKFMM
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/python
+    )
+
 endif()

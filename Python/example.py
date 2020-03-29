@@ -11,19 +11,19 @@ import timer
 
 def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
     epsilon_distance = 2e-4
-    if kernel_index == 1:
+    if kernel_index == PySTKFMM.KERNEL.PVel:
         trg_value  = kr.StokesSLPVel(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.StokesDLPVel(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
-    elif kernel_index == 2:
+    elif kernel_index == PySTKFMM.KERNEL.PVelGrad:
         trg_value  = kr.StokesSLPVelGrad(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.StokesDLPVelGrad(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
-    elif kernel_index == 4:
+    elif kernel_index == PySTKFMM.KERNEL.PVelLaplacian:
         trg_value  = kr.StokesSLPVelLaplacian(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.StokesDLPVelLaplacian(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
-    elif kernel_index == 8:
+    elif kernel_index == PySTKFMM.KERNEL.Traction:
         trg_value  = kr.StokesSLTraction(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.StokesDLTraction(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
-    elif kernel_index == 16:
+    elif kernel_index == PySTKFMM.KERNEL.LAPPGrad:
         trg_value  = kr.LaplaceSLPGrad(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.LaplaceDLPGrad(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     else:
