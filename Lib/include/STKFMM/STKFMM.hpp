@@ -194,8 +194,19 @@ class FMMData {
     pvfmm::PtFMM_Data<double> *treeDataPtr; ///< pvfmm PtFMM_Data pointer
     MPI_Comm comm;                          ///< MPI_comm communicator
 
-    // TODO: work out the Stokes PVel kernel M2L data
-    void readM2LMat(const std::string &dataName); ///< read the M2L data
+    // work out the Stokes PVel kernel M2L data
+    /**
+     * @brief read the M2L Matrix from file
+     *
+     */
+    void readM2LMat(const int kDim, const std::string &dataName,
+                    std::vector<double> &data);
+
+    /**
+     * @brief setup this->M2Ldata
+     *
+     */
+    void setupM2Ldata();
 };
 
 /**

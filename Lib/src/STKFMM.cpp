@@ -84,38 +84,6 @@ void FMMData::setKernel() {
     kdimDL = kernelFunctionPtr->surf_dim;
 }
 
-void FMMData::readM2LMat(const std::string &dataName) {
-    int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
-    int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
-    M2Ldata.resize(size * size);
-
-    char *pvfmm_dir = getenv("PVFMM_DIR");
-    std::stringstream st;
-    st << pvfmm_dir;
-    st << "/pdata/";
-    st << dataName.c_str();
-
-    FILE *fin = fopen(st.str().c_str(), "r");
-    if (fin == nullptr) {
-        std::cout << "M2L data " << dataName << " not found" << std::endl;
-        exit(1);
-    }
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            int iread, jread;
-            double fread;
-            fscanf(fin, "%d %d %lf\n", &iread, &jread, &fread);
-            if (i != iread || j != jread) {
-                printf("read ij error %d %d\n", i, j);
-                exit(1);
-            }
-            M2Ldata[i * size + j] = fread;
-        }
-    }
-
-    fclose(fin);
-}
-
 const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
     const pvfmm::Kernel<double> *kernelFunctionPtr;
     switch (kernelChoice_) {
@@ -151,6 +119,82 @@ const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
     return kernelFunctionPtr;
 }
 
+void FMMData::readM2LMat(const int kDim, const std::string &dataName,
+                         std::vector<double> &data) {
+    // int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
+    int size = kDim * equivCoord.size() / 3;
+    data.resize(size * size);
+
+    char *pvfmm_dir = getenv("PVFMM_DIR");
+    std::string file =
+        std::string(pvfmm_dir) + std::string("/pdata/") + dataName;
+
+    std::cout << dataName << " " << size << std::endl;
+    FILE *fin = fopen(file.c_str(), "r");
+    if (fin == nullptr) {
+        std::cout << "M2L data " << dataName << " not found" << std::endl;
+        exit(1);
+    }
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            int iread, jread;
+            double fread;
+            fscanf(fin, "%d %d %lf\n", &iread, &jread, &fread);
+            if (i != iread || j != jread) {
+                printf("read ij error %d %d\n", i, j);
+                exit(1);
+            }
+            data[i * size + j] = fread;
+        }
+    }
+
+    fclose(fin);
+}
+
+void FMMData::setupM2Ldata() {
+    int pbc = static_cast<int>(periodicity);
+    std::string M2Lname = kernelFunctionPtr->k_m2l->ker_name;
+    if (!M2Lname.compare(std::string("stokes_PVel"))) {
+        // compose M2L data from Laplace and stokes
+        std::vector<double> M2L_laplace;
+        std::vector<double> M2L_stokes;
+        {
+            std::string dataName = "M2L_laplace_" + std::to_string(pbc) +
+                                   "D3Dp" + std::to_string(multOrder);
+            readM2LMat(1, dataName, M2L_laplace);
+        }
+        {
+
+            std::string dataName = "M2L_stokes_vel_" + std::to_string(pbc) +
+                                   "D3Dp" + std::to_string(multOrder);
+            readM2LMat(3, dataName, M2L_stokes);
+        }
+        int nequiv = this->equivCoord.size() / 3;
+        M2Ldata.resize(4 * nequiv * 4 * nequiv);
+        for (int i = 0; i < nequiv; i++) {
+            for (int j = 0; j < nequiv; j++) {
+                // each 4x4 block consists of 3x3 of stokes and 1x1 of laplace
+                // top-left 4*i, 4*j, size 4x4
+                M2Ldata[(4 * i + 3) * (4 * nequiv) + 4 * j + 3] =
+                    M2L_laplace[i * nequiv + j];
+                for (int k = 0; k < 3; k++) {
+                    for (int l = 0; l < 3; l++) {
+                        M2Ldata[(4 * i + k) * (4 * nequiv) + 4 * j + l] =
+                            M2L_stokes[(3 * i + k) * (3 * nequiv) + 3 * j + l];
+                    }
+                }
+            }
+        }
+
+    } else {
+        // read M2L data directly
+        std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) +
+                               "D3Dp" + std::to_string(multOrder);
+        int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
+        readM2LMat(kdim, dataName, this->M2Ldata);
+    }
+}
+
 // constructor
 FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
                  int maxPts_)
@@ -180,18 +224,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         equivCoord =
             surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
 
-        // load M2L kernel data
-        std::string dataName;
-        std::string M2Lname = kernelFunctionPtr->k_m2l->ker_name;
-        if (periodicity == PAXIS::PX) {
-            dataName = "M2L_" + M2Lname + "_1D3DpX";
-        } else if (periodicity == PAXIS::PXY) {
-            dataName = "M2L_" + M2Lname + "_2D3DpX";
-        } else if (periodicity == PAXIS::PXYZ) {
-            dataName = "M2L_" + M2Lname + "_3D3DpX";
-        }
-        dataName.replace(dataName.length() - 1, 1, std::to_string(multOrder));
-        readM2LMat(dataName);
+        setupM2Ldata();
     }
 }
 
