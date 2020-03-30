@@ -478,6 +478,8 @@ void checkError(const FMMresult &A, const FMMresult &B,
             printf("check result error, reference not found\n");
             exit(1);
         }
+        std::cout << "Error for kernel: " << STKFMM::asInteger(kernel)
+                  << std::endl;
         if (component) {
             int kdimSL, kdimDL, kdimTrg;
             std::tie(kdimSL, kdimDL, kdimTrg) =
@@ -524,7 +526,7 @@ int main(int argc, char **argv) {
             printf("*********Testing order p = %d*********\n", p);
             printf("---------Error vs \"True\" Value------\n");
         }
-        checkError(results, true_results);
+        checkError(results, true_results, true);
         dumpValue("p" + std::to_string(p), point, inputs, results);
 
         // check error vs translational shift
