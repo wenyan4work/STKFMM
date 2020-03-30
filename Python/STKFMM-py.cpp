@@ -20,14 +20,15 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .value("PXYZ", stkfmm::PAXIS::PXYZ);
 
     py::enum_<stkfmm::KERNEL>(m, "KERNEL")
-        .value("PVel", stkfmm::KERNEL::PVel) // single layer kernel
-        .value("PVelGrad", stkfmm::KERNEL::PVelGrad)
-        .value("PVelLaplacian", stkfmm::KERNEL::PVelLaplacian)
-        .value("Traction", stkfmm::KERNEL::Traction)
-        .value("LAPPGrad", stkfmm::KERNEL::LAPPGrad) // laplace single layer
+        .value("LAPPGrad", stkfmm::KERNEL::LAPPGrad)
+        .value("Stokes", stkfmm::KERNEL::Stokes)
         .value("StokesRegVel", stkfmm::KERNEL::StokesRegVel)
         .value("StokesRegVelOmega", stkfmm::KERNEL::StokesRegVelOmega)
-        .value("RPY", stkfmm::KERNEL::RPY);
+        .value("RPY", stkfmm::KERNEL::RPY)
+        .value("PVel", stkfmm::KERNEL::PVel) 
+        .value("PVelGrad", stkfmm::KERNEL::PVelGrad)
+        .value("PVelLaplacian", stkfmm::KERNEL::PVelLaplacian)
+        .value("Traction", stkfmm::KERNEL::Traction);
 
     py::enum_<stkfmm::PPKERNEL>(m, "PPKERNEL")
         .value("SLS2T", stkfmm::PPKERNEL::SLS2T)

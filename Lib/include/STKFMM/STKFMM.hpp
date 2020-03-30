@@ -93,7 +93,6 @@ class FMMData {
     const pvfmm::Kernel<double>
         *kernelFunctionPtr; ///< pointer to kernel function
 
-    // TODO: implement periodicity using these two variables
     std::vector<double> equivCoord; ///< periodicity L2T equivalent point coord
     std::vector<double> M2Ldata;    ///< periodicity M2L operator data
 

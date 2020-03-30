@@ -1,5 +1,3 @@
-# python interface, not working yet
-# PVFMM should be compiled with -fPIC
 if(PyInterface)
   find_package(pybind11 REQUIRED)
 
@@ -15,20 +13,19 @@ if(PyInterface)
            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
            ${PVFMM_INCLUDE_DIR} ${PVFMM_DEP_INCLUDE_DIR}
     PRIVATE ${PYTHON_INCLUDE_DIRS})
-  target_compile_definitions(PySTKFMM PUBLIC "PVFMM_FFTW3_MKL")
   target_compile_options(PySTKFMM PUBLIC ${OpenMP_CXX_FLAGS}
-                                              ${MPI_CXX_INCLUDE_DIRS})
+                                         ${MPI_CXX_INCLUDE_DIRS})
   target_link_libraries(
     PySTKFMM PUBLIC STKFMM ${pybind11_LIBRARIES} ${PVFMM_SHARED_LIBRARY}
-    OpenMP::OpenMP_CXX ${MKL_LIBRARIES} MPI::MPI_CXX)
+                    OpenMP::OpenMP_CXX ${PVFMM_DEP_LIB} MPI::MPI_CXX)
 
   # add example.py as
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/example.py
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/example.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/kernels.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/timer.py
-            ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND
+      ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/example.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/kernels.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/timer.py ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/example.py)
   # Custom target for activate the custom command above
   add_custom_target(copy_example_py
@@ -37,9 +34,6 @@ if(PyInterface)
 
   add_test(NAME PyInterface COMMAND python example.py)
 
-  install(
-    TARGETS PySTKFMM
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/python
-    )
+  install(TARGETS PySTKFMM LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/python)
 
 endif()
