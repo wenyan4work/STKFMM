@@ -28,9 +28,10 @@ void StokesRegDLVelOmega(double *s, double *t, double *f, double *velomega);
 
 //
 void StokesSLRPY(double *s, double *t, double *f, double *vlapv);
-
-//
 void StokesDLRPY(double *s, double *t, double *f, double *vlapv);
+
+void StokesSL(double *s, double *t, double *f, double *v);
+void StokesDL(double *s, double *t, double *f, double *v);
 
 //
 void LaplacePhiGradPhi(double *s, double *t, double *fin, double *phigradphi);

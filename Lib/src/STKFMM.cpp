@@ -102,6 +102,9 @@ const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
     case KERNEL::LAPPGrad:
         kernelFunctionPtr = &pvfmm::LaplaceLayerKernel<double>::PGrad();
         break;
+    case KERNEL::Stokes:
+        kernelFunctionPtr = &pvfmm::StokesKernel<double>::velocity();
+        break;
     case KERNEL::StokesRegVel:
         kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::Vel();
         break;
@@ -451,6 +454,13 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         poolFMM[KERNEL::LAPPGrad] =
             new FMMData(KERNEL::LAPPGrad, pbc, multOrder, maxPts);
     }
+    if (kernelComb & asInteger(KERNEL::Stokes)) {
+        if (myRank == 0)
+            printf("enable Stokes %u\n",
+                   kernelComb & asInteger(KERNEL::Stokes));
+        poolFMM[KERNEL::Stokes] =
+            new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts);
+    }
     if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
         if (myRank == 0)
             printf("enable StokesRegVel %u\n",
@@ -760,7 +770,14 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
                                           scaleFactor; // grad p, 1/r^2
             }
         }
-
+    } break;
+    case KERNEL::Stokes: {
+        // 3
+        const int nloop = nTrg * 3;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
+        }
     } break;
     case KERNEL::StokesRegVel: {
         // 3

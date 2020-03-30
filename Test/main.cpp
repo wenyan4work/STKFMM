@@ -32,14 +32,9 @@ using FMMinput = std::unordered_map<KERNEL, FMMsrcval>;
 using FMMresult = std::unordered_map<KERNEL, std::vector<double>>;
 
 std::vector<KERNEL> kernelVec = {
-    KERNEL::PVel,
-    KERNEL::PVelGrad,
-    KERNEL::PVelLaplacian,
-    KERNEL::Traction,
-    KERNEL::LAPPGrad,
-    KERNEL::StokesRegVel,
-    KERNEL::StokesRegVelOmega,
-    KERNEL::RPY,
+    KERNEL::LAPPGrad,          KERNEL::Stokes,        KERNEL::StokesRegVel,
+    KERNEL::StokesRegVelOmega, KERNEL::RPY,           KERNEL::PVel,
+    KERNEL::PVelGrad,          KERNEL::PVelLaplacian, KERNEL::Traction,
 };
 
 typedef void (*kernel_func)(double *, double *, double *, double *);
@@ -50,6 +45,7 @@ std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
      {KERNEL::Traction, std::make_pair(StokesSLTraction, StokesDLTraction)},
      {KERNEL::PVelLaplacian, std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)},
      {KERNEL::LAPPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
+     {KERNEL::Stokes, std::make_pair(StokesSL, StokesDL)},
      {KERNEL::StokesRegVel, std::make_pair(StokesRegSLVel, StokesRegDLVel)},
      {KERNEL::StokesRegVelOmega, std::make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
      {KERNEL::RPY, std::make_pair(StokesSLRPY, StokesDLRPY)}});

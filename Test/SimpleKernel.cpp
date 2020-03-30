@@ -1444,6 +1444,47 @@ void StokesRegSLVelOmega(double *s, double *t, double *f, double *velomega) {
     velomega[5] += rotlet_coef * fcurlrz;
 }
 
+void StokesSL(double *s, double *t, double *f, double *vlapv) {
+    const double fx = f[0];
+    const double fy = f[1];
+    const double fz = f[2];
+    const double a = 0;
+
+    const double sx = s[0];
+    const double sy = s[1];
+    const double sz = s[2];
+    const double dx = t[0] - sx;
+    const double dy = t[1] - sy;
+    const double dz = t[2] - sz;
+
+    double r2 = dx * dx + dy * dy + dz * dz;
+    if (r2 == 0.0)
+        return;
+
+    double a2 = a * a;
+
+    double invr = 1.0 / sqrt(r2);
+    double invr3 = invr / r2;
+    double invr5 = invr3 / r2;
+    double fdotr = fx * dx + fy * dy + fz * dz;
+    vlapv[0] += fx * invr + dx * fdotr * invr3;
+    vlapv[1] += fy * invr + dy * fdotr * invr3;
+    vlapv[2] += fz * invr + dz * fdotr * invr3;
+
+    vlapv[0] += a2 * (2 * fx * invr3 - 6 * fdotr * dx * invr5) / 6.0;
+    vlapv[1] += a2 * (2 * fy * invr3 - 6 * fdotr * dy * invr5) / 6.0;
+    vlapv[2] += a2 * (2 * fz * invr3 - 6 * fdotr * dz * invr5) / 6.0;
+
+    vlapv[3] += 2 * fx * invr3 - 6 * fdotr * dx * invr5;
+    vlapv[4] += 2 * fy * invr3 - 6 * fdotr * dy * invr5;
+    vlapv[5] += 2 * fz * invr3 - 6 * fdotr * dz * invr5;
+
+    for (int i = 0; i < 6; ++i)
+        vlapv[i] /= 8.0 * M_PI;
+}
+
+void StokesDL(double *s, double *t, double *f, double *vel){};
+
 void StokesSLRPY(double *s, double *t, double *f, double *vlapv) {
     const double fx = f[0];
     const double fy = f[1];
@@ -1516,5 +1557,5 @@ void LaplacePhiGradPhi(double *s, double *t, double *fin, double *phigradphi) {
         Power(Power(r(0), 2) + Power(r(1), 2) + Power(r(2), 2), 2.5);
 
     for (int i = 0; i < 4; ++i)
-        phigradphi[i] *= f(3)*f(3) / (8 * M_PI);
+        phigradphi[i] *= f(3) * f(3) / (8 * M_PI);
 }
