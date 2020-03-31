@@ -31,14 +31,14 @@ struct FMMsrcval {
 using FMMinput = std::unordered_map<KERNEL, FMMsrcval>;
 using FMMresult = std::unordered_map<KERNEL, std::vector<double>>;
 
-std::vector<KERNEL> kernelVec = {
-    KERNEL::LAPPGrad,          KERNEL::Stokes,        KERNEL::StokesRegVel,
-    KERNEL::StokesRegVelOmega, KERNEL::RPY,           KERNEL::PVel,
-    KERNEL::PVelGrad,          KERNEL::PVelLaplacian, KERNEL::Traction,
-};
+// std::vector<KERNEL> kernelVec = {
+//     KERNEL::LAPPGrad,          KERNEL::Stokes,        KERNEL::StokesRegVel,
+//     KERNEL::StokesRegVelOmega, KERNEL::RPY,           KERNEL::PVel,
+//     KERNEL::PVelGrad,          KERNEL::PVelLaplacian, KERNEL::Traction,
+// };
 
-typedef void (*kernel_func)(double *, double *, double *, double *);
 // clang-format off
+typedef void (*kernel_func)(double *, double *, double *, double *);
 std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
     {{KERNEL::PVel, std::make_pair(StokesSLPVel, StokesDLPVel)},
      {KERNEL::PVelGrad, std::make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
@@ -170,8 +170,9 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
     PointDistribution pd(parser.get<int>("s"));
 
     // loop over each activated kernel
-    for (const auto &kernel : kernelVec) {
-        if (kernelComb != 0 && !(STKFMM::asInteger(kernel) & kernelComb)) {
+    for (const auto &it : kernelMap) {
+        auto kernel=it.first;
+        if (kernelComb != 0 && !(asInteger(kernel) & kernelComb)) {
             continue;
         }
         FMMsrcval value;
@@ -453,14 +454,13 @@ void dumpValue(const std::string &tag, const FMMpoint &point,
         if (it != results.end()) {
             trgLocal = it->second;
         } else {
-            printf("result not found for kernel %d\n",
-                   STKFMM::asInteger(kernel));
+            printf("result not found for kernel %d\n", asInteger(kernel));
         }
-        writedata(tag + "_srcSL_K" + std::to_string(STKFMM::asInteger(kernel)),
+        writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)),
                   point.srcLocalSL, value.srcLocalSL, kdimSL);
-        writedata(tag + "_srcDL_K" + std::to_string(STKFMM::asInteger(kernel)),
+        writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)),
                   point.srcLocalDL, value.srcLocalDL, kdimDL);
-        writedata(tag + "_trg_K" + std::to_string(STKFMM::asInteger(kernel)),
+        writedata(tag + "_trg_K" + std::to_string(asInteger(kernel)),
                   point.trgLocal, trgLocal, kdimTrg);
     }
 }
@@ -474,8 +474,7 @@ void checkError(const FMMresult &A, const FMMresult &B,
             printf("check result error, reference not found\n");
             exit(1);
         }
-        std::cout << "Error for kernel: " << STKFMM::asInteger(kernel)
-                  << std::endl;
+        std::cout << "Error for kernel: " << asInteger(kernel) << std::endl;
         if (component) {
             int kdimSL, kdimDL, kdimTrg;
             std::tie(kdimSL, kdimDL, kdimTrg) =

@@ -36,22 +36,6 @@ enum class PAXIS : unsigned {
 };
 
 /**
- * @brief choose a kernel
- * each kernel has booth single and double layer options
- */
-enum class KERNEL : unsigned {
-    LAPPGrad = 1,          ///< Laplace
-    Stokes = 2, ///< Stokeslet
-    StokesRegVel = 4,      ///< Regularized Stokes Velocity
-    StokesRegVelOmega = 8, ///< Regularized Stokes Velocity/Rotation
-    RPY = 16,              ///< RPY
-    PVel = 32,               ///< Stokes
-    PVelGrad = 64,           ///< Stokes
-    PVelLaplacian = 128,      ///< Stokes
-    Traction = 256,           ///< Stokes
-};
-
-/**
  * @brief directly run point-to-point kernels without buildling FMM tree
  *
  */
@@ -62,15 +46,50 @@ enum class PPKERNEL : unsigned {
 };
 
 /**
- * @brief return an integer (size_t) from a enum class member
- *
+ * @brief choose a kernel
+ * each kernel has booth single and double layer options
+ * except RPY and StokesReg kernels
  */
-struct EnumClassHash {
-    template <typename T>
-    size_t operator()(T t) const {
-        return static_cast<size_t>(t);
-    }
+enum class KERNEL : unsigned {
+    LAPPGrad = 1,           ///< Laplace
+    Stokes = 2,             ///< Stokeslet
+    RPY = 4,                ///< RPY
+    StokesRegVel = 8,       ///< Regularized Stokes Velocity
+    StokesRegVelOmega = 16, ///< Regularized Stokes Velocity/Rotation
+    PVel = 32,              ///< Stokes
+    PVelGrad = 64,          ///< Stokes
+    PVelLaplacian = 128,    ///< Stokes
+    Traction = 256,         ///< Stokes
 };
+
+extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
+    kernelMap;
+
+// /**
+//  * @brief return an integer (size_t) from a enum class member
+//  *
+//  */
+// struct EnumClassHash {
+//     template <typename T>
+//     size_t operator()(T t) const {
+//         return static_cast<size_t>(t);
+//     }
+// };
+
+/**
+ * @brief Enum to integer
+ *
+ * @tparam Enumeration
+ * @param value
+ * @return std::underlying_type<Enumeration>::type
+ */
+template <typename Enumeration>
+auto asInteger(Enumeration const value) ->
+    typename std::underlying_type<Enumeration>::type {
+    return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+}
+
+namespace impl {
 
 /**
  * @brief Run FMM for a chosen kernel
@@ -208,26 +227,20 @@ class FMMData {
     void setupM2Ldata();
 };
 
+} // namespace impl
+
+/**
+ * @brief a virtual interface for STKFMM cases
+ *
+ */
+class STKFMM_INTERFACE {};
+
 /**
  * @brief STKFMM class, exposed to user
  *
  */
-class STKFMM {
+class STKFMM : public STKFMM_INTERFACE {
   public:
-    /**
-     * @brief Enum to integer
-     *
-     * @tparam Enumeration
-     * @param value
-     * @return std::underlying_type<Enumeration>::type
-     */
-    template <typename Enumeration>
-    static auto asInteger(Enumeration const value) ->
-        typename std::underlying_type<Enumeration>::type {
-        return static_cast<typename std::underlying_type<Enumeration>::type>(
-            value);
-    }
-
     /**
      * @brief Construct a new STKFMM object
      *
@@ -376,7 +389,7 @@ class STKFMM {
   private:
     const int multOrder;       ///< multipole order
     const int maxPts;          ///< max number of points to use
-    PAXIS pbc;                 ///< TODO: periodic boundary condition
+    PAXIS pbc;                 ///< periodic boundary condition
     const unsigned kernelComb; ///< combination of activated kernels
 
     double xlow, xhigh;            ///< box x
@@ -391,7 +404,7 @@ class STKFMM {
     std::vector<double> srcDLCoordInternal; ///< scaled Double Layer coordinate
     std::vector<double> trgCoordInternal;   ///< scaled target coordinate
     std::vector<double> srcSLValueInternal; ///< scaled SL value
-    std::vector<double> srcDLValueInternal; ///< scaled SL value
+    std::vector<double> srcDLValueInternal; ///< scaled DL value
     std::vector<double> trgValueInternal;   ///< scaled trg value
 
     /**
@@ -404,8 +417,7 @@ class STKFMM {
     void setupCoord(const int npts, const double *coordInPtr,
                     std::vector<double> &coord) const;
 
-    std::unordered_map<KERNEL, FMMData *, EnumClassHash>
-        poolFMM; ///< bookkeeping of all FMMData object
+    std::unordered_map<KERNEL, impl::FMMData *> poolFMM; ///< bookkeeping of all FMMData object
 };
 } // namespace stkfmm
 

@@ -11,9 +11,10 @@
 #include <mpi.h>
 #include <omp.h>
 
+#include "STKFMM/STKFMM.hpp"
+
 #include "STKFMM/LaplaceLayerKernel.hpp"
 #include "STKFMM/RPYKernel.hpp"
-#include "STKFMM/STKFMM.hpp"
 #include "STKFMM/StokesLayerKernel.hpp"
 #include "STKFMM/StokesRegSingleLayerKernel.hpp"
 
@@ -21,61 +22,19 @@ extern pvfmm::PeriodicType pvfmm::periodicType;
 
 namespace stkfmm {
 
-template <class T>
-void safeDeletePtr(T *&ptr) {
-    if (ptr != nullptr) {
-        delete ptr;
-        ptr = nullptr;
-    }
-}
+const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
+    {KERNEL::LAPPGrad, &pvfmm::LaplaceLayerKernel<double>::PGrad()},
+    {KERNEL::Stokes, &pvfmm::StokesKernel<double>::velocity()},
+    {KERNEL::RPY, &pvfmm::RPYKernel<double>::ulapu()},
+    {KERNEL::StokesRegVel, &pvfmm::StokesRegKernel<double>::Vel()},
+    {KERNEL::StokesRegVelOmega, &pvfmm::StokesRegKernel<double>::FTVelOmega()},
+    {KERNEL::PVel, &pvfmm::StokesLayerKernel<double>::PVel()},
+    {KERNEL::PVelGrad, &pvfmm::StokesLayerKernel<double>::PVelGrad()},
+    {KERNEL::PVelLaplacian, &pvfmm::StokesLayerKernel<double>::PVelLaplacian()},
+    {KERNEL::Traction, &pvfmm::StokesLayerKernel<double>::Traction()},
+};
 
-// return fraction part between [0,1)
-/*
- * This function is only applied in the PERIODIC DIRECTION
- * The user of the library must ensure that all points are located within [0,1)
- * */
-inline double fracwrap(double x) { return x - floor(x); }
-
-template <class Real_t>
-std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
-    int n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
-
-    std::vector<Real_t> coord(n_ * 3);
-    coord[0] = coord[1] = coord[2] = -1.0;
-    int cnt = 1;
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = -1.0;
-            coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = -1.0;
-            coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = -1.0;
-            cnt++;
-        }
-    for (int i = 0; i < (n_ / 2) * 3; i++)
-        coord[cnt * 3 + i] = -coord[i];
-
-    Real_t r = 0.5 * pow(0.5, depth);
-    Real_t b = alpha * r;
-    for (int i = 0; i < n_; i++) {
-        coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
-        coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
-        coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
-    }
-    return coord;
-}
+namespace impl {
 
 void FMMData::setKernel() {
     matrixPtr->Initialize(multOrder, comm, kernelFunctionPtr);
@@ -85,41 +44,14 @@ void FMMData::setKernel() {
 }
 
 const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
-    const pvfmm::Kernel<double> *kernelFunctionPtr;
-    switch (kernelChoice_) {
-    case KERNEL::PVel:
-        kernelFunctionPtr = &pvfmm::StokesLayerKernel<double>::PVel();
-        break;
-    case KERNEL::PVelGrad:
-        kernelFunctionPtr = &pvfmm::StokesLayerKernel<double>::PVelGrad();
-        break;
-    case KERNEL::PVelLaplacian:
-        kernelFunctionPtr = &pvfmm::StokesLayerKernel<double>::PVelLaplacian();
-        break;
-    case KERNEL::Traction:
-        kernelFunctionPtr = &pvfmm::StokesLayerKernel<double>::Traction();
-        break;
-    case KERNEL::LAPPGrad:
-        kernelFunctionPtr = &pvfmm::LaplaceLayerKernel<double>::PGrad();
-        break;
-    case KERNEL::Stokes:
-        kernelFunctionPtr = &pvfmm::StokesKernel<double>::velocity();
-        break;
-    case KERNEL::StokesRegVel:
-        kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::Vel();
-        break;
-    case KERNEL::StokesRegVelOmega:
-        kernelFunctionPtr = &pvfmm::StokesRegKernel<double>::FTVelOmega();
-        break;
-    case KERNEL::RPY:
-        kernelFunctionPtr = &pvfmm::RPYKernel<double>::ulapu();
-        break;
-    default:
-        kernelFunctionPtr = nullptr;
+    auto it = kernelMap.find(kernelChoice_);
+    if (it != kernelMap.end()) {
+        return it->second;
+    } else {
         printf("Error: Kernel not found.\n");
-        break;
+        std::exit(1);
+        return nullptr;
     }
-    return kernelFunctionPtr;
 }
 
 void FMMData::readM2LMat(const int kDim, const std::string &dataName,
@@ -217,8 +149,8 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
     // load periodicity M2L data
     if (periodicity != PAXIS::NONE) {
         // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-        double scaleLEquiv =
-            PVFMM_RAD1; // RAD1 = 2.95 defined in pvfmm_common.h
+        // RAD1 = 2.95 defined in pvfmm_common.h
+        double scaleLEquiv = PVFMM_RAD1;
         double pCenterLEquiv[3];
         pCenterLEquiv[0] = -(scaleLEquiv - 1) / 2;
         pCenterLEquiv[1] = -(scaleLEquiv - 1) / 2;
@@ -305,18 +237,15 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue,
     MPI_Comm_rank(comm, &rank);
 
     if (nTrg * kdimTrg != trgValue.size()) {
-        printf("trg value size error for kernel %zu from rank %d\n",
-               EnumClassHash()(kernelChoice), rank);
+        printf("trg value size error from rank %d\n", rank);
         exit(1);
     }
     if (nSrc * kdimSL != srcSLValue.size()) {
-        printf("src SL value size error for kernel %zu\n from rank %d",
-               EnumClassHash()(kernelChoice), rank);
+        printf("src SL value size error from rank %d\n", rank);
         exit(1);
     }
     if (nSurf * kdimDL != srcDLValue.size()) {
-        printf("src DL value size error for kernel %zu\n from rank %d",
-               EnumClassHash()(kernelChoice), rank);
+        printf("src DL value size error from rank %d\n", rank);
         exit(1);
     }
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
@@ -391,12 +320,14 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
                idTrgHigh - idTrgLow, trgValuePtr + kdimTrg * idTrgLow, NULL);
     }
 }
+} // namespace impl
 
 STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
                unsigned int kernelComb_)
     : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_),
       kernelComb(kernelComb_), xlow(0), xhigh(1), ylow(0), yhigh(1), zlow(0),
       zhigh(1), scaleFactor(1), xshift(0), yshift(0), zshift(0) {
+    using namespace impl;
     // set periodic boundary condition
     switch (pbc) {
     case PAXIS::NONE:
@@ -419,78 +350,26 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
 
     poolFMM.clear();
 
-    // parse the choice of kernels, use bitwise and
-    if (kernelComb & asInteger(KERNEL::PVel)) {
-        if (myRank == 0)
-            printf("enable PVel %u\n", kernelComb & asInteger(KERNEL::PVel));
-        poolFMM[KERNEL::PVel] =
-            new FMMData(KERNEL::PVel, pbc, multOrder, maxPts);
+    for (const auto &it : kernelMap) {
+        const auto kernel = it.first;
+        if (kernelComb & asInteger(kernel)) {
+            poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts);
+            if (!myRank)
+                std::cout << "enable kernel " << it.second->ker_name
+                          << std::endl;
+        }
     }
-    if (kernelComb & asInteger(KERNEL::PVelGrad)) {
-        if (myRank == 0)
-            printf("enable PVelGrad %u\n",
-                   kernelComb & asInteger(KERNEL::PVelGrad));
-        poolFMM[KERNEL::PVelGrad] =
-            new FMMData(KERNEL::PVelGrad, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::PVelLaplacian)) {
-        if (myRank == 0)
-            printf("enable PVelLaplacian %u\n",
-                   kernelComb & asInteger(KERNEL::PVelLaplacian));
-        poolFMM[KERNEL::PVelLaplacian] =
-            new FMMData(KERNEL::PVelLaplacian, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::Traction)) {
-        if (myRank == 0)
-            printf("enable Traction %u\n",
-                   kernelComb & asInteger(KERNEL::Traction));
-        poolFMM[KERNEL::Traction] =
-            new FMMData(KERNEL::Traction, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::LAPPGrad)) {
-        if (myRank == 0)
-            printf("enable LAPPGrad %u\n",
-                   kernelComb & asInteger(KERNEL::LAPPGrad));
-        poolFMM[KERNEL::LAPPGrad] =
-            new FMMData(KERNEL::LAPPGrad, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::Stokes)) {
-        if (myRank == 0)
-            printf("enable Stokes %u\n",
-                   kernelComb & asInteger(KERNEL::Stokes));
-        poolFMM[KERNEL::Stokes] =
-            new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
-        if (myRank == 0)
-            printf("enable StokesRegVel %u\n",
-                   kernelComb & asInteger(KERNEL::StokesRegVel));
-        poolFMM[KERNEL::StokesRegVel] =
-            new FMMData(KERNEL::StokesRegVel, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::StokesRegVelOmega)) {
-        if (myRank == 0)
-            printf("enable StokesRegVelOmega %u\n",
-                   kernelComb & asInteger(KERNEL::StokesRegVelOmega));
-        poolFMM[KERNEL::StokesRegVelOmega] =
-            new FMMData(KERNEL::StokesRegVelOmega, pbc, multOrder, maxPts);
-    }
-    if (kernelComb & asInteger(KERNEL::RPY)) {
-        if (myRank == 0)
-            printf("enable RPY %u\n", kernelComb & asInteger(KERNEL::RPY));
-        poolFMM[KERNEL::RPY] = new FMMData(KERNEL::RPY, pbc, multOrder, maxPts);
-    }
-#ifdef FMMDEBUG
-    pvfmm::Profile::Enable(true);
-#endif
 
     if (poolFMM.empty()) {
-        printf("Error: no kernel choosed");
+        printf("Error: no kernel activated\n");
         exit(1);
     }
 
+#ifdef FMMDEBUG
+    pvfmm::Profile::Enable(true);
     if (myRank == 0)
         printf("FMM Initialized\n");
+#endif
 }
 
 STKFMM::~STKFMM() {
@@ -530,36 +409,10 @@ void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_,
 
     // sanity check of box setting, ensure fitting in a cubic box [0,1)^3
     const double eps = pow(10, -12) / scaleFactor;
-    switch (pbc) {
-    case PAXIS::NONE:
-        // for PNONE, scale max length to [0,1), all choices are valid
-        break;
-    case PAXIS::PX:
-        if (zlen < xlen || zlen < ylen) {
-            std::cout << "periodic box size error" << std::endl;
-            exit(1);
-        }
-        break;
-    case PAXIS::PXY:
-        // for PXY,PXZ,PYZ, periodic direcitons must have equal size, and larger
-        // than the third direction
-        if (fabs(xlen - ylen) < eps && xlen >= zlen) {
-            // correct
-        } else {
-            std::cout << "periodic box size error" << std::endl;
-            exit(1);
-        }
-        break;
-    case PAXIS::PXYZ:
-        // for PXYZ, must be cubic
-        if (fabs(xlen - ylen) < eps && fabs(xlen - zlen) < eps &&
-            fabs(ylen - zlen) < eps) {
-            // correct
-        } else {
-            std::cout << "periodic box size error" << std::endl;
-            exit(1);
-        }
-        break;
+    if (abs(xlen - ylen) > eps || abs(xlen - zlen) > eps ||
+        abs(ylen - zlen) > eps) {
+        printf("Error: box must be a cube\n");
+        std::exit(1);
     }
 }
 
@@ -652,6 +505,7 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
                          const int nTrg, double *trgValuePtr,
                          const KERNEL kernel) {
 
+    using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n",
                static_cast<int>(kernel));
@@ -702,10 +556,11 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         // 1+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor *
-                                  scaleFactor; // pressure 1/r^2
-            trgValuePtr[4 * i + 1] +=
-                trgValueInternal[4 * i + 1] * scaleFactor; // vel 1/r
+            // pressure 1/r^2
+            trgValuePtr[4 * i] +=
+                trgValueInternal[4 * i] * scaleFactor * scaleFactor;
+            // vel 1/r
+            trgValuePtr[4 * i + 1] += trgValueInternal[4 * i + 1] * scaleFactor;
             trgValuePtr[4 * i + 2] += trgValueInternal[4 * i + 2] * scaleFactor;
             trgValuePtr[4 * i + 3] += trgValueInternal[4 * i + 3] * scaleFactor;
         }
@@ -714,21 +569,24 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         // 1+3+3+9
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
+            // p
             trgValuePtr[16 * i] +=
-                trgValueInternal[16 * i] * scaleFactor * scaleFactor; // p
+                trgValueInternal[16 * i] * scaleFactor * scaleFactor;
+            // vel
             for (int j = 1; j < 4; j++) {
                 trgValuePtr[16 * i + j] +=
-                    trgValueInternal[16 * i + j] * scaleFactor; // vel
+                    trgValueInternal[16 * i + j] * scaleFactor;
             }
+            // grad p
             for (int j = 4; j < 7; j++) {
                 trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] *
                                            scaleFactor * scaleFactor *
-                                           scaleFactor; // grad p
+                                           scaleFactor;
             }
+            // grad vel
             for (int j = 7; j < 16; j++) {
-                trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] *
-                                           scaleFactor *
-                                           scaleFactor; // grad vel
+                trgValuePtr[16 * i + j] +=
+                    trgValueInternal[16 * i + j] * scaleFactor * scaleFactor;
             }
         }
     } break;
@@ -745,16 +603,19 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         // 1+3+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
+            // p
             trgValuePtr[7 * i] +=
-                trgValueInternal[7 * i] * scaleFactor * scaleFactor; // p
+                trgValueInternal[7 * i] * scaleFactor * scaleFactor;
+            // vel
             for (int j = 1; j < 4; j++) {
                 trgValuePtr[7 * i + j] +=
-                    trgValueInternal[7 * i + j] * scaleFactor; // vel
+                    trgValueInternal[7 * i + j] * scaleFactor;
             }
+            // laplacian vel
             for (int j = 4; j < 7; j++) {
                 trgValuePtr[7 * i + j] += trgValueInternal[7 * i + j] *
                                           scaleFactor * scaleFactor *
-                                          scaleFactor; // laplacian vel
+                                          scaleFactor;
             }
         }
     } break;
@@ -762,12 +623,12 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         // 1+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
-            trgValuePtr[4 * i] +=
-                trgValueInternal[4 * i] * scaleFactor; // p, 1/r
+            // p, 1/r
+            trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor;
+            // grad p, 1/r^2
             for (int j = 1; j < 4; j++) {
-                trgValuePtr[4 * i + j] += trgValueInternal[4 * i + j] *
-                                          scaleFactor *
-                                          scaleFactor; // grad p, 1/r^2
+                trgValuePtr[4 * i + j] +=
+                    trgValueInternal[4 * i + j] * scaleFactor * scaleFactor;
             }
         }
     } break;
@@ -791,26 +652,29 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
         // 3 + 3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
+            // vel 1/r
             for (int j = 0; j < 3; ++j)
                 trgValuePtr[i * 6 + j] +=
-                    trgValueInternal[i * 6 + j] * scaleFactor; // vel 1/r
+                    trgValueInternal[i * 6 + j] * scaleFactor;
+            // omega 1/r^2
             for (int j = 3; j < 6; ++j)
-                trgValuePtr[i * 6 + j] += trgValueInternal[i * 6 + j] *
-                                          scaleFactor *
-                                          scaleFactor; // omega 1/r^2
+                trgValuePtr[i * 6 + j] +=
+                    trgValueInternal[i * 6 + j] * scaleFactor * scaleFactor;
         }
     } break;
     case KERNEL::RPY: {
         // 3 + 3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
+            // vel 1/r
             for (int j = 0; j < 3; ++j)
                 trgValuePtr[i * 6 + j] +=
-                    trgValueInternal[i * 6 + j] * scaleFactor; // vel 1/r
+                    trgValueInternal[i * 6 + j] * scaleFactor;
+            // laplacian vel
             for (int j = 3; j < 6; ++j)
                 trgValuePtr[i * 6 + j] += trgValueInternal[i * 6 + j] *
                                           scaleFactor * scaleFactor *
-                                          scaleFactor; // laplacian vel
+                                          scaleFactor;
         }
     } break;
     }
@@ -823,6 +687,7 @@ void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p,
                             double *srcValuePtr, const int nTrg,
                             double *trgCoordPtr, double *trgValuePtr,
                             const KERNEL kernel) {
+    using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
         printf("Error: no such FMMData exists for kernel %d\n",
                static_cast<int>(kernel));
@@ -837,36 +702,15 @@ void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p,
 void STKFMM::showActiveKernels() {
     int myRank;
     MPI_Comm_rank(comm, &myRank);
-    if (myRank == 0) {
-        printf("active kernels:\n");
-        if (kernelComb & asInteger(KERNEL::PVel)) {
-            printf("PVel\n");
-        }
-        if (kernelComb & asInteger(KERNEL::PVelGrad)) {
-            printf("PVelGrad\n");
-        }
-        if (kernelComb & asInteger(KERNEL::Traction)) {
-            printf("Traction\n");
-        }
-        if (kernelComb & asInteger(KERNEL::PVelLaplacian)) {
-            printf("PVelLaplacian\n");
-        }
-        if (kernelComb & asInteger(KERNEL::LAPPGrad)) {
-            printf("LAPPGrad\n");
-        }
-        if (kernelComb & asInteger(KERNEL::StokesRegVel)) {
-            printf("StokesRegVel\n");
-        }
-        if (kernelComb & asInteger(KERNEL::StokesRegVelOmega)) {
-            printf("StokesRegVelOmega\n");
-        }
-        if (kernelComb & asInteger(KERNEL::RPY)) {
-            printf("RPY\n");
+    for (auto it : kernelMap) {
+        if (kernelComb & asInteger(it.first)) {
+            std::cout << it.second->ker_name;
         }
     }
 }
 
 std::tuple<int, int, int> STKFMM::getKernelDimension(KERNEL kernel_) {
+    using namespace impl;
     const pvfmm::Kernel<double> *kernelFunctionPtr =
         FMMData::getKernelFunction(kernel_);
     int kdimSL = kernelFunctionPtr->ker_dim[0];
