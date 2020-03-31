@@ -9,7 +9,7 @@ cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D Eigen3_DIR="${SFTPATH}/share/eigen3/cmake" \
   -D CMAKE_INSTALL_PREFIX=${SFTPATH} \
-  -D PyInterface=OFF \
+  -D PyInterface=ON \
   -D BUILD_DOC=OFF \
 ../
 

@@ -68,7 +68,7 @@ void configure_parser(cli::Parser &parser) {
     parser.set_optional<int>("K", "Kernel Combination", 0,
                              "activated kernels, default=0 means all kernels");
     parser.set_optional<int>("R", "Random", 1,
-                             "0 for random, 1 for Chebyshev, default 1");
+                             "0 for random, 1 for regular mesh, default 1");
     parser.set_optional<int>("F", "FMM", 1,
                              "0 to test S2T kernel, 1 to test FMM, default 1");
     parser.set_optional<int>(
@@ -124,7 +124,7 @@ void genPoint(const cli::Parser &parser, FMMpoint &point) {
         if (parser.get<int>("R") > 0) {
             pd.randomPoints(nPts, box, shift, trgLocal);
         } else {
-            PointDistribution::chebPoints(nPts, box, shift, trgLocal);
+            PointDistribution::meshPoints(nPts, box, shift, trgLocal);
         }
 
         // set src SL coord

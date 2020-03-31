@@ -29,8 +29,8 @@ class PointDistribution {
     static void shiftAndScalePoints(std::vector<double> &ptsCoord,
                                     double shift[3], double scale);
 
-    static void chebPoints(int nPts, double box, double shift,
-                           std::vector<double> &ptsCoord);
+    static void meshPoints(int nPts, double box, double shift,
+                           std::vector<double> &ptsCoord, bool cheb=false);
 
     static void dumpPoints(const std::string &filename,
                            std::vector<double> &coord,

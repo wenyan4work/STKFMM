@@ -47,27 +47,32 @@ void PointDistribution::fixedPoints(int nPts, double box, double shift,
     }
 }
 
-void PointDistribution::chebPoints(int nPts, double box, double shift,
-                                   std::vector<double> &ptsCoord) {
-    // Get Chebyshev node without far endpoint (to prevent overlap with PBC)
-    ChebNodal chebData(nPts, false);
-    chebData.points[0] += 0;
-    chebData.points.back() -=
-        1e-14; // prevent PVFMM crash with point located at the edge
+void PointDistribution::meshPoints(int nPts, double box, double shift,
+                                   std::vector<double> &ptsCoord, bool cheb) {
+    std::vector<double> pts; // nPts+1 points on [-1,1]
+    if (cheb) {
+        ChebNodal chebData(nPts, true);
+        pts = chebData.points;
+    } else {
+        pts.resize(nPts + 1);
+        for (int i = 0; i < nPts + 1; i++) {
+            pts[i] = -1 + i * 2.0 / nPts;
+        }
+    }
+    // prevent PVFMM crash when point located at the edge
+    pts.back() -= 1e-12;
 
-    std::vector<double> &chebMesh = ptsCoord;
-    const int dimension = chebData.points.size();
-    chebMesh.resize(pow(dimension, 3) * 3);
+    const int dimension = pts.size();
+    ptsCoord.resize(pow(dimension, 3) * 3);
 
     for (int i = 0; i < dimension; i++) {
         for (int j = 0; j < dimension; j++) {
             for (int k = 0; k < dimension; k++) {
-                chebMesh[3 * (i * dimension * dimension + j * dimension + k)] =
-                    (chebData.points[i] + 1) * box / 2 + shift;
-                chebMesh[3 * (i * dimension * dimension + j * dimension + k) +
-                         1] = (chebData.points[j] + 1) * box / 2 + shift;
-                chebMesh[3 * (i * dimension * dimension + j * dimension + k) +
-                         2] = (chebData.points[k] + 1) * box / 2 + shift;
+                const int index =
+                    3 * (i * dimension * dimension + j * dimension + k);
+                ptsCoord[index] = (pts[i] + 1) * box / 2 + shift;
+                ptsCoord[index + 1] = (pts[j] + 1) * box / 2 + shift;
+                ptsCoord[index + 2] = (pts[k] + 1) * box / 2 + shift;
             }
         }
     }
