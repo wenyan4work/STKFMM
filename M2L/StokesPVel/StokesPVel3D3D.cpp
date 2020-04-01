@@ -413,6 +413,14 @@ inline void WkernelEwald(const EVec3 &target, const EVec3 &source,
     answer(0, 0) += x[0];
     answer(0, 1) += x[1];
     answer(0, 2) += x[2];
+    // dipole balancing net flux
+    EVec3 y = source;
+    y[0] = y[0] - floor(y[0]);
+    y[1] = y[1] - floor(y[1]);
+    y[2] = y[2] - floor(y[2]);
+    answer(1, 3) += 0.5 * y[0];
+    answer(2, 3) += 0.5 * y[1];
+    answer(3, 3) += 0.5 * y[2];
 }
 
 inline EMat4 WkernelNF(const EVec3 &target, const EVec3 &source,
@@ -678,14 +686,28 @@ int main(int argc, char **argv) {
 
     // Test
     // Sum of force and trD must be zero
-    std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forcePoint(3);
-    std::vector<EVec4, Eigen::aligned_allocator<EVec4>> forceValue(3);
-    forcePoint[0] = EVec3(0.2, 0.9, 0.2);
-    forcePoint[1] = EVec3(0.5, 0.5, 0.5);
-    forcePoint[2] = EVec3(0.7, 0.7, 0.7);
-    forceValue[0] = EVec4(0.1, 0.2, 0.3, 0.);
-    forceValue[1] = EVec4(0.1, -0.1, 0.2, 0.);
-    forceValue[2] = EVec4(0.2, 0.1, 0.1, 0.);
+    // std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forcePoint(3);
+    // std::vector<EVec4, Eigen::aligned_allocator<EVec4>> forceValue(3);
+    // forcePoint[0] = EVec3(0.2, 0.9, 0.2);
+    // forcePoint[1] = EVec3(0.5, 0.5, 0.5);
+    // forcePoint[2] = EVec3(0.7, 0.7, 0.7);
+    // forceValue[0] = EVec4(0.1, 0.2, 0.3, 0.);
+    // forceValue[1] = EVec4(0.1, -0.1, 0.2, 0.);
+    // forceValue[2] = EVec4(0.2, 0.1, 0.1, -0.);
+
+    const int nPts = 5;
+    std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forcePoint(nPts);
+    std::vector<EVec4, Eigen::aligned_allocator<EVec4>> forceValue(nPts);
+    double dsum = 0;
+    for (int i = 0; i < nPts; i++) {
+        forcePoint[i] = EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
+        forceValue[i] = EVec4::Random();
+        // forceValue[i][3] = 0;
+        dsum += forceValue[i][3];
+    }
+    for (auto &v : forceValue) {
+        v[3] -= dsum / nPts;
+    }
 
     // solve M
     Eigen::VectorXd f(4 * checkN);
@@ -706,17 +728,22 @@ int main(int argc, char **argv) {
     std::cout << "Msource: " << Msource << std::endl;
 
     double fx = 0, fy = 0, fz = 0, trd = 0;
+    EVec3 dipole = EVec3::Zero();
     for (int i = 0; i < equivN; i++) {
         fx += Msource[4 * i + 0];
         fy += Msource[4 * i + 1];
         fz += Msource[4 * i + 2];
         trd += Msource[4 * i + 3];
+        dipole[0] += Msource[4 * i + 3] * pointLEquiv[3 * i];
+        dipole[1] += Msource[4 * i + 3] * pointLEquiv[3 * i + 1];
+        dipole[2] += Msource[4 * i + 3] * pointLEquiv[3 * i + 2];
     }
 
     std::cout << "Fx sum: " << fx << std::endl;
     std::cout << "Fy sum: " << fy << std::endl;
     std::cout << "Fz sum: " << fz << std::endl;
     std::cout << "trd sum: " << trd << std::endl;
+    std::cout << "dipole sum: " << dipole.transpose() << std::endl;
 
     Eigen::VectorXd M2Lsource = M2L * (Msource);
 
@@ -739,9 +766,16 @@ int main(int argc, char **argv) {
             WkernelFF(samplePoint, forcePoint[k], W);
             WFFK += W * forceValue[k];
         }
+        // WFFL[1] += dipole[0];
+        // WFFL[2] += dipole[1];
+        // WFFL[3] += dipole[2];
+        EVec4 Error = WFFL - WFFK;
         std::cout << "WFF from Lequiv: " << WFFL.transpose() << std::endl;
         std::cout << "WFF from Kernel: " << WFFK.transpose() << std::endl;
-        std::cout << "FF Error: " << (WFFL - WFFK).transpose() << std::endl;
+        std::cout << "FF Error: " << Error.transpose() << std::endl;
+        std::cout << "ratio: " << Error[1] / dipole[0] << " "
+                  << Error[2] / dipole[1] << " " << Error[3] / dipole[2] << " "
+                  << std::endl;
     }
 
     return 0;
