@@ -171,7 +171,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
 
     // loop over each activated kernel
     for (const auto &it : kernelMap) {
-        auto kernel=it.first;
+        auto kernel = it.first;
         if (kernelComb != 0 && !(asInteger(kernel) & kernelComb)) {
             continue;
         }
@@ -345,7 +345,8 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
     const PAXIS paxis = (PAXIS)parser.get<int>("P");
     const int maxPoints = parser.get<int>("m");
     STKFMM myFMM(p, maxPoints, paxis, k);
-    myFMM.setBox(shift, shift + box, shift, shift + box, shift, shift + box);
+    double origin[3] = {shift, shift, shift};
+    myFMM.setBox(origin, box);
     myFMM.showActiveKernels();
     const int nSL = point.srcLocalSL.size() / 3;
     const int nDL = point.srcLocalDL.size() / 3;

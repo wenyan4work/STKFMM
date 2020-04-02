@@ -65,17 +65,6 @@ enum class KERNEL : unsigned {
 extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
     kernelMap;
 
-// /**
-//  * @brief return an integer (size_t) from a enum class member
-//  *
-//  */
-// struct EnumClassHash {
-//     template <typename T>
-//     size_t operator()(T t) const {
-//         return static_cast<size_t>(t);
-//     }
-// };
-
 /**
  * @brief Enum to integer
  *
@@ -166,7 +155,7 @@ class FMMData {
      */
     void evaluateFMM(std::vector<double> &srcSLValue,
                      std::vector<double> &srcDLValue,
-                     std::vector<double> &trgValue);
+                     std::vector<double> &trgValue, const double scale);
 
     /**
      * @brief periodize the target values
@@ -212,7 +201,20 @@ class FMMData {
     pvfmm::PtFMM_Data<double> *treeDataPtr; ///< pvfmm PtFMM_Data pointer
     MPI_Comm comm;                          ///< MPI_comm communicator
 
-    // work out the Stokes PVel kernel M2L data
+    /**
+     * @brief scale SrcSl and SrcDL Values before FMM call
+     *  operate on srcSLValue and srcDLValue
+     */
+    void scaleSrc(std::vector<double> &srcSLValue,
+                  std::vector<double> &srcDLValue, const double scaleFactor);
+
+    /**
+     * @brief scale Trg Values after FMM call
+     *  operate on trgSLValue
+     *
+     */
+    void scaleTrg(std::vector<double> &trgDLValue, const double scaleFactor);
+
     /**
      * @brief read the M2L Matrix from file
      *
@@ -329,28 +331,23 @@ class STKFMM : public STKFMM_INTERFACE {
     void setupTree(KERNEL kernel_);
 
     /**
-     * @brief Set the FMM box
-     * a cubic box as [xlow,xhigh)x[ylow,yhigh)x[zlow,zhigh)
+     * @brief Set FMM cubic Box
+     * a cubic box [origin,origin+len)^3
      *
-     * @param xlow_
-     * @param xhigh_
-     * @param ylow_
-     * @param yhigh_
-     * @param zlow_
-     * @param zhigh_
+     * @param origin
+     * @param len
      */
-    void setBox(double xlow_, double xhigh_, double ylow_, double yhigh_,
-                double zlow_, double zhigh_);
+    void setBox(double origin_[3], double len_);
 
     /**
      * @brief Get the FMM box
-     * a cubic box as [xlow,xhigh)x[ylow,yhigh)x[zlow,zhigh)
      *
      * @return [xlow, xhigh, ylow, yhigh, zlow, zhigh]
      */
     std::tuple<double, double, double, double, double, double> getBox() {
         return std::tuple<double, double, double, double, double, double>(
-            xlow, xhigh, ylow, yhigh, zlow, zhigh);
+            origin[0], origin[0] + len, origin[1], origin[1] + len, origin[2],
+            origin[2] + len);
     };
 
     /**
@@ -392,11 +389,9 @@ class STKFMM : public STKFMM_INTERFACE {
     PAXIS pbc;                 ///< periodic boundary condition
     const unsigned kernelComb; ///< combination of activated kernels
 
-    double xlow, xhigh;            ///< box x
-    double ylow, yhigh;            ///< box y
-    double zlow, zhigh;            ///< box z
-    double scaleFactor;            ///< scale factor to fit in box of [0,1)^3
-    double xshift, yshift, zshift; ///< shift to fit in box of [0,1)^3
+    double origin[3];   ///< coordinate of box origin
+    double len;         ///< cubic box size
+    double scaleFactor; ///< scale factor to fit in box of [0,1)^3
 
     MPI_Comm comm; ///< MPI_Comm object
 
@@ -417,7 +412,8 @@ class STKFMM : public STKFMM_INTERFACE {
     void setupCoord(const int npts, const double *coordInPtr,
                     std::vector<double> &coord) const;
 
-    std::unordered_map<KERNEL, impl::FMMData *> poolFMM; ///< bookkeeping of all FMMData object
+    std::unordered_map<KERNEL, impl::FMMData *>
+        poolFMM; ///< bookkeeping of all FMMData object
 };
 } // namespace stkfmm
 

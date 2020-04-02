@@ -184,8 +184,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord,
 
     // setup treeData
     treeDataPtr->dim = 3;
-    treeDataPtr->max_depth =
-        PVFMM_MAX_DEPTH; // must <= MAX_DEPTH in pvfmm_common.hpp
+    treeDataPtr->max_depth = PVFMM_MAX_DEPTH;
     treeDataPtr->max_pts = maxPts;
 
     treeDataPtr->src_coord = srcSLCoord;
@@ -228,7 +227,7 @@ void FMMData::deleteTree() {
 
 void FMMData::evaluateFMM(std::vector<double> &srcSLValue,
                           std::vector<double> &srcDLValue,
-                          std::vector<double> &trgValue) {
+                          std::vector<double> &trgValue, const double scale) {
     const int nSrc = treeDataPtr->src_coord.Dim() / 3;
     const int nSurf = treeDataPtr->surf_coord.Dim() / 3;
     const int nTrg = treeDataPtr->trg_coord.Dim() / 3;
@@ -248,8 +247,10 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue,
         printf("src DL value size error from rank %d\n", rank);
         exit(1);
     }
+    scaleSrc(srcSLValue, srcDLValue, scale);
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
     periodizeFMM(trgValue);
+    scaleTrg(trgValue, scale);
 }
 
 void FMMData::periodizeFMM(std::vector<double> &trgValue) {
@@ -320,13 +321,172 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
                idTrgHigh - idTrgLow, trgValuePtr + kdimTrg * idTrgLow, NULL);
     }
 }
+
+void FMMData::scaleSrc(std::vector<double> &srcSLValue,
+                       std::vector<double> &srcDLValue,
+                       const double scaleFactor) {
+    // scale the source strength, SL as 1/r, DL as 1/r^2
+    // SL no extra scaling
+    // DL scale as scaleFactor
+
+    const int nloop = srcDLValue.size();
+#pragma omp parallel for
+    for (int i = 0; i < nloop; i++) {
+        srcDLValue[i] *= scaleFactor;
+    }
+
+    const int nSL = srcSLValue.size() / kdimSL;
+    if (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad ||
+        kernelChoice == KERNEL::PVelLaplacian ||
+        kernelChoice == KERNEL::Traction || kernelChoice == KERNEL::RPY ||
+        kernelChoice == KERNEL::StokesRegVel) {
+        // Stokes, RPY, StokesRegVel
+#pragma omp parallel for
+        for (int i = 0; i < nSL; i++) {
+            // the Trace term of PVel
+            // the epsilon terms of RPY/StokesRegVel
+            // scale as double layer
+            srcSLValue[4 * i + 3] *= scaleFactor;
+        }
+    }
+
+    if (kernelChoice == KERNEL::StokesRegVelOmega) {
+#pragma omp parallel for
+        for (int i = 0; i < nSL; i++) {
+            // Scale torque / epsilon
+            for (int j = 3; j < 7; ++j)
+                srcSLValue[7 * i + j] *= scaleFactor;
+        }
+    }
+}
+
+void FMMData::scaleTrg(std::vector<double>&trgValue,const double scaleFactor) {
+
+    const int nTrg = trgValue.size() / kdimTrg;
+    // scale back according to kernel
+    switch (kernelChoice) {
+    case KERNEL::PVel: {
+        // 1+3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // pressure 1/r^2
+            trgValue[4 * i] *= scaleFactor * scaleFactor;
+            // vel 1/r
+            trgValue[4 * i + 1] *= scaleFactor;
+            trgValue[4 * i + 2] *= scaleFactor;
+            trgValue[4 * i + 3] *= scaleFactor;
+        }
+    } break;
+    case KERNEL::PVelGrad: {
+        // 1+3+3+9
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // p
+
+            trgValue[16 * i] *= scaleFactor * scaleFactor;
+            // vel
+            for (int j = 1; j < 4; j++) {
+                trgValue[16 * i + j] *= scaleFactor;
+            }
+            // grad p
+            for (int j = 4; j < 7; j++) {
+                trgValue[16 * i + j] *=
+                    scaleFactor * scaleFactor * scaleFactor;
+            }
+            // grad vel
+            for (int j = 7; j < 16; j++) {
+                trgValue[16 * i + j] *= scaleFactor * scaleFactor;
+            }
+        }
+    } break;
+    case KERNEL::Traction: {
+        // 9
+        int nloop = 9 * nTrg;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            // traction 1/r^2
+            trgValue[i] *= scaleFactor * scaleFactor;
+        }
+    } break;
+    case KERNEL::PVelLaplacian: {
+        // 1+3+3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // p
+            trgValue[7 * i] *= scaleFactor * scaleFactor;
+            // vel
+            for (int j = 1; j < 4; j++) {
+                trgValue[7 * i + j] *= scaleFactor;
+            }
+            // laplacian vel
+            for (int j = 4; j < 7; j++) {
+                trgValue[7 * i + j] *=
+                    scaleFactor * scaleFactor * scaleFactor;
+            }
+        }
+    } break;
+    case KERNEL::LAPPGrad: {
+        // 1+3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // p, 1/r
+            trgValue[4 * i] *= scaleFactor;
+            // grad p, 1/r^2
+            for (int j = 1; j < 4; j++) {
+                trgValue[4 * i + j] *= scaleFactor * scaleFactor;
+            }
+        }
+    } break;
+    case KERNEL::Stokes: {
+        // 3
+        const int nloop = nTrg * 3;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValue[i] *= scaleFactor; // vel 1/r
+        }
+    } break;
+    case KERNEL::StokesRegVel: {
+        // 3
+        const int nloop = nTrg * 3;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValue[i] *= scaleFactor; // vel 1/r
+        }
+    } break;
+    case KERNEL::StokesRegVelOmega: {
+        // 3 + 3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // vel 1/r
+            for (int j = 0; j < 3; ++j)
+                trgValue[i * 6 + j] *= scaleFactor;
+            // omega 1/r^2
+            for (int j = 3; j < 6; ++j)
+                trgValue[i * 6 + j] *= scaleFactor * scaleFactor;
+        }
+    } break;
+    case KERNEL::RPY: {
+        // 3 + 3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // vel 1/r
+            for (int j = 0; j < 3; ++j)
+                trgValue[i * 6 + j] *= scaleFactor;
+            // laplacian vel
+            for (int j = 3; j < 6; ++j)
+                trgValue[i * 6 + j] *=
+                    scaleFactor * scaleFactor * scaleFactor;
+        }
+    } break;
+    }
+}
+
 } // namespace impl
 
 STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
                unsigned int kernelComb_)
     : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_),
-      kernelComb(kernelComb_), xlow(0), xhigh(1), ylow(0), yhigh(1), zlow(0),
-      zhigh(1), scaleFactor(1), xshift(0), yshift(0), zshift(0) {
+      kernelComb(kernelComb_) {
     using namespace impl;
     // set periodic boundary condition
     switch (pbc) {
@@ -379,40 +539,21 @@ STKFMM::~STKFMM() {
     }
 }
 
-void STKFMM::setBox(double xlow_, double xhigh_, double ylow_, double yhigh_,
-                    double zlow_, double zhigh_) {
-    xlow = xlow_;
-    xhigh = xhigh_;
-    ylow = ylow_;
-    yhigh = yhigh_;
-    zlow = zlow_;
-    zhigh = zhigh_;
+void STKFMM::setBox(double origin_[3], double len_) {
+    origin[0] = origin_[0];
+    origin[1] = origin_[1];
+    origin[2] = origin_[2];
+    len = len_;
 
     // find and calculate scale & shift factor to map the box to [0,1)
-    xshift = -xlow;
-    yshift = -ylow;
-    zshift = -zlow;
-    double xlen = xhigh - xlow;
-    double ylen = yhigh - ylow;
-    double zlen = zhigh - zlow;
-    scaleFactor = 1 / std::max(zlen, std::max(xlen, ylen));
+    scaleFactor = 1 / len;
     // new coordinate = (x+xshift)*scaleFactor, in [0,1)
 
     int rank = 0;
     MPI_Comm_rank(comm, &rank);
 
     if (rank == 0) {
-        std::cout << "box x " << xlen << " box y " << ylen << " box z " << zlen
-                  << std::endl;
         std::cout << "scale factor " << scaleFactor << std::endl;
-    }
-
-    // sanity check of box setting, ensure fitting in a cubic box [0,1)^3
-    const double eps = pow(10, -12) / scaleFactor;
-    if (abs(xlen - ylen) > eps || abs(xlen - zlen) > eps ||
-        abs(ylen - zlen) > eps) {
-        printf("Error: box must be a cube\n");
-        std::exit(1);
     }
 }
 
@@ -426,17 +567,14 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr,
     }
     coord.resize(npts * 3);
 
-    const double xs = this->xshift;
-    const double ys = this->yshift;
-    const double zs = this->zshift;
     const double sF = this->scaleFactor;
 
 // scale
 #pragma omp parallel for
     for (int i = 0; i < npts; i++) {
-        coord[3 * i + 0] = (coordInPtr[3 * i + 0] + xs) * sF;
-        coord[3 * i + 1] = (coordInPtr[3 * i + 1] + ys) * sF;
-        coord[3 * i + 2] = (coordInPtr[3 * i + 2] + zs) * sF;
+        coord[3 * i + 0] = (coordInPtr[3 * i + 0] - origin[0]) * sF;
+        coord[3 * i + 1] = (coordInPtr[3 * i + 1] - origin[1]) * sF;
+        coord[3 * i + 2] = (coordInPtr[3 * i + 2] - origin[2]) * sF;
     }
 
     // wrap periodic images
@@ -460,7 +598,6 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr,
         }
     } else {
         assert(pbc == PAXIS::NONE);
-        // no fracwrap
     }
 
     return;
@@ -515,168 +652,21 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
 
     srcSLValueInternal.resize(nSL * fmm.kdimSL);
     srcDLValueInternal.resize(nDL * fmm.kdimDL);
+    trgValueInternal.resize(nTrg * fmm.kdimTrg);
 
-    // scale the source strength, SL as 1/r, DL as 1/r^2
-    // SL no extra scaling
-    // DL scale as scaleFactor
     std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL,
               srcSLValueInternal.begin());
-    int nloop = nDL * fmm.kdimDL;
+    std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL,
+              srcDLValueInternal.begin());
+
+    // run FMM with proper scaling
+    fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal,
+                    scaleFactor);
+
+    const int nloop = nTrg * fmm.kdimTrg;
 #pragma omp parallel for
     for (int i = 0; i < nloop; i++) {
-        srcDLValueInternal[i] = srcDLValuePtr[i] * scaleFactor;
-    }
-
-    if (fmm.kdimSL == 4) {
-        // Stokes, RPY, StokesRegVel
-#pragma omp parallel for
-        for (int i = 0; i < nSL; i++) {
-            // the Trace term scales as double layer, epsilon terms of
-            // RPY/StokesRegVel length scale as well
-            srcSLValueInternal[4 * i + 3] *= scaleFactor;
-        }
-    }
-    if (kernel == KERNEL::StokesRegVelOmega) {
-#pragma omp parallel for
-        for (int i = 0; i < nSL; i++) {
-            // Scale torque / epsilon
-            for (int j = 3; j < 7; ++j)
-                srcSLValueInternal[7 * i + j] *= scaleFactor;
-        }
-    }
-
-    // run FMM
-    // evaluate on internal sources with proper scaling
-    trgValueInternal.resize(nTrg * fmm.kdimTrg);
-    fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal);
-
-    // scale back according to kernel
-    switch (kernel) {
-    case KERNEL::PVel: {
-        // 1+3
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // pressure 1/r^2
-            trgValuePtr[4 * i] +=
-                trgValueInternal[4 * i] * scaleFactor * scaleFactor;
-            // vel 1/r
-            trgValuePtr[4 * i + 1] += trgValueInternal[4 * i + 1] * scaleFactor;
-            trgValuePtr[4 * i + 2] += trgValueInternal[4 * i + 2] * scaleFactor;
-            trgValuePtr[4 * i + 3] += trgValueInternal[4 * i + 3] * scaleFactor;
-        }
-    } break;
-    case KERNEL::PVelGrad: {
-        // 1+3+3+9
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // p
-            trgValuePtr[16 * i] +=
-                trgValueInternal[16 * i] * scaleFactor * scaleFactor;
-            // vel
-            for (int j = 1; j < 4; j++) {
-                trgValuePtr[16 * i + j] +=
-                    trgValueInternal[16 * i + j] * scaleFactor;
-            }
-            // grad p
-            for (int j = 4; j < 7; j++) {
-                trgValuePtr[16 * i + j] += trgValueInternal[16 * i + j] *
-                                           scaleFactor * scaleFactor *
-                                           scaleFactor;
-            }
-            // grad vel
-            for (int j = 7; j < 16; j++) {
-                trgValuePtr[16 * i + j] +=
-                    trgValueInternal[16 * i + j] * scaleFactor * scaleFactor;
-            }
-        }
-    } break;
-    case KERNEL::Traction: {
-        // 9
-        int nloop = 9 * nTrg;
-#pragma omp parallel for
-        for (int i = 0; i < nloop; i++) {
-            trgValuePtr[i] += trgValueInternal[i] * scaleFactor *
-                              scaleFactor; // traction 1/r^2
-        }
-    } break;
-    case KERNEL::PVelLaplacian: {
-        // 1+3+3
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // p
-            trgValuePtr[7 * i] +=
-                trgValueInternal[7 * i] * scaleFactor * scaleFactor;
-            // vel
-            for (int j = 1; j < 4; j++) {
-                trgValuePtr[7 * i + j] +=
-                    trgValueInternal[7 * i + j] * scaleFactor;
-            }
-            // laplacian vel
-            for (int j = 4; j < 7; j++) {
-                trgValuePtr[7 * i + j] += trgValueInternal[7 * i + j] *
-                                          scaleFactor * scaleFactor *
-                                          scaleFactor;
-            }
-        }
-    } break;
-    case KERNEL::LAPPGrad: {
-        // 1+3
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // p, 1/r
-            trgValuePtr[4 * i] += trgValueInternal[4 * i] * scaleFactor;
-            // grad p, 1/r^2
-            for (int j = 1; j < 4; j++) {
-                trgValuePtr[4 * i + j] +=
-                    trgValueInternal[4 * i + j] * scaleFactor * scaleFactor;
-            }
-        }
-    } break;
-    case KERNEL::Stokes: {
-        // 3
-        const int nloop = nTrg * 3;
-#pragma omp parallel for
-        for (int i = 0; i < nloop; i++) {
-            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
-        }
-    } break;
-    case KERNEL::StokesRegVel: {
-        // 3
-        const int nloop = nTrg * 3;
-#pragma omp parallel for
-        for (int i = 0; i < nloop; i++) {
-            trgValuePtr[i] += trgValueInternal[i] * scaleFactor; // vel 1/r
-        }
-    } break;
-    case KERNEL::StokesRegVelOmega: {
-        // 3 + 3
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // vel 1/r
-            for (int j = 0; j < 3; ++j)
-                trgValuePtr[i * 6 + j] +=
-                    trgValueInternal[i * 6 + j] * scaleFactor;
-            // omega 1/r^2
-            for (int j = 3; j < 6; ++j)
-                trgValuePtr[i * 6 + j] +=
-                    trgValueInternal[i * 6 + j] * scaleFactor * scaleFactor;
-        }
-    } break;
-    case KERNEL::RPY: {
-        // 3 + 3
-#pragma omp parallel for
-        for (int i = 0; i < nTrg; i++) {
-            // vel 1/r
-            for (int j = 0; j < 3; ++j)
-                trgValuePtr[i * 6 + j] +=
-                    trgValueInternal[i * 6 + j] * scaleFactor;
-            // laplacian vel
-            for (int j = 3; j < 6; ++j)
-                trgValuePtr[i * 6 + j] += trgValueInternal[i * 6 + j] *
-                                          scaleFactor * scaleFactor *
-                                          scaleFactor;
-        }
-    } break;
+        trgValuePtr[i] += trgValueInternal[i];
     }
 
     return;
@@ -723,4 +713,5 @@ void STKFMM::clearFMM(KERNEL kernelChoice) {
     trgValueInternal.clear();
     poolFMM[kernelChoice]->clear();
 }
+
 } // namespace stkfmm
