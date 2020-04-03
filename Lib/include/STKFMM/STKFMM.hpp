@@ -151,9 +151,9 @@ class FMMData {
      * @param srcDLCoord double layer source coordinate
      * @param trgCoord target coordinate
      */
-    void setupTree(const int nSL, const double *srcSLCoord,
-                   const int nDL, const double *srcDLCoord,
-                   const int nTrg, const double *trgCoord);
+    void setupTree(const std::vector<double> &srcSLCoord,
+                   const std::vector<double> &srcDLCoord,
+                   const std::vector<double> &trgCoord);
 
     /**
      * @brief run FMM
@@ -165,14 +165,6 @@ class FMMData {
     void evaluateFMM(std::vector<double> &srcSLValue,
                      std::vector<double> &srcDLValue,
                      std::vector<double> &trgValue, const double scale);
-
-    /**
-     * @brief periodize the target values
-     *
-     *
-     * @param trgValue
-     */
-    void periodizeFMM(std::vector<double> &trgValue);
 
     /**
      * @brief directly evaluate kernel functions without FMM tree
@@ -236,6 +228,14 @@ class FMMData {
      *
      */
     void setupM2Ldata();
+
+    /**
+     * @brief periodize the target values
+     *
+     *
+     * @param trgValue
+     */
+    void periodizeFMM(std::vector<double> &trgValue);
 };
 
 } // namespace impl
@@ -278,8 +278,9 @@ class STKFMM {
      * @param trgCoordPtr target point coordinate
      */
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
-                           const int nDL, const double *srcDLCoordPtr,
-                           const int nTrg, const double *trgCoordPtr) = 0;
+                           const int nTrg, const double *trgCoordPtr,
+                           const int nDL = 0,
+                           const double *srcDLCoordPtr = nullptr) = 0;
 
     /**
      * @brief setup the tree for the chosen kernel
@@ -415,7 +416,7 @@ class STKFMM {
 class Stk3DFMM : public STKFMM {
   public:
     Stk3DFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
-             unsigned int kernelComb_ = 1);
+             unsigned int kernelComb_ = 2);
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
                            const int nDL, const double *srcDLCoordPtr,
@@ -442,7 +443,7 @@ class Stk3DFMM : public STKFMM {
 class StkWallFMM : public STKFMM {
   public:
     StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
-               unsigned int kernelComb_ = 1);
+               unsigned int kernelComb_ = 2);
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
                            const int nDL, const double *srcDLCoordPtr,
@@ -455,10 +456,12 @@ class StkWallFMM : public STKFMM {
                              double *trgValuePtr, const int nDL = 0,
                              const double *srcDLValuePtr = nullptr);
 
+    virtual void clearFMM(KERNEL kernel);
+
     virtual std::tuple<double, double, double, double, double, double>
     getBox() const {
         return std::make_tuple(origin[0], origin[0] + len, origin[1],
-                               origin[1] + len, origin[2], origin[2] + len / 2);
+                               origin[1] + len, origin[2], origin[2] + len);
     };
 
     ~StkWallFMM();

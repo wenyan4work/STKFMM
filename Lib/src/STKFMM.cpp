@@ -130,7 +130,6 @@ void FMMData::setupM2Ldata() {
                 }
             }
         }
-
     } else {
         // read M2L data directly
         std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) +
@@ -632,8 +631,9 @@ Stk3DFMM::~Stk3DFMM() {
 }
 
 void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
-                         const int nDL, const double *srcDLCoordPtr,
-                         const int nTrg, const double *trgCoordPtr) {
+                              const int nTrg, const double *trgCoordPtr,
+                              const int nDL = 0,
+                              const double *srcDLCoordPtr = nullptr) {
 
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
@@ -659,7 +659,10 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
 #pragma omp section
         { setCoord(nSL, srcSLCoordPtr, srcSLCoordInternal); }
 #pragma omp section
-        { setCoord(nDL, srcDLCoordPtr, srcDLCoordInternal); }
+        {
+            if (nDL > 0 && srcDLCoordPtr != nullptr)
+                setCoord(nDL, srcDLCoordPtr, srcDLCoordInternal);
+        }
 #pragma omp section
         { setCoord(nTrg, trgCoordPtr, trgCoordInternal); }
     }
