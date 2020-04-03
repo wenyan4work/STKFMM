@@ -26,7 +26,7 @@ void safeDeletePtr(T *&ptr) {
  * @param x
  * @return double
  */
-inline double fracwrap(double x) { return x - floor(x); }
+inline void fracwrap(double &x) { x = x - floor(x); }
 
 /**
  * @brief generate equivalent point coordinate

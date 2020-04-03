@@ -34,6 +34,16 @@ const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
     {KERNEL::Traction, &pvfmm::StokesLayerKernel<double>::Traction()},
 };
 
+std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
+    using namespace impl;
+    const pvfmm::Kernel<double> *kernelFunctionPtr =
+        FMMData::getKernelFunction(kernel_);
+    int kdimSL = kernelFunctionPtr->ker_dim[0];
+    int kdimTrg = kernelFunctionPtr->ker_dim[1];
+    int kdimDL = kernelFunctionPtr->surf_dim;
+    return std::tuple<int, int, int>(kdimSL, kdimDL, kdimTrg);
+}
+
 namespace impl {
 
 void FMMData::setKernel() {
@@ -360,7 +370,8 @@ void FMMData::scaleSrc(std::vector<double> &srcSLValue,
     }
 }
 
-void FMMData::scaleTrg(std::vector<double>&trgValue,const double scaleFactor) {
+void FMMData::scaleTrg(std::vector<double> &trgValue,
+                       const double scaleFactor) {
 
     const int nTrg = trgValue.size() / kdimTrg;
     // scale back according to kernel
@@ -390,8 +401,7 @@ void FMMData::scaleTrg(std::vector<double>&trgValue,const double scaleFactor) {
             }
             // grad p
             for (int j = 4; j < 7; j++) {
-                trgValue[16 * i + j] *=
-                    scaleFactor * scaleFactor * scaleFactor;
+                trgValue[16 * i + j] *= scaleFactor * scaleFactor * scaleFactor;
             }
             // grad vel
             for (int j = 7; j < 16; j++) {
@@ -420,8 +430,7 @@ void FMMData::scaleTrg(std::vector<double>&trgValue,const double scaleFactor) {
             }
             // laplacian vel
             for (int j = 4; j < 7; j++) {
-                trgValue[7 * i + j] *=
-                    scaleFactor * scaleFactor * scaleFactor;
+                trgValue[7 * i + j] *= scaleFactor * scaleFactor * scaleFactor;
             }
         }
     } break;
@@ -474,14 +483,15 @@ void FMMData::scaleTrg(std::vector<double>&trgValue,const double scaleFactor) {
                 trgValue[i * 6 + j] *= scaleFactor;
             // laplacian vel
             for (int j = 3; j < 6; ++j)
-                trgValue[i * 6 + j] *=
-                    scaleFactor * scaleFactor * scaleFactor;
+                trgValue[i * 6 + j] *= scaleFactor * scaleFactor * scaleFactor;
         }
     } break;
     }
 }
 
 } // namespace impl
+
+// base class STKFMM
 
 STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
                unsigned int kernelComb_)
@@ -504,26 +514,7 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         break;
     }
 
-    comm = MPI_COMM_WORLD;
-    int myRank;
-    MPI_Comm_rank(comm, &myRank);
-
-    poolFMM.clear();
-
-    for (const auto &it : kernelMap) {
-        const auto kernel = it.first;
-        if (kernelComb & asInteger(kernel)) {
-            poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts);
-            if (!myRank)
-                std::cout << "enable kernel " << it.second->ker_name
-                          << std::endl;
-        }
-    }
-
-    if (poolFMM.empty()) {
-        printf("Error: no kernel activated\n");
-        exit(1);
-    }
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 #ifdef FMMDEBUG
     pvfmm::Profile::Enable(true);
@@ -532,69 +523,78 @@ STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
 #endif
 }
 
-STKFMM::~STKFMM() {
-    // delete all FMMData
-    for (auto &fmm : poolFMM) {
-        safeDeletePtr(fmm.second);
-    }
-}
-
 void STKFMM::setBox(double origin_[3], double len_) {
     origin[0] = origin_[0];
     origin[1] = origin_[1];
     origin[2] = origin_[2];
     len = len_;
-
     // find and calculate scale & shift factor to map the box to [0,1)
     scaleFactor = 1 / len;
-    // new coordinate = (x+xshift)*scaleFactor, in [0,1)
-
-    int rank = 0;
-    MPI_Comm_rank(comm, &rank);
+    // new coordinate = (pos-origin)*scaleFactor, in [0,1)
 
     if (rank == 0) {
         std::cout << "scale factor " << scaleFactor << std::endl;
     }
+};
+
+void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads,
+                            const PPKERNEL p2p, const int nSrc,
+                            double *srcCoordPtr, double *srcValuePtr,
+                            const int nTrg, double *trgCoordPtr,
+                            double *trgValuePtr) {
+    using namespace impl;
+    if (poolFMM.find(kernel) == poolFMM.end()) {
+        printf("Error: no such FMMData exists for kernel %d\n",
+               static_cast<int>(kernel));
+        exit(1);
+    }
+    FMMData &fmm = *((*poolFMM.find(kernel)).second);
+
+    fmm.evaluateKernel(nThreads, p2p, nSrc, srcCoordPtr, srcValuePtr, nTrg,
+                       trgCoordPtr, trgValuePtr);
 }
 
-void STKFMM::setupCoord(const int npts, const double *coordInPtr,
-                        std::vector<double> &coord) const {
-    // scale points into internal data array, without rotation
-    // Set points
-    if (npts == 0) {
-        coord.clear();
-        return;
+void STKFMM::showActiveKernels() const {
+    if (!rank) {
+        for (auto it : kernelMap) {
+            if (kernelComb & asInteger(it.first)) {
+                std::cout << it.second->ker_name;
+            }
+        }
     }
-    coord.resize(npts * 3);
+}
 
+void STKFMM::scaleCoord(const int npts, double *coordPtr) const {
+    // scale and shift points to [0,1)
     const double sF = this->scaleFactor;
 
-// scale
 #pragma omp parallel for
     for (int i = 0; i < npts; i++) {
-        coord[3 * i + 0] = (coordInPtr[3 * i + 0] - origin[0]) * sF;
-        coord[3 * i + 1] = (coordInPtr[3 * i + 1] - origin[1]) * sF;
-        coord[3 * i + 2] = (coordInPtr[3 * i + 2] - origin[2]) * sF;
+        for (int j = 0; j < 3; j++) {
+            coordPtr[3 * i + j] = (coordPtr[3 * i + j] - origin[j]) * sF;
+        }
     }
+}
 
+void STKFMM::wrapCoord(const int npts, double *coordPtr) const {
     // wrap periodic images
     if (pbc == PAXIS::PX) {
 #pragma omp parallel for
         for (int i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap(coord[3 * i]);
+            fracwrap(coordPtr[3 * i]);
         }
     } else if (pbc == PAXIS::PXY) {
 #pragma omp parallel for
         for (int i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap(coord[3 * i]);
-            coord[3 * i + 1] = fracwrap(coord[3 * i + 1]);
+            fracwrap(coordPtr[3 * i]);
+            fracwrap(coordPtr[3 * i + 1]);
         }
     } else if (pbc == PAXIS::PXYZ) {
 #pragma omp parallel for
         for (int i = 0; i < npts; i++) {
-            coord[3 * i] = fracwrap(coord[3 * i]);
-            coord[3 * i + 1] = fracwrap(coord[3 * i + 1]);
-            coord[3 * i + 2] = fracwrap(coord[3 * i + 2]);
+            fracwrap(coordPtr[3 * i]);
+            fracwrap(coordPtr[3 * i + 1]);
+            fracwrap(coordPtr[3 * i + 2]);
         }
     } else {
         assert(pbc == PAXIS::NONE);
@@ -603,44 +603,82 @@ void STKFMM::setupCoord(const int npts, const double *coordInPtr,
     return;
 }
 
-void STKFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
-                       const int nDL, const double *srcDLCoordPtr,
-                       const int nTrg, const double *trgCoordPtr) {
-    int np, myRank;
-    MPI_Comm_size(comm, &np);
-    MPI_Comm_rank(comm, &myRank);
+Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_,
+                   unsigned int kernelComb_)
+    : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
+    using namespace impl;
+    poolFMM.clear();
+
+    for (const auto &it : kernelMap) {
+        const auto kernel = it.first;
+        if (kernelComb & asInteger(kernel)) {
+            poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts);
+            if (!rank)
+                std::cout << "enable kernel " << it.second->ker_name
+                          << std::endl;
+        }
+    }
+
+    if (poolFMM.empty()) {
+        printf("Error: no kernel activated\n");
+    }
+}
+
+Stk3DFMM::~Stk3DFMM() {
+    // delete all FMMData
+    for (auto &fmm : poolFMM) {
+        safeDeletePtr(fmm.second);
+    }
+}
+
+void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
+                         const int nDL, const double *srcDLCoordPtr,
+                         const int nTrg, const double *trgCoordPtr) {
 
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
-            if (myRank == 0)
+            if (rank == 0)
                 printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
-        if (myRank == 0)
+        if (rank == 0)
             printf("ALL FMM Tree Cleared\n");
     }
 
     // setup point coordinates
-    setupCoord(nSL, srcSLCoordPtr, srcSLCoordInternal);
-    setupCoord(nDL, srcDLCoordPtr, srcDLCoordInternal);
-    setupCoord(nTrg, trgCoordPtr, trgCoordInternal);
-    if (myRank == 0)
+    auto setCoord = [&](const int nPts, const double *coordPtr,
+                        std::vector<double> &coord) {
+        coord.resize(nPts * 3);
+        std::copy(coordPtr, coordPtr + 3 * nPts, coord.begin());
+        scaleCoord(nPts, coord.data());
+        wrapCoord(nPts, coord.data());
+    };
+
+#pragma omp parallel sections
+    {
+#pragma omp section
+        { setCoord(nSL, srcSLCoordPtr, srcSLCoordInternal); }
+#pragma omp section
+        { setCoord(nDL, srcDLCoordPtr, srcDLCoordInternal); }
+#pragma omp section
+        { setCoord(nTrg, trgCoordPtr, trgCoordInternal); }
+    }
+
+    if (rank == 0)
         printf("points set\n");
 }
 
-void STKFMM::setupTree(KERNEL kernel_) {
-    int myRank;
-    MPI_Comm_rank(comm, &myRank);
-    poolFMM[kernel_]->setupTree(srcSLCoordInternal, srcDLCoordInternal,
-                                trgCoordInternal);
-    if (myRank == 0)
-        printf("Coord setup for kernel %d\n", static_cast<int>(kernel_));
+void Stk3DFMM::setupTree(KERNEL kernel) {
+    poolFMM[kernel]->setupTree(srcSLCoordInternal, srcDLCoordInternal,
+                               trgCoordInternal);
+    if (rank == 0)
+        printf("Coord setup for kernel %d\n", static_cast<int>(kernel));
 }
 
-void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
-                         const int nDL, const double *srcDLValuePtr,
-                         const int nTrg, double *trgValuePtr,
-                         const KERNEL kernel) {
+void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL,
+                           const double *srcSLValuePtr, const int nTrg,
+                           double *trgValuePtr, const int nDL,
+                           const double *srcDLValuePtr) {
 
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
@@ -672,46 +710,15 @@ void STKFMM::evaluateFMM(const int nSL, const double *srcSLValuePtr,
     return;
 }
 
-void STKFMM::evaluateKernel(const int nThreads, const PPKERNEL p2p,
-                            const int nSrc, double *srcCoordPtr,
-                            double *srcValuePtr, const int nTrg,
-                            double *trgCoordPtr, double *trgValuePtr,
-                            const KERNEL kernel) {
-    using namespace impl;
-    if (poolFMM.find(kernel) == poolFMM.end()) {
-        printf("Error: no such FMMData exists for kernel %d\n",
-               static_cast<int>(kernel));
-        exit(1);
-    }
-    FMMData &fmm = *((*poolFMM.find(kernel)).second);
-
-    fmm.evaluateKernel(nThreads, p2p, nSrc, srcCoordPtr, srcValuePtr, nTrg,
-                       trgCoordPtr, trgValuePtr);
-}
-
-void STKFMM::showActiveKernels() {
-    int myRank;
-    MPI_Comm_rank(comm, &myRank);
-    for (auto it : kernelMap) {
-        if (kernelComb & asInteger(it.first)) {
-            std::cout << it.second->ker_name;
-        }
-    }
-}
-
-std::tuple<int, int, int> STKFMM::getKernelDimension(KERNEL kernel_) {
-    using namespace impl;
-    const pvfmm::Kernel<double> *kernelFunctionPtr =
-        FMMData::getKernelFunction(kernel_);
-    int kdimSL = kernelFunctionPtr->ker_dim[0];
-    int kdimTrg = kernelFunctionPtr->ker_dim[1];
-    int kdimDL = kernelFunctionPtr->surf_dim;
-    return std::tuple<int, int, int>(kdimSL, kdimDL, kdimTrg);
-}
-
-void STKFMM::clearFMM(KERNEL kernelChoice) {
+void Stk3DFMM::clearFMM(KERNEL kernel) {
     trgValueInternal.clear();
-    poolFMM[kernelChoice]->clear();
+    auto it = poolFMM.find(static_cast<KERNEL>(kernel));
+    if (it != poolFMM.end())
+        it->second->clear();
+    else {
+        printf("kernel not found\n");
+        std::exit(1);
+    }
 }
 
 } // namespace stkfmm

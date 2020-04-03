@@ -177,7 +177,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
         }
         FMMsrcval value;
         int kdimSL, kdimDL, kdimTrg;
-        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
         value.srcLocalSL.resize(kdimSL * nSL);
         value.srcLocalDL.resize(kdimDL * nDL);
 
@@ -281,7 +281,7 @@ void genTrueValueN2(const cli::Parser &parser, const FMMpoint &point,
         KERNEL kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
-        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
 
         std::vector<double> srcSLValueGlobal = value.srcLocalSL;
         std::vector<double> srcDLValueGlobal = value.srcLocalDL;
@@ -344,7 +344,7 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
     const int k = (temp == 0) ? ~((int)0) : temp;
     const PAXIS paxis = (PAXIS)parser.get<int>("P");
     const int maxPoints = parser.get<int>("m");
-    STKFMM myFMM(p, maxPoints, paxis, k);
+    Stk3DFMM myFMM(p, maxPoints, paxis, k);
     double origin[3] = {shift, shift, shift};
     myFMM.setBox(origin, box);
     myFMM.showActiveKernels();
@@ -362,7 +362,7 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
         auto &kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
-        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
         std::vector<double> trgLocal(nTrg * kdimTrg, 0);
         if (parser.get<int>("F")) {
 
@@ -372,18 +372,17 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
             myFMM.setupTree(kernel);
             timer.tock("setupTree");
             timer.tick();
-            myFMM.evaluateFMM(nSL, value.srcLocalSL.data(), nDL,
-                              value.srcLocalDL.data(), nTrg, trgLocal.data(),
-                              kernel);
+            myFMM.evaluateFMM(kernel, nSL, value.srcLocalSL.data(), nTrg,
+                              trgLocal.data(), nDL, value.srcLocalDL.data());
             timer.tock("evaluateFMM");
             if (!rank)
                 timer.dump();
         } else {
             auto srcLocalCoord = point.srcLocalSL;
             auto trgLocalCoord = point.trgLocal;
-            myFMM.evaluateKernel(0, PPKERNEL::SLS2T, nSL, srcLocalCoord.data(),
-                                 value.srcLocalSL.data(), nTrg,
-                                 trgLocalCoord.data(), trgLocal.data(), kernel);
+            myFMM.evaluateKernel(kernel, 0, PPKERNEL::SLS2T, nSL,
+                                 srcLocalCoord.data(), value.srcLocalSL.data(),
+                                 nTrg, trgLocalCoord.data(), trgLocal.data());
         }
         results[kernel] = trgLocal;
     }
@@ -450,7 +449,7 @@ void dumpValue(const std::string &tag, const FMMpoint &point,
         auto &value = data.second;
         std::vector<double> trgLocal;
         int kdimSL, kdimDL, kdimTrg;
-        std::tie(kdimSL, kdimDL, kdimTrg) = STKFMM::getKernelDimension(kernel);
+        std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
         auto it = results.find(kernel);
         if (it != results.end()) {
             trgLocal = it->second;
@@ -478,8 +477,7 @@ void checkError(const FMMresult &A, const FMMresult &B,
         std::cout << "Error for kernel: " << asInteger(kernel) << std::endl;
         if (component) {
             int kdimSL, kdimDL, kdimTrg;
-            std::tie(kdimSL, kdimDL, kdimTrg) =
-                STKFMM::getKernelDimension(kernel);
+            std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
             PointDistribution::checkError(data.second, it->second, kdimTrg);
         } else
             PointDistribution::checkError(data.second, it->second);

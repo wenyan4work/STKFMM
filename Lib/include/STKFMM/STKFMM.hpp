@@ -66,6 +66,15 @@ extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
     kernelMap;
 
 /**
+ * @brief Get kernel dimension
+ *
+ * @param kernel_ one of the activated kernels
+ * @return [single layer kernel dimension, double layer kernel dimension,
+ *          target kernel dimension]
+ */
+std::tuple<int, int, int> getKernelDimension(KERNEL kernel_);
+
+/**
  * @brief Enum to integer
  *
  * @tparam Enumeration
@@ -142,9 +151,9 @@ class FMMData {
      * @param srcDLCoord double layer source coordinate
      * @param trgCoord target coordinate
      */
-    void setupTree(const std::vector<double> &srcSLCoord,
-                   const std::vector<double> &srcDLCoord,
-                   const std::vector<double> &trgCoord);
+    void setupTree(const int nSL, const double *srcSLCoord,
+                   const int nDL, const double *srcDLCoord,
+                   const int nTrg, const double *trgCoord);
 
     /**
      * @brief run FMM
@@ -235,30 +244,26 @@ class FMMData {
  * @brief a virtual interface for STKFMM cases
  *
  */
-class STKFMM_INTERFACE {};
-
-/**
- * @brief STKFMM class, exposed to user
- *
- */
-class STKFMM : public STKFMM_INTERFACE {
+class STKFMM {
   public:
     /**
      * @brief Construct a new STKFMM object
      *
-     * @param multOrder FMM multipole order
-     * @param maxPts max number of points per octant
-     * @param pbc_ periodic boundary condition
-     * @param kernelComb_ combination of kernels to use
+     * @param multOrder_
+     * @param maxPts_
+     * @param pbc_
+     * @param kernelComb_
      */
-    STKFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
-           unsigned int kernelComb_ = 1);
+    STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_);
 
     /**
-     * @brief Destroy the STKFMM object
+     * @brief Set FMM cubic Box
+     * a cubic box [origin,origin+len)^3
      *
+     * @param origin
+     * @param len
      */
-    ~STKFMM();
+    void setBox(double origin_[3], double len_);
 
     /**
      * @brief Set point coordinates
@@ -272,9 +277,17 @@ class STKFMM : public STKFMM_INTERFACE {
      * @param nTrg target point number
      * @param trgCoordPtr target point coordinate
      */
-    void setPoints(const int nSL, const double *srcSLCoordPtr, const int nDL,
-                   const double *srcDLCoordPtr, const int nTrg,
-                   const double *trgCoordPtr);
+    virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
+                           const int nDL, const double *srcDLCoordPtr,
+                           const int nTrg, const double *trgCoordPtr) = 0;
+
+    /**
+     * @brief setup the tree for the chosen kernel
+     * setPoints() must have been called
+     *
+     * @param kernel_ one of the activated kernels to use
+     */
+    virtual void setupTree(KERNEL kernel) = 0;
 
     /**
      * @brief evaluate FMM
@@ -291,9 +304,10 @@ class STKFMM : public STKFMM_INTERFACE {
      * @param trgValuePtr pointer to target value
      * @param kernel one of the activated kernels to evaluate
      */
-    void evaluateFMM(const int nSL, const double *srcSLValuePtr, const int nDL,
-                     const double *srcDLValuePtr, const int nTrg,
-                     double *trgValuePtr, const KERNEL kernel);
+    virtual void evaluateFMM(const KERNEL kernel, const int nSL,
+                             const double *srcSLValuePtr, const int nTrg,
+                             double *trgValuePtr, const int nDL = 0,
+                             const double *srcDLValuePtr = nullptr) = 0;
 
     /**
      * @brief evaluate kernel functions by direct O(N^2) summation without FMM
@@ -310,51 +324,33 @@ class STKFMM : public STKFMM_INTERFACE {
      * @param trgValuePtr pointer to target point value
      * @param kernel one of the activated kernels to evaluate
      */
-    void evaluateKernel(const int nThreads, const PPKERNEL p2p, const int nSrc,
-                        double *srcCoordPtr, double *srcValuePtr,
-                        const int nTrg, double *trgCoordPtr,
-                        double *trgValuePtr, const KERNEL kernel);
+    void evaluateKernel(const KERNEL kernel, const int nThreads,
+                        const PPKERNEL p2p, const int nSrc, double *srcCoordPtr,
+                        double *srcValuePtr, const int nTrg,
+                        double *trgCoordPtr, double *trgValuePtr
+
+    );
 
     /**
      * @brief clear the data and prepare for another FMM evaluation
      *
      * @param kernelChoice
      */
-    void clearFMM(KERNEL kernelChoice);
-
-    /**
-     * @brief setup the tree for the chosen kernel
-     * setPoints() must have been called
-     *
-     * @param kernel_ one of the activated kernels to use
-     */
-    void setupTree(KERNEL kernel_);
-
-    /**
-     * @brief Set FMM cubic Box
-     * a cubic box [origin,origin+len)^3
-     *
-     * @param origin
-     * @param len
-     */
-    void setBox(double origin_[3], double len_);
+    virtual void clearFMM(KERNEL kernel) = 0;
 
     /**
      * @brief Get the FMM box
      *
      * @return [xlow, xhigh, ylow, yhigh, zlow, zhigh]
      */
-    std::tuple<double, double, double, double, double, double> getBox() {
-        return std::tuple<double, double, double, double, double, double>(
-            origin[0], origin[0] + len, origin[1], origin[1] + len, origin[2],
-            origin[2] + len);
-    };
+    virtual std::tuple<double, double, double, double, double, double>
+    getBox() const = 0;
 
     /**
      * @brief show activated kernels
      *
      */
-    void showActiveKernels();
+    void showActiveKernels() const;
 
     /**
      * @brief show if a kernel is activated
@@ -363,27 +359,19 @@ class STKFMM : public STKFMM_INTERFACE {
      * @return true
      * @return false
      */
-    bool isKernelActive(KERNEL kernel_) {
+    bool isKernelActive(KERNEL kernel_) const {
         return asInteger(kernel_) & kernelComb;
     }
-
-    /**
-     * @brief Get kernel dimension
-     *
-     * @param kernel_ one of the activated kernels
-     * @return [single layer kernel dimension, double layer kernel dimension,
-     *          target kernel dimension]
-     */
-    static std::tuple<int, int, int> getKernelDimension(KERNEL kernel_);
 
     /**
      * @brief Get multipole order
      *
      * @return multipole order
      */
-    int getMultOrder() { return multOrder; }
+    int getMultOrder() const { return multOrder; }
 
-  private:
+  protected:
+    int rank;
     const int multOrder;       ///< multipole order
     const int maxPts;          ///< max number of points to use
     PAXIS pbc;                 ///< periodic boundary condition
@@ -393,8 +381,6 @@ class STKFMM : public STKFMM_INTERFACE {
     double len;         ///< cubic box size
     double scaleFactor; ///< scale factor to fit in box of [0,1)^3
 
-    MPI_Comm comm; ///< MPI_Comm object
-
     std::vector<double> srcSLCoordInternal; ///< scaled Single Layer coordinate
     std::vector<double> srcDLCoordInternal; ///< scaled Double Layer coordinate
     std::vector<double> trgCoordInternal;   ///< scaled target coordinate
@@ -402,19 +388,82 @@ class STKFMM : public STKFMM_INTERFACE {
     std::vector<double> srcDLValueInternal; ///< scaled DL value
     std::vector<double> trgValueInternal;   ///< scaled trg value
 
-    /**
-     * @brief setup the internal coord, with proper scaling and BC
-     *
-     * @param npts number of points
-     * @param coordInPtr pointer to unscaled coordinate
-     * @param coord scaled coordinate
-     */
-    void setupCoord(const int npts, const double *coordInPtr,
-                    std::vector<double> &coord) const;
-
     std::unordered_map<KERNEL, impl::FMMData *>
         poolFMM; ///< bookkeeping of all FMMData object
+
+    /**
+     * @brief scale and shift coordPtr
+     *
+     * @param npts number of points
+     * @param coord pointer to unscaled coordinate
+     */
+    void scaleCoord(const int npts, double *coordPtr) const;
+
+    /**
+     * @brief handle pbc [0,1) of coordPtr
+     *
+     * @param npts
+     * @param coordPtr
+     */
+    void wrapCoord(const int npts, double *coordPtr) const;
 };
+
+/**
+ * @brief STKFMM3D class, exposed to user
+ *
+ */
+class Stk3DFMM : public STKFMM {
+  public:
+    Stk3DFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
+             unsigned int kernelComb_ = 1);
+
+    virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
+                           const int nDL, const double *srcDLCoordPtr,
+                           const int nTrg, const double *trgCoordPtr);
+
+    virtual void setupTree(KERNEL kernel);
+
+    virtual void evaluateFMM(const KERNEL kernel, const int nSL,
+                             const double *srcSLValuePtr, const int nTrg,
+                             double *trgValuePtr, const int nDL = 0,
+                             const double *srcDLValuePtr = nullptr);
+
+    virtual void clearFMM(KERNEL kernel);
+
+    virtual std::tuple<double, double, double, double, double, double>
+    getBox() const {
+        return std::make_tuple(origin[0], origin[0] + len, origin[1],
+                               origin[1] + len, origin[2], origin[2] + len);
+    };
+
+    ~Stk3DFMM();
+};
+
+class StkWallFMM : public STKFMM {
+  public:
+    StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
+               unsigned int kernelComb_ = 1);
+
+    virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
+                           const int nDL, const double *srcDLCoordPtr,
+                           const int nTrg, const double *trgCoordPtr);
+
+    virtual void setupTree(KERNEL kernel);
+
+    virtual void evaluateFMM(const KERNEL kernel, const int nSL,
+                             const double *srcSLValuePtr, const int nTrg,
+                             double *trgValuePtr, const int nDL = 0,
+                             const double *srcDLValuePtr = nullptr);
+
+    virtual std::tuple<double, double, double, double, double, double>
+    getBox() const {
+        return std::make_tuple(origin[0], origin[0] + len, origin[1],
+                               origin[1] + len, origin[2], origin[2] + len / 2);
+    };
+
+    ~StkWallFMM();
+};
+
 } // namespace stkfmm
 
 #endif
