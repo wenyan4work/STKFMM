@@ -51,15 +51,19 @@ enum class PPKERNEL : unsigned {
  * except RPY and StokesReg kernels
  */
 enum class KERNEL : unsigned {
-    LAPPGrad = 1,           ///< Laplace
-    Stokes = 2,             ///< Stokeslet
-    RPY = 4,                ///< RPY
-    StokesRegVel = 8,       ///< Regularized Stokes Velocity
-    StokesRegVelOmega = 16, ///< Regularized Stokes Velocity/Rotation
-    PVel = 32,              ///< Stokes
-    PVelGrad = 64,          ///< Stokes
-    PVelLaplacian = 128,    ///< Stokes
-    Traction = 256,         ///< Stokes
+    LapPGrad = 1,         ///< Laplace
+    LapPGradGrad = 2,     ///< Laplace
+    LapQuadPGradGrad = 4, ///< Laplace
+
+    Stokes = 8,             ///< Stokeslet 3x3
+    RPY = 16,               ///< RPY
+    StokesRegVel = 32,      ///< Regularized Stokes Velocity
+    StokesRegVelOmega = 64, ///< Regularized Stokes Velocity/Rotation
+
+    PVel = 128,          ///< Stokes 4x4
+    PVelGrad = 256,      ///< Stokes
+    PVelLaplacian = 512, ///< Stokes
+    Traction = 1024,     ///< Stokes
 };
 
 extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
@@ -419,8 +423,9 @@ class Stk3DFMM : public STKFMM {
              unsigned int kernelComb_ = 2);
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
-                           const int nDL, const double *srcDLCoordPtr,
-                           const int nTrg, const double *trgCoordPtr);
+                           const int nTrg, const double *trgCoordPtr,
+                           const int nDL = 0,
+                           const double *srcDLCoordPtr = nullptr);
 
     virtual void setupTree(KERNEL kernel);
 
@@ -445,24 +450,25 @@ class StkWallFMM : public STKFMM {
     StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
                unsigned int kernelComb_ = 2);
 
-    virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
-                           const int nDL, const double *srcDLCoordPtr,
-                           const int nTrg, const double *trgCoordPtr);
+    // virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
+    //                        const int nTrg, const double *trgCoordPtr,
+    //                        const int nDL = 0,
+    //                        const double *srcDLCoordPtr = nullptr);
 
-    virtual void setupTree(KERNEL kernel);
+    // virtual void setupTree(KERNEL kernel);
 
-    virtual void evaluateFMM(const KERNEL kernel, const int nSL,
-                             const double *srcSLValuePtr, const int nTrg,
-                             double *trgValuePtr, const int nDL = 0,
-                             const double *srcDLValuePtr = nullptr);
+    // virtual void evaluateFMM(const KERNEL kernel, const int nSL,
+    //                          const double *srcSLValuePtr, const int nTrg,
+    //                          double *trgValuePtr, const int nDL = 0,
+    //                          const double *srcDLValuePtr = nullptr);
 
-    virtual void clearFMM(KERNEL kernel);
+    // virtual void clearFMM(KERNEL kernel);
 
-    virtual std::tuple<double, double, double, double, double, double>
-    getBox() const {
-        return std::make_tuple(origin[0], origin[0] + len, origin[1],
-                               origin[1] + len, origin[2], origin[2] + len);
-    };
+    // virtual std::tuple<double, double, double, double, double, double>
+    // getBox() const {
+    //     return std::make_tuple(origin[0], origin[0] + len, origin[1],
+    //                            origin[1] + len, origin[2], origin[2] + len);
+    // };
 
     ~StkWallFMM();
 };

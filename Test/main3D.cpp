@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 
     genPoint(parser, point);
     genSrcValue(parser, point, inputs);
+    printf("src value generated\n");
 
     if (parser.get<int>("V")) {
         runSimpleKernel(point, inputs, true_results);

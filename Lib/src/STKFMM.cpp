@@ -23,7 +23,8 @@ extern pvfmm::PeriodicType pvfmm::periodicType;
 namespace stkfmm {
 
 const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
-    {KERNEL::LAPPGrad, &pvfmm::LaplaceLayerKernel<double>::PGrad()},
+    {KERNEL::LapPGrad, &pvfmm::LaplaceLayerKernel<double>::PGrad()},
+    {KERNEL::LapPGradGrad, &pvfmm::LaplaceLayerKernel<double>::PGradGrad()},
     {KERNEL::Stokes, &pvfmm::StokesKernel<double>::velocity()},
     {KERNEL::RPY, &pvfmm::RPYKernel<double>::ulapu()},
     {KERNEL::StokesRegVel, &pvfmm::StokesRegKernel<double>::Vel()},
@@ -36,8 +37,7 @@ const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
 
 std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
     using namespace impl;
-    const pvfmm::Kernel<double> *kernelFunctionPtr =
-        FMMData::getKernelFunction(kernel_);
+    const pvfmm::Kernel<double> *kernelFunctionPtr = FMMData::getKernelFunction(kernel_);
     int kdimSL = kernelFunctionPtr->ker_dim[0];
     int kdimTrg = kernelFunctionPtr->ker_dim[1];
     int kdimDL = kernelFunctionPtr->surf_dim;
@@ -64,15 +64,13 @@ const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
     }
 }
 
-void FMMData::readM2LMat(const int kDim, const std::string &dataName,
-                         std::vector<double> &data) {
+void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data) {
     // int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     int size = kDim * equivCoord.size() / 3;
     data.resize(size * size);
 
     char *pvfmm_dir = getenv("PVFMM_DIR");
-    std::string file =
-        std::string(pvfmm_dir) + std::string("/pdata/") + dataName;
+    std::string file = std::string(pvfmm_dir) + std::string("/pdata/") + dataName;
 
     std::cout << dataName << " " << size << std::endl;
     FILE *fin = fopen(file.c_str(), "r");
@@ -104,14 +102,12 @@ void FMMData::setupM2Ldata() {
         std::vector<double> M2L_laplace;
         std::vector<double> M2L_stokes;
         {
-            std::string dataName = "M2L_laplace_" + std::to_string(pbc) +
-                                   "D3Dp" + std::to_string(multOrder);
+            std::string dataName = "M2L_laplace_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
             readM2LMat(1, dataName, M2L_laplace);
         }
         {
 
-            std::string dataName = "M2L_stokes_vel_" + std::to_string(pbc) +
-                                   "D3Dp" + std::to_string(multOrder);
+            std::string dataName = "M2L_stokes_vel_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
             readM2LMat(3, dataName, M2L_stokes);
         }
         int nequiv = this->equivCoord.size() / 3;
@@ -120,8 +116,7 @@ void FMMData::setupM2Ldata() {
             for (int j = 0; j < nequiv; j++) {
                 // each 4x4 block consists of 3x3 of stokes and 1x1 of laplace
                 // top-left 4*i, 4*j, size 4x4
-                M2Ldata[(4 * i + 3) * (4 * nequiv) + 4 * j + 3] =
-                    M2L_laplace[i * nequiv + j];
+                M2Ldata[(4 * i + 3) * (4 * nequiv) + 4 * j + 3] = M2L_laplace[i * nequiv + j];
                 for (int k = 0; k < 3; k++) {
                     for (int l = 0; l < 3; l++) {
                         M2Ldata[(4 * i + k) * (4 * nequiv) + 4 * j + l] =
@@ -132,18 +127,15 @@ void FMMData::setupM2Ldata() {
         }
     } else {
         // read M2L data directly
-        std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) +
-                               "D3Dp" + std::to_string(multOrder);
+        std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
         int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
         readM2LMat(kdim, dataName, this->M2Ldata);
     }
 }
 
 // constructor
-FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
-                 int maxPts_)
-    : kernelChoice(kernelChoice_), periodicity(periodicity_),
-      multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
+FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_)
+    : kernelChoice(kernelChoice_), periodicity(periodicity_), multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
       matrixPtr(nullptr), treeDataPtr(nullptr) {
 
     comm = MPI_COMM_WORLD;
@@ -165,8 +157,7 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
         pCenterLEquiv[1] = -(scaleLEquiv - 1) / 2;
         pCenterLEquiv[2] = -(scaleLEquiv - 1) / 2;
 
-        equivCoord =
-            surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
+        equivCoord = surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
 
         setupM2Ldata();
     }
@@ -186,8 +177,7 @@ void FMMData::clear() {
     return;
 }
 
-void FMMData::setupTree(const std::vector<double> &srcSLCoord,
-                        const std::vector<double> &srcDLCoord,
+void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector<double> &srcDLCoord,
                         const std::vector<double> &trgCoord) {
     // trgCoord and srcCoord have been scaled to [0,1)^3
 
@@ -201,8 +191,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord,
     treeDataPtr->trg_coord = trgCoord;
 
     // this is used to setup FMM octree
-    treeDataPtr->pt_coord =
-        srcSLCoord.size() > trgCoord.size() ? srcSLCoord : trgCoord;
+    treeDataPtr->pt_coord = srcSLCoord.size() > trgCoord.size() ? srcSLCoord : trgCoord;
     const int nSL = srcSLCoord.size() / 3;
     const int nDL = srcDLCoord.size() / 3;
     const int nTrg = trgCoord.size() / 3;
@@ -219,9 +208,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord,
     // printf("tree alloc\n");
     treePtr->Initialize(treeDataPtr);
     // printf("tree init\n");
-    treePtr->InitFMM_Tree(true, pvfmm::periodicType == pvfmm::PeriodicType::NONE
-                                    ? pvfmm::FreeSpace
-                                    : pvfmm::Periodic);
+    treePtr->InitFMM_Tree(true, pvfmm::periodicType == pvfmm::PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
     // printf("tree build\n");
     treePtr->SetupFMM(matrixPtr);
     // printf("tree fmm matrix setup\n");
@@ -234,8 +221,7 @@ void FMMData::deleteTree() {
     return;
 }
 
-void FMMData::evaluateFMM(std::vector<double> &srcSLValue,
-                          std::vector<double> &srcDLValue,
+void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue,
                           std::vector<double> &trgValue, const double scale) {
     const int nSrc = treeDataPtr->src_coord.Dim() / 3;
     const int nSurf = treeDataPtr->surf_coord.Dim() / 3;
@@ -290,14 +276,12 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     }
 
     // L2T evaluation with openmp
-    evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(),
-                   M2Lsource.data(), nTrg, trgCoord.Begin(), trgValue.data());
+    evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
+                   trgValue.data());
 }
 
-void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
-                             double *srcCoordPtr, double *srcValuePtr,
-                             const int nTrg, double *trgCoordPtr,
-                             double *trgValuePtr) {
+void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
+                             const int nTrg, double *trgCoordPtr, double *trgValuePtr) {
     if (nThreads < 1 || nThreads > omp_get_max_threads()) {
         nThreads = omp_get_max_threads();
     }
@@ -315,8 +299,7 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
     }
 
     if (kerPtr == nullptr) {
-        std::cout << "PPKernel " << (uint)p2p
-                  << " not found for direct evaluation" << std::endl;
+        std::cout << "PPKernel " << (uint)p2p << " not found for direct evaluation" << std::endl;
         return;
     }
 
@@ -324,16 +307,13 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc,
     for (int i = 0; i < chunkNumber; i++) {
         // each thread process one chunk
         const int idTrgLow = i * chunkSize;
-        const int idTrgHigh = (i + 1 < chunkNumber) ? idTrgLow + chunkSize
-                                                    : nTrg; // not inclusive
-        kerPtr(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr + 3 * idTrgLow,
-               idTrgHigh - idTrgLow, trgValuePtr + kdimTrg * idTrgLow, NULL);
+        const int idTrgHigh = (i + 1 < chunkNumber) ? idTrgLow + chunkSize : nTrg; // not inclusive
+        kerPtr(srcCoordPtr, nSrc, srcValuePtr, 1, trgCoordPtr + 3 * idTrgLow, idTrgHigh - idTrgLow,
+               trgValuePtr + kdimTrg * idTrgLow, NULL);
     }
 }
 
-void FMMData::scaleSrc(std::vector<double> &srcSLValue,
-                       std::vector<double> &srcDLValue,
-                       const double scaleFactor) {
+void FMMData::scaleSrc(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, const double scaleFactor) {
     // scale the source strength, SL as 1/r, DL as 1/r^2
     // SL no extra scaling
     // DL scale as scaleFactor
@@ -345,10 +325,8 @@ void FMMData::scaleSrc(std::vector<double> &srcSLValue,
     }
 
     const int nSL = srcSLValue.size() / kdimSL;
-    if (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad ||
-        kernelChoice == KERNEL::PVelLaplacian ||
-        kernelChoice == KERNEL::Traction || kernelChoice == KERNEL::RPY ||
-        kernelChoice == KERNEL::StokesRegVel) {
+    if (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad || kernelChoice == KERNEL::PVelLaplacian ||
+        kernelChoice == KERNEL::Traction || kernelChoice == KERNEL::RPY || kernelChoice == KERNEL::StokesRegVel) {
         // Stokes, RPY, StokesRegVel
 #pragma omp parallel for
         for (int i = 0; i < nSL; i++) {
@@ -369,8 +347,7 @@ void FMMData::scaleSrc(std::vector<double> &srcSLValue,
     }
 }
 
-void FMMData::scaleTrg(std::vector<double> &trgValue,
-                       const double scaleFactor) {
+void FMMData::scaleTrg(std::vector<double> &trgValue, const double scaleFactor) {
 
     const int nTrg = trgValue.size() / kdimTrg;
     // scale back according to kernel
@@ -433,7 +410,7 @@ void FMMData::scaleTrg(std::vector<double> &trgValue,
             }
         }
     } break;
-    case KERNEL::LAPPGrad: {
+    case KERNEL::LapPGrad: {
         // 1+3
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
@@ -442,6 +419,22 @@ void FMMData::scaleTrg(std::vector<double> &trgValue,
             // grad p, 1/r^2
             for (int j = 1; j < 4; j++) {
                 trgValue[4 * i + j] *= scaleFactor * scaleFactor;
+            }
+        }
+    } break;
+    case KERNEL::LapPGradGrad: {
+        // 1+3
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // p, 1/r
+            trgValue[10 * i] *= scaleFactor;
+            // grad p, 1/r^2
+            for (int j = 1; j < 4; j++) {
+                trgValue[10 * i + j] *= scaleFactor * scaleFactor;
+            }
+            // grad grad p, 1/r^3
+            for (int j = 4; j < 10; j++) {
+                trgValue[10 * i + j] *= scaleFactor * scaleFactor * scaleFactor;
             }
         }
     } break;
@@ -492,10 +485,8 @@ void FMMData::scaleTrg(std::vector<double> &trgValue,
 
 // base class STKFMM
 
-STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_,
-               unsigned int kernelComb_)
-    : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_),
-      kernelComb(kernelComb_) {
+STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
+    : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_), kernelComb(kernelComb_) {
     using namespace impl;
     // set periodic boundary condition
     switch (pbc) {
@@ -536,21 +527,17 @@ void STKFMM::setBox(double origin_[3], double len_) {
     }
 };
 
-void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads,
-                            const PPKERNEL p2p, const int nSrc,
-                            double *srcCoordPtr, double *srcValuePtr,
-                            const int nTrg, double *trgCoordPtr,
+void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads, const PPKERNEL p2p, const int nSrc,
+                            double *srcCoordPtr, double *srcValuePtr, const int nTrg, double *trgCoordPtr,
                             double *trgValuePtr) {
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
-        printf("Error: no such FMMData exists for kernel %d\n",
-               static_cast<int>(kernel));
+        printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
 
-    fmm.evaluateKernel(nThreads, p2p, nSrc, srcCoordPtr, srcValuePtr, nTrg,
-                       trgCoordPtr, trgValuePtr);
+    fmm.evaluateKernel(nThreads, p2p, nSrc, srcCoordPtr, srcValuePtr, nTrg, trgCoordPtr, trgValuePtr);
 }
 
 void STKFMM::showActiveKernels() const {
@@ -602,8 +589,7 @@ void STKFMM::wrapCoord(const int npts, double *coordPtr) const {
     return;
 }
 
-Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_,
-                   unsigned int kernelComb_)
+Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
     using namespace impl;
     poolFMM.clear();
@@ -613,8 +599,7 @@ Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_,
         if (kernelComb & asInteger(kernel)) {
             poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts);
             if (!rank)
-                std::cout << "enable kernel " << it.second->ker_name
-                          << std::endl;
+                std::cout << "enable kernel " << it.second->ker_name << std::endl;
         }
     }
 
@@ -630,10 +615,8 @@ Stk3DFMM::~Stk3DFMM() {
     }
 }
 
-void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
-                              const int nTrg, const double *trgCoordPtr,
-                              const int nDL = 0,
-                              const double *srcDLCoordPtr = nullptr) {
+void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
+                         const int nDL, const double *srcDLCoordPtr) {
 
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
@@ -646,8 +629,7 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
     }
 
     // setup point coordinates
-    auto setCoord = [&](const int nPts, const double *coordPtr,
-                        std::vector<double> &coord) {
+    auto setCoord = [&](const int nPts, const double *coordPtr, std::vector<double> &coord) {
         coord.resize(nPts * 3);
         std::copy(coordPtr, coordPtr + 3 * nPts, coord.begin());
         scaleCoord(nPts, coord.data());
@@ -672,21 +654,17 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr,
 }
 
 void Stk3DFMM::setupTree(KERNEL kernel) {
-    poolFMM[kernel]->setupTree(srcSLCoordInternal, srcDLCoordInternal,
-                               trgCoordInternal);
+    poolFMM[kernel]->setupTree(srcSLCoordInternal, srcDLCoordInternal, trgCoordInternal);
     if (rank == 0)
         printf("Coord setup for kernel %d\n", static_cast<int>(kernel));
 }
 
-void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL,
-                           const double *srcSLValuePtr, const int nTrg,
-                           double *trgValuePtr, const int nDL,
-                           const double *srcDLValuePtr) {
+void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
+                           double *trgValuePtr, const int nDL, const double *srcDLValuePtr) {
 
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
-        printf("Error: no such FMMData exists for kernel %d\n",
-               static_cast<int>(kernel));
+        printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
@@ -695,14 +673,11 @@ void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL,
     srcDLValueInternal.resize(nDL * fmm.kdimDL);
     trgValueInternal.resize(nTrg * fmm.kdimTrg);
 
-    std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL,
-              srcSLValueInternal.begin());
-    std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL,
-              srcDLValueInternal.begin());
+    std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL, srcSLValueInternal.begin());
+    std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL, srcDLValueInternal.begin());
 
     // run FMM with proper scaling
-    fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal,
-                    scaleFactor);
+    fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal, scaleFactor);
 
     const int nloop = nTrg * fmm.kdimTrg;
 #pragma omp parallel for
@@ -721,6 +696,38 @@ void Stk3DFMM::clearFMM(KERNEL kernel) {
     else {
         printf("kernel not found\n");
         std::exit(1);
+    }
+}
+
+StkWallFMM::StkWallFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
+    : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
+    using namespace impl;
+    poolFMM.clear();
+
+    if (kernelComb & asInteger(KERNEL::Stokes)) {
+        // Stokes image, activate Stokes & Laplace kernels
+        poolFMM[KERNEL::Stokes] = new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts);
+        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts);
+        if (!rank)
+            std::cout << "enable Stokes image kernel " << std::endl;
+    }
+
+    if (kernelComb & asInteger(KERNEL::PVel)) {
+        // RPY image, activate RPY, Laplace, & LapQuad kernels
+        poolFMM[KERNEL::Stokes] = new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts);
+        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts);
+        std::cout << "enable RPY image kernel " << std::endl;
+    }
+
+    if (poolFMM.empty()) {
+        printf("Error: no kernel activated\n");
+    }
+}
+
+StkWallFMM::~StkWallFMM() {
+    // delete all FMMData
+    for (auto &fmm : poolFMM) {
+        safeDeletePtr(fmm.second);
     }
 }
 

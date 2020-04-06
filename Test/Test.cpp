@@ -2,51 +2,33 @@
 
 #include <memory>
 
-std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels(
-    {{KERNEL::LAPPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
-     {KERNEL::Stokes, std::make_pair(StokesSL, StokesDL)},
-     {KERNEL::RPY, std::make_pair(StokesSLRPY, StokesDLRPY)},
-     {KERNEL::StokesRegVel, std::make_pair(StokesRegSLVel, StokesRegDLVel)},
-     {KERNEL::StokesRegVelOmega,
-      std::make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
-     {KERNEL::PVel, std::make_pair(StokesSLPVel, StokesDLPVel)},
-     {KERNEL::PVelGrad, std::make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
-     {KERNEL::Traction, std::make_pair(StokesSLTraction, StokesDLTraction)},
-     {KERNEL::PVelLaplacian,
-      std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)}});
+std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
+    SL_kernels({{KERNEL::LapPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
+                {KERNEL::LapPGradGrad, std::make_pair(LaplaceSLPGradGrad, LaplaceDLPGradGrad)},
+                {KERNEL::Stokes, std::make_pair(StokesSL, StokesDL)},
+                {KERNEL::RPY, std::make_pair(StokesSLRPY, StokesDLRPY)},
+                {KERNEL::StokesRegVel, std::make_pair(StokesRegSLVel, StokesRegDLVel)},
+                {KERNEL::StokesRegVelOmega, std::make_pair(StokesRegSLVelOmega, StokesRegDLVelOmega)},
+                {KERNEL::PVel, std::make_pair(StokesSLPVel, StokesDLPVel)},
+                {KERNEL::PVelGrad, std::make_pair(StokesSLPVelGrad, StokesDLPVelGrad)},
+                {KERNEL::Traction, std::make_pair(StokesSLTraction, StokesDLTraction)},
+                {KERNEL::PVelLaplacian, std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)}});
 
 void configure_parser(cli::Parser &parser) {
-    parser.set_optional<int>(
-        "S", "nSLSource", 1,
-        "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
-    parser.set_optional<int>(
-        "D", "nDLSource", 1,
-        "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
-    parser.set_optional<int>("T", "nTarget", 2,
-                             "total number of targets = (T+1)^3, default T=2");
+    parser.set_optional<int>("S", "nSLSource", 1, "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
+    parser.set_optional<int>("D", "nDLSource", 1, "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
+    parser.set_optional<int>("T", "nTarget", 2, "total number of targets = (T+1)^3, default T=2");
     parser.set_optional<int>("s", "Seed", 1, "RNG Seed");
-    parser.set_optional<double>("B", "box", 1.0,
-                                "box edge length, default B=1.0");
-    parser.set_optional<double>("M", "move", 0.0,
-                                "box origin shift move, default M=0");
-    parser.set_optional<int>("K", "Kernel Combination", 0,
-                             "activated kernels, default=0 means all kernels");
-    parser.set_optional<int>("R", "Random", 1,
-                             "0 for random, 1 for regular mesh, default 1");
-    parser.set_optional<int>("F", "FMM", 1,
-                             "0 to test S2T kernel, 1 to test FMM, default 1");
-    parser.set_optional<int>(
-        "V", "Verify", 1,
-        "1 for O(N^2) and 0 for p=16 verification, default 1");
-    parser.set_optional<int>(
-        "P", "Periodic", 0,
-        "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
-    parser.set_optional<int>(
-        "m", "maxPoints", 50,
-        "Max number of points in adaptive Octree, default 50");
-    parser.set_optional<double>(
-        "e", "epsilon", 0.01,
-        "Maximum size of particle for RPY and StokesReg kernels, default 0.01");
+    parser.set_optional<double>("B", "box", 1.0, "box edge length, default B=1.0");
+    parser.set_optional<double>("M", "move", 0.0, "box origin shift move, default M=0");
+    parser.set_optional<int>("K", "Kernel Combination", 0, "activated kernels, default=0 means all kernels");
+    parser.set_optional<int>("R", "Random", 1, "0 for random, 1 for regular mesh, default 1");
+    parser.set_optional<int>("F", "FMM", 1, "0 to test S2T kernel, 1 to test FMM, default 1");
+    parser.set_optional<int>("V", "Verify", 1, "1 for O(N^2) and 0 for p=16 verification, default 1");
+    parser.set_optional<int>("P", "Periodic", 0, "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
+    parser.set_optional<int>("m", "maxPoints", 50, "Max number of points in adaptive Octree, default 50");
+    parser.set_optional<double>("e", "epsilon", 0.01,
+                                "Maximum size of particle for RPY and StokesReg kernels, default 0.01");
 }
 
 void showOption(const cli::Parser &parser) {
@@ -135,8 +117,7 @@ void genPoint(const cli::Parser &parser, FMMpoint &point, bool wall) {
 }
 
 // generate SrcValue, distributed with given points
-void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
-                 FMMinput &inputs) {
+void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs) {
     using namespace stkfmm;
     inputs.clear();
     const int nSL = point.srcLocalSL.size() / 3;
@@ -164,27 +145,23 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
         pd.randomUniformFill(value.srcLocalDL, -1, 1);
 
         // special requirements
-        if (kernel == KERNEL::LAPPGrad && pbc) { // must be neutral for periodic
+        if ((kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) && pbc) { // must be neutral for periodic
             int nSLGlobal = nSL;
-            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM,
-                          MPI_COMM_WORLD);
-            double netCharge = std::accumulate(value.srcLocalSL.begin(),
-                                               value.srcLocalSL.end(), 0.0);
-            MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM,
-                          MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+            double netCharge = std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(), 0.0);
+            MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             netCharge /= nSLGlobal;
             for (auto &v : value.srcLocalSL) {
                 v -= netCharge;
             }
         }
 
-        if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad ||
-             kernel == KERNEL::PVelLaplacian || kernel == KERNEL::Traction) &&
+        if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad || kernel == KERNEL::PVelLaplacian ||
+             kernel == KERNEL::Traction) &&
             pbc) {
             // must be force-neutral for x-y-z-trD
             int nSLGlobal = nSL;
-            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM,
-                          MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
             assert(kdimSL == 4);
             double fnet[4] = {0, 0, 0, 0};
             for (int i = 0; i < nSL; i++) {
@@ -192,8 +169,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
                     fnet[j] += value.srcLocalSL[4 * i + j];
                 }
             }
-            MPI_Allreduce(MPI_IN_PLACE, fnet, 4, MPI_DOUBLE, MPI_SUM,
-                          MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, fnet, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             fnet[0] /= nSLGlobal;
             fnet[1] /= nSLGlobal;
             fnet[2] /= nSLGlobal;
@@ -205,8 +181,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
             }
             // must be trace-free for double layer
             int nDLGlobal = nDL;
-            MPI_Allreduce(MPI_IN_PLACE, &nDLGlobal, 1, MPI_INT, MPI_SUM,
-                          MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &nDLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
             assert(kdimDL == 9);
             double trD = 0;
             for (int i = 0; i < nDL; i++) {
@@ -214,8 +189,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
                 trD += value.srcLocalDL[9 * i + 4];
                 trD += value.srcLocalDL[9 * i + 8];
             }
-            MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM,
-                          MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             trD /= (3 * nDL);
             for (int i = 0; i < nDL; i++) {
                 value.srcLocalDL[9 * i + 0] -= trD;
@@ -224,8 +198,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point,
             }
         }
 
-        if (kernel == KERNEL::StokesRegVel ||
-            kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+        if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
             // sphere radius/regularization must be small
             const double reg = parser.get<double>("e");
             auto setreg = [&](double &v) { v = std::abs(v) * reg; };
@@ -285,10 +258,9 @@ void translatePoints(const cli::Parser &parser, FMMpoint &point) {
     translate(point.trgLocal, nTrg);
 }
 
-void dumpValue(const std::string &tag, const FMMpoint &point,
-               const FMMinput &inputs, const FMMresult &results) {
-    auto writedata = [&](std::string name, const std::vector<double> &coord_,
-                         const std::vector<double> &value_, const int kdim) {
+void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &inputs, const FMMresult &results) {
+    auto writedata = [&](std::string name, const std::vector<double> &coord_, const std::vector<double> &value_,
+                         const int kdim) {
         auto coord = coord_;
         auto value = value_;
         PointDistribution::dumpPoints(name + ".txt", coord, value, kdim);
@@ -306,12 +278,9 @@ void dumpValue(const std::string &tag, const FMMpoint &point,
         } else {
             printf("result not found for kernel %d\n", asInteger(kernel));
         }
-        writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)),
-                  point.srcLocalSL, value.srcLocalSL, kdimSL);
-        writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)),
-                  point.srcLocalDL, value.srcLocalDL, kdimDL);
-        writedata(tag + "_trg_K" + std::to_string(asInteger(kernel)),
-                  point.trgLocal, trgLocal, kdimTrg);
+        writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)), point.srcLocalSL, value.srcLocalSL, kdimSL);
+        writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)), point.srcLocalDL, value.srcLocalDL, kdimDL);
+        writedata(tag + "_trg_K" + std::to_string(asInteger(kernel)), point.trgLocal, trgLocal, kdimTrg);
     }
 }
 
@@ -333,8 +302,7 @@ void checkError(const FMMresult &A, const FMMresult &B, bool component) {
     }
 }
 
-void runSimpleKernel(const FMMpoint &point, FMMinput &inputs,
-                     FMMresult &results) {
+void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results) {
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
@@ -406,8 +374,8 @@ void runSimpleKernel(const FMMpoint &point, FMMinput &inputs,
     }
 }
 
-void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
-            FMMinput &inputs, FMMresult &results, bool wall) {
+void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMinput &inputs, FMMresult &results,
+            bool wall) {
     using namespace stkfmm;
     results.clear();
     const double shift = parser.get<double>("M");
@@ -419,16 +387,13 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
 
     std::shared_ptr<STKFMM> fmmPtr;
     if (wall) {
-        if (k != static_cast<int>(KERNEL::Stokes) &
-            static_cast<int>(KERNEL::RPY)) {
-            printf(
-                "WallFMM supports only Stokes and RPY Single Layer kernels\n");
+        if (k != static_cast<int>(KERNEL::Stokes) & static_cast<int>(KERNEL::RPY)) {
+            printf("WallFMM supports only Stokes and RPY Single Layer kernels\n");
             std::exit(1);
         }
         // fmmPtr = std::make_shared(new StkWallFMM(p, maxPoints, paxis, k));
     } else {
-        fmmPtr =
-            std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
+        fmmPtr = std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
     }
 
     double origin[3] = {shift, shift, shift};
@@ -441,8 +406,7 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data(),
-                      nDL, point.srcLocalDL.data());
+    fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data(), nDL, point.srcLocalDL.data());
 
     for (auto &data : inputs) {
         auto &kernel = data.first;
@@ -458,17 +422,15 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point,
             fmmPtr->setupTree(kernel);
             timer.tock("setupTree");
             timer.tick();
-            fmmPtr->evaluateFMM(kernel, nSL, value.srcLocalSL.data(), nTrg,
-                                trgLocal.data(), nDL, value.srcLocalDL.data());
+            fmmPtr->evaluateFMM(kernel, nSL, value.srcLocalSL.data(), nTrg, trgLocal.data(), nDL,
+                                value.srcLocalDL.data());
             timer.tock("evaluateFMM");
             if (!rank)
                 timer.dump();
         } else {
             auto srcLocalCoord = point.srcLocalSL;
             auto trgLocalCoord = point.trgLocal;
-            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T, nSL,
-                                   srcLocalCoord.data(),
-                                   value.srcLocalSL.data(), nTrg,
+            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T, nSL, srcLocalCoord.data(), value.srcLocalSL.data(), nTrg,
                                    trgLocalCoord.data(), trgLocal.data());
         }
         results[kernel] = trgLocal;
