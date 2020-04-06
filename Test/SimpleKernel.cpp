@@ -841,6 +841,44 @@ void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad) {
     gz = (charge * (sz - tz)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
 }
 
+void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
+    const double sx = s[0];
+    const double sy = s[1];
+    const double sz = s[2];
+
+    const double tx = t[0];
+    const double ty = t[1];
+    const double tz = t[2];
+
+    const double dx = db[0];
+    const double dy = db[1];
+    const double dz = db[2];
+
+    if (sx == tx && sy == ty && sz == tz) {
+        for (int i = 0; i < 4; i++) {
+            pgrad[i] = 0;
+        }
+        return;
+    }
+
+    double &p = pgrad[0];
+    double &gx = pgrad[1];
+    double &gy = pgrad[2];
+    double &gz = pgrad[3];
+
+    p = (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz)) /
+        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    gx = dx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    gy = dy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+}
+
 void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
     const double sx = s[0];
     const double sy = s[1];
@@ -853,7 +891,7 @@ void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
     const double charge = q[0];
 
     if (sx == tx && sy == ty && sz == tz) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 10; i++) {
             pgradgrad[i] = 0;
         }
         return;
@@ -892,9 +930,8 @@ void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
            Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), -1.5));
 }
 
-void LaplaceDLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {}
+void LaplaceDLPGradGrad(double *s, double *t, double *db, double *pgradgrad) {
 
-void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
     const double sx = s[0];
     const double sy = s[1];
     const double sz = s[2];
@@ -908,16 +945,23 @@ void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
     const double dz = db[2];
 
     if (sx == tx && sy == ty && sz == tz) {
-        for (int i = 0; i < 4; i++) {
-            pgrad[i] = 0;
+        for (int i = 0; i < 10; i++) {
+            pgradgrad[i] = 0;
         }
         return;
     }
 
-    double &p = pgrad[0];
-    double &gx = pgrad[1];
-    double &gy = pgrad[2];
-    double &gz = pgrad[3];
+    double &p = pgradgrad[0];
+    double &gx = pgradgrad[1];
+    double &gy = pgradgrad[2];
+    double &gz = pgradgrad[3];
+    double &gxx = pgradgrad[4];
+    double &gxy = pgradgrad[5];
+    double &gxz = pgradgrad[6];
+    double &gyy = pgradgrad[7];
+    double &gyz = pgradgrad[8];
+    double &gzz = pgradgrad[9];
+    const double prefac = 1 / (4 * M_PI);
 
     p = (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz)) /
         (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
@@ -930,6 +974,60 @@ void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
     gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
          (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
              (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    const double s0 = db[0];
+    const double s1 = db[1];
+    const double s2 = db[2];
+    gxx = prefac *
+          ((15 * s0 * Power(-sx + tx, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s1 * Power(-sx + tx, 2) * (-sy + ty)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s2 * Power(-sx + tx, 2) * (-sz + tz)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+           (9 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (3 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (3 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    gxy = prefac * ((15 * s0 * Power(-sx + tx, 2) * (-sy + ty)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s1 * (-sx + tx) * Power(-sy + ty, 2)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s2 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+                    (3 * s1 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+                    (3 * s0 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    gxz = prefac * ((15 * s0 * Power(-sx + tx, 2) * (-sz + tz)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s1 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s2 * (-sx + tx) * Power(-sz + tz, 2)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+                    (3 * s2 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+                    (3 * s0 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    gyy = prefac *
+          ((15 * s0 * (-sx + tx) * Power(-sy + ty, 2)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s1 * Power(-sy + ty, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s2 * Power(-sy + ty, 2) * (-sz + tz)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+           (3 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (9 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (3 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    gyz = prefac * ((15 * s0 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s1 * Power(-sy + ty, 2) * (-sz + tz)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+                    (15 * s2 * (-sy + ty) * Power(-sz + tz, 2)) /
+                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+                    (3 * s2 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+                    (3 * s1 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    gzz = prefac *
+          ((15 * s0 * (-sx + tx) * Power(-sz + tz, 2)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s1 * (-sy + ty) * Power(-sz + tz, 2)) /
+               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
+           (15 * s2 * Power(-sz + tz, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
+           (3 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (3 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
+           (9 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
 }
 
 void StokesRegSLVel(double *s, double *t, double *f, double *vel) {
