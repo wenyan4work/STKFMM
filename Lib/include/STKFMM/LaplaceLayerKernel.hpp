@@ -99,8 +99,6 @@ void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-GEN_KERNEL(laplace_pgrad, laplace_pgrad_uKernel, 1, 4)
-
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                Matrix<Real_t> &trg_value) {
@@ -197,8 +195,6 @@ void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
 #undef SRC_BLK
 }
 
-GEN_KERNEL(laplace_pgradgrad, laplace_pgradgrad_uKernel, 1, 10)
-
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
@@ -250,8 +246,6 @@ void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
     }
 #undef SRC_BLK
 }
-
-GEN_KERNEL(laplace_dipolep, laplace_dipolep_uKernel, 3, 1)
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
@@ -323,8 +317,6 @@ void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_
     }
 #undef SRC_BLK
 }
-
-GEN_KERNEL(laplace_dipolepgrad, laplace_dipolepgrad_uKernel, 3, 4)
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
@@ -446,8 +438,6 @@ void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &
 #undef SRC_BLK
 }
 
-GEN_KERNEL(laplace_dipolepgradgrad, laplace_dipolepgradgrad_uKernel, 3, 10)
-
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
@@ -528,8 +518,6 @@ void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-GEN_KERNEL(laplace_quadp, laplace_quadp_uKernel, 9, 1)
-
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                    Matrix<Real_t> &trg_value) {
@@ -544,10 +532,15 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
     const Real_t OOFP5 = 1.0 / (4 * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * const_pi<Real_t>());
     const Real_t OOFP7 = 1.0 / (4 * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal *
                                 const_pi<Real_t>());
-    Vec_t oofp = set_intrin<Vec_t, Real_t>(OOFP);
+    const Real_t OOFP9 = 1.0 / (4 * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal *
+                                nwtn_scal * nwtn_scal * const_pi<Real_t>());
     Vec_t oofp5 = set_intrin<Vec_t, Real_t>(-OOFP5);
     Vec_t oofp7 = set_intrin<Vec_t, Real_t>(OOFP7);
+    Vec_t oofp9 = set_intrin<Vec_t, Real_t>(OOFP9);
+
+    Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
     Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
+    Vec_t onezerofive = set_intrin<Vec_t, Real_t>(105.0);
     Vec_t six = set_intrin<Vec_t, Real_t>(6.0);
     Vec_t nine = set_intrin<Vec_t, Real_t>(9.0);
     Vec_t fifteen = set_intrin<Vec_t, Real_t>(15.0);
@@ -603,22 +596,17 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
                 const Vec_t rinv3 = mul_intrin(rinv, rinv2);
                 const Vec_t rinv5 = mul_intrin(rinv3, rinv2);
                 const Vec_t rinv7 = mul_intrin(rinv5, rinv2);
+                const Vec_t rinv9 = mul_intrin(rinv7, rinv2);
 
-                // commonCoeffn3 = -3 rj rk Djk
-                // commonCoeff5 = rj rk Djk
-                Vec_t commonCoeff = mul_intrin(sxx, mul_intrin(dx, dx));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sxy, mul_intrin(dx, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sxz, mul_intrin(dx, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syx, mul_intrin(dy, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syy, mul_intrin(dy, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syz, mul_intrin(dy, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szx, mul_intrin(dz, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szy, mul_intrin(dz, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szz, mul_intrin(dz, dz)));
-                Vec_t commonCoeff5 = mul_intrin(commonCoeff, five);
-                Vec_t commonCoeffn3 = mul_intrin(commonCoeff, nthree);
+                // commonCoeffn3 = -3 rk rl Qkl
+                // commonCoeff5 = 5 rk rl Qkl
+                Vec_t rrQ = dx * dx * sxx + dx * dy * sxy + dx * dz * sxz + dy * dx * syx + dy * dy * syy +
+                            dy * dz * syz + dz * dx * szx + dz * dy * szy + dz * dz * szz;
+                Vec_t commonCoeff5 = rrQ * five;
+                Vec_t commonCoeffn3 = rrQ * nthree;
 
-                Vec_t trace = add_intrin(add_intrin(sxx, syy), szz);
+                Vec_t trace = sxx + syy + szz;
+
                 Vec_t rksxk = add_intrin(mul_intrin(dx, sxx), add_intrin(mul_intrin(dy, sxy), mul_intrin(dz, sxz)));
                 Vec_t rksyk = add_intrin(mul_intrin(dx, syx), add_intrin(mul_intrin(dy, syy), mul_intrin(dz, syz)));
                 Vec_t rkszk = add_intrin(mul_intrin(dx, szx), add_intrin(mul_intrin(dy, szy), mul_intrin(dz, szz)));
@@ -637,11 +625,38 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
                 gx = add_intrin(gx, mul_intrin(mul_intrin(px, nthree), rinv7));
                 gy = add_intrin(gy, mul_intrin(mul_intrin(py, nthree), rinv7));
                 gz = add_intrin(gz, mul_intrin(mul_intrin(pz, nthree), rinv7));
+                gxx = gxx + rinv9 * (onezerofive * dx * dx * rrQ -
+                                     r2 * fifteen * (rrQ + dx * two * (rksxk + rkskx) + dx * dx * trace) +
+                                     three * r2 * r2 * (trace + two * sxx));
+                gyy = gyy + rinv9 * (onezerofive * dy * dy * rrQ -
+                                     r2 * fifteen * (rrQ + dy * two * (rksyk + rksky) + dy * dy * trace) +
+                                     three * r2 * r2 * (trace + two * syy));
+                gzz = gzz + rinv9 * (onezerofive * dz * dz * rrQ -
+                                     r2 * fifteen * (rrQ + dz * two * (rkszk + rkskz) + dz * dz * trace) +
+                                     three * r2 * r2 * (trace + two * szz));
+                gxy = gxy +
+                      rinv9 * (onezerofive * (dx * dy * rrQ) -
+                               r2 * fifteen * ((dy * rksxk + dy * rkskx + dx * rksyk + dx * rksky) + dx * dy * trace) +
+                               three * r2 * r2 * (sxy + syx));
+                gxz = gxz +
+                      rinv9 * (onezerofive * (dx * dz * rrQ) -
+                               r2 * fifteen * ((dz * rksxk + dz * rkskx + dx * rkszk + dx * rkskz) + dx * dz * trace) +
+                               three * r2 * r2 * (sxz + szx));
+                gyz = gyz +
+                      rinv9 * (onezerofive * (dy * dz * rrQ) -
+                               r2 * fifteen * ((dy * rkszk + dy * rkskz + dz * rksyk + dz * rksky) + dy * dz * trace) +
+                               three * r2 * r2 * (syz + szy));
             }
             p = add_intrin(mul_intrin(p, oofp5), load_intrin<Vec_t>(&trg_value[0][t]));
-            gx = add_intrin(mul_intrin(gx, oofp7), load_intrin<Vec_t>(&trg_value[0][t]));
-            gy = add_intrin(mul_intrin(gy, oofp7), load_intrin<Vec_t>(&trg_value[0][t]));
-            gz = add_intrin(mul_intrin(gz, oofp7), load_intrin<Vec_t>(&trg_value[0][t]));
+            gx = add_intrin(mul_intrin(gx, oofp7), load_intrin<Vec_t>(&trg_value[1][t]));
+            gy = add_intrin(mul_intrin(gy, oofp7), load_intrin<Vec_t>(&trg_value[2][t]));
+            gz = add_intrin(mul_intrin(gz, oofp7), load_intrin<Vec_t>(&trg_value[3][t]));
+            gxx = add_intrin(mul_intrin(gxx, oofp9), load_intrin<Vec_t>(&trg_value[4][t]));
+            gxy = add_intrin(mul_intrin(gxy, oofp9), load_intrin<Vec_t>(&trg_value[5][t]));
+            gxz = add_intrin(mul_intrin(gxz, oofp9), load_intrin<Vec_t>(&trg_value[6][t]));
+            gyy = add_intrin(mul_intrin(gyy, oofp9), load_intrin<Vec_t>(&trg_value[7][t]));
+            gyz = add_intrin(mul_intrin(gyz, oofp9), load_intrin<Vec_t>(&trg_value[8][t]));
+            gzz = add_intrin(mul_intrin(gzz, oofp9), load_intrin<Vec_t>(&trg_value[9][t]));
 
             store_intrin(&trg_value[0][t], p);
             store_intrin(&trg_value[1][t], gx);
@@ -658,6 +673,12 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
 #undef SRC_BLK
 }
 
+GEN_KERNEL(laplace_pgrad, laplace_pgrad_uKernel, 1, 4)
+GEN_KERNEL(laplace_pgradgrad, laplace_pgradgrad_uKernel, 1, 10)
+GEN_KERNEL(laplace_dipolep, laplace_dipolep_uKernel, 3, 1)
+GEN_KERNEL(laplace_dipolepgrad, laplace_dipolepgrad_uKernel, 3, 4)
+GEN_KERNEL(laplace_dipolepgradgrad, laplace_dipolepgradgrad_uKernel, 3, 10)
+GEN_KERNEL(laplace_quadp, laplace_quadp_uKernel, 9, 1)
 GEN_KERNEL(laplace_quadpgradgrad, laplace_quadpgradgrad_uKernel, 9, 10)
 
 /**

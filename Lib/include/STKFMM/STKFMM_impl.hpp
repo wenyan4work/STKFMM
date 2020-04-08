@@ -6,8 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-
-namespace stkfmm{
+namespace stkfmm {
 
 namespace impl {
 
@@ -29,8 +28,7 @@ class FMMData {
     int multOrder; ///< multipole order
     int maxPts;    ///< max number of points per octant
 
-    const pvfmm::Kernel<double>
-        *kernelFunctionPtr; ///< pointer to kernel function
+    const pvfmm::Kernel<double> *kernelFunctionPtr; ///< pointer to kernel function
 
     std::vector<double> equivCoord; ///< periodicity L2T equivalent point coord
     std::vector<double> M2Ldata;    ///< periodicity M2L operator data
@@ -47,8 +45,7 @@ class FMMData {
      * @brief constructor
      *
      */
-    FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_,
-            int maxPts_);
+    FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_);
 
     /**
      * @brief Destroy the FMMData object
@@ -73,8 +70,7 @@ class FMMData {
      * @param srcDLCoord double layer source coordinate
      * @param trgCoord target coordinate
      */
-    void setupTree(const std::vector<double> &srcSLCoord,
-                   const std::vector<double> &srcDLCoord,
+    void setupTree(const std::vector<double> &srcSLCoord, const std::vector<double> &srcDLCoord,
                    const std::vector<double> &trgCoord);
 
     /**
@@ -84,9 +80,8 @@ class FMMData {
      * @param srcDLValue [in] double layer source value
      * @param trgValue [out] target value
      */
-    void evaluateFMM(std::vector<double> &srcSLValue,
-                     std::vector<double> &srcDLValue,
-                     std::vector<double> &trgValue, const double scale);
+    void evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, std::vector<double> &trgValue,
+                     const double scale);
 
     /**
      * @brief directly evaluate kernel functions without FMM tree
@@ -103,8 +98,7 @@ class FMMData {
     void evaluateKernel(int nThreads, PPKERNEL chooseSD, //
                         const int nSrc, double *srcCoordPtr,
                         double *srcValuePtr, //
-                        const int nTrg, double *trgCoordPtr,
-                        double *trgValuePtr);
+                        const int nTrg, double *trgCoordPtr, double *trgValuePtr);
 
     /**
      * @brief delete the fmm tree
@@ -128,8 +122,7 @@ class FMMData {
      * @brief scale SrcSl and SrcDL Values before FMM call
      *  operate on srcSLValue and srcDLValue
      */
-    void scaleSrc(std::vector<double> &srcSLValue,
-                  std::vector<double> &srcDLValue, const double scaleFactor);
+    void scaleSrc(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, const double scaleFactor);
 
     /**
      * @brief scale Trg Values after FMM call
@@ -142,8 +135,7 @@ class FMMData {
      * @brief read the M2L Matrix from file
      *
      */
-    void readM2LMat(const int kDim, const std::string &dataName,
-                    std::vector<double> &data);
+    void readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data);
 
     /**
      * @brief setup this->M2Ldata
