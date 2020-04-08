@@ -1,5 +1,6 @@
 # part 1, core library
-add_library(STKFMM SHARED src/STKFMM.cpp)
+add_library(STKFMM SHARED src/FMMData.cpp src/STKFMM.cpp src/Stk3DFMM.cpp
+                          src/StkWallFMM.cpp)
 target_include_directories(
   STKFMM
   PUBLIC $<INSTALL_INTERFACE:include>

@@ -16,7 +16,7 @@
 #include <vector>
 
 // Kernel building utilities
-#include <STKFMM/stkfmm_helpers.hpp>
+#include "stkfmm_helpers.hpp"
 
 /**
  * @brief insert kernel functions to pvfmm namespace

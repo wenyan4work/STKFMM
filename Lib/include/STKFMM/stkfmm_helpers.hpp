@@ -1,7 +1,6 @@
 #ifndef STKFMM_HELPERS_HPP
 #define STKFMM_HELPERS_HPP
 
-#include <intrin_wrapper.hpp>
 #include <pvfmm.hpp>
 
 /**

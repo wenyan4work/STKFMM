@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include <STKFMM/stkfmm_helpers.hpp>
+#include "stkfmm_helpers.hpp"
 
 namespace pvfmm {
 
