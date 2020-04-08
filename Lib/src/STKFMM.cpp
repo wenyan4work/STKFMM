@@ -25,6 +25,7 @@ namespace stkfmm {
 const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
     {KERNEL::LapPGrad, &pvfmm::LaplaceLayerKernel<double>::PGrad()},
     {KERNEL::LapPGradGrad, &pvfmm::LaplaceLayerKernel<double>::PGradGrad()},
+    {KERNEL::LapQPGradGrad, &pvfmm::LaplaceLayerKernel<double>::QPGradGrad()},
     {KERNEL::Stokes, &pvfmm::StokesKernel<double>::velocity()},
     {KERNEL::RPY, &pvfmm::RPYKernel<double>::ulapu()},
     {KERNEL::StokesRegVel, &pvfmm::StokesRegKernel<double>::Vel()},
@@ -423,7 +424,7 @@ void FMMData::scaleTrg(std::vector<double> &trgValue, const double scaleFactor) 
         }
     } break;
     case KERNEL::LapPGradGrad: {
-        // 1+3
+        // 1+3+6
 #pragma omp parallel for
         for (int i = 0; i < nTrg; i++) {
             // p, 1/r
@@ -435,6 +436,25 @@ void FMMData::scaleTrg(std::vector<double> &trgValue, const double scaleFactor) 
             // grad grad p, 1/r^3
             for (int j = 4; j < 10; j++) {
                 trgValue[10 * i + j] *= scaleFactor * scaleFactor * scaleFactor;
+            }
+        }
+    } break;
+    case KERNEL::LapQPGradGrad: {
+        // 1+3+6
+        const double sf3 = scaleFactor * scaleFactor * scaleFactor;
+        const double sf4 = scaleFactor * sf3;
+        const double sf5 = scaleFactor * sf4;
+#pragma omp parallel for
+        for (int i = 0; i < nTrg; i++) {
+            // p, 1/r^3
+            trgValue[10 * i] *= sf3;
+            // grad p, 1/r^4
+            for (int j = 1; j < 4; j++) {
+                trgValue[10 * i + j] *= sf4;
+            }
+            // grad grad p, 1/r^5
+            for (int j = 4; j < 10; j++) {
+                trgValue[10 * i + j] *= sf5;
             }
         }
     } break;

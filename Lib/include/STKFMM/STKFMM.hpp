@@ -53,7 +53,7 @@ enum class PPKERNEL : unsigned {
 enum class KERNEL : unsigned {
     LapPGrad = 1,         ///< Laplace
     LapPGradGrad = 2,     ///< Laplace
-    LapQuadPGradGrad = 4, ///< Laplace
+    LapQPGradGrad = 4, ///< Laplace
 
     Stokes = 8,             ///< Stokeslet 3x3
     RPY = 16,               ///< RPY
