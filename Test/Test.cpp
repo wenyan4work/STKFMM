@@ -118,7 +118,7 @@ void genPoint(const cli::Parser &parser, FMMpoint &point, bool wall) {
 }
 
 // generate SrcValue, distributed with given points
-void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs) {
+void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs, bool neutral) {
     using namespace stkfmm;
     inputs.clear();
     const int nSL = point.srcLocalSL.size() / 3;
@@ -145,69 +145,70 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
         pd.randomUniformFill(value.srcLocalSL, -1, 1);
         pd.randomUniformFill(value.srcLocalDL, -1, 1);
 
-        // special requirements
-        if ((kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) && pbc) { // must be neutral for periodic
-            int nSLGlobal = nSL;
-            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            double netCharge = std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(), 0.0);
-            MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            netCharge /= nSLGlobal;
-            for (auto &v : value.srcLocalSL) {
-                v -= netCharge;
-            }
-        }
-
-        if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad || kernel == KERNEL::PVelLaplacian ||
-             kernel == KERNEL::Traction) &&
-            pbc) {
-            // must be force-neutral for x-y-z-trD
-            int nSLGlobal = nSL;
-            MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            assert(kdimSL == 4);
-            double fnet[4] = {0, 0, 0, 0};
-            for (int i = 0; i < nSL; i++) {
-                for (int j = 0; j < 4; j++) {
-                    fnet[j] += value.srcLocalSL[4 * i + j];
+        if (neutral) {
+            // special requirements
+            if ((kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) && pbc) { // must be neutral for periodic
+                int nSLGlobal = nSL;
+                MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+                double netCharge = std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(), 0.0);
+                MPI_Allreduce(MPI_IN_PLACE, &netCharge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                netCharge /= nSLGlobal;
+                for (auto &v : value.srcLocalSL) {
+                    v -= netCharge;
                 }
             }
-            MPI_Allreduce(MPI_IN_PLACE, fnet, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            fnet[0] /= nSLGlobal;
-            fnet[1] /= nSLGlobal;
-            fnet[2] /= nSLGlobal;
-            fnet[3] /= nSLGlobal;
-            for (int i = 0; i < nSL; i++) {
-                for (int j = 0; j < 4; j++) {
-                    value.srcLocalSL[4 * i + j] -= fnet[j];
+
+            if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad || kernel == KERNEL::PVelLaplacian ||
+                 kernel == KERNEL::Traction) &&
+                pbc) {
+                // must be force-neutral for x-y-z-trD
+                int nSLGlobal = nSL;
+                MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+                assert(kdimSL == 4);
+                double fnet[4] = {0, 0, 0, 0};
+                for (int i = 0; i < nSL; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        fnet[j] += value.srcLocalSL[4 * i + j];
+                    }
+                }
+                MPI_Allreduce(MPI_IN_PLACE, fnet, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                fnet[0] /= nSLGlobal;
+                fnet[1] /= nSLGlobal;
+                fnet[2] /= nSLGlobal;
+                fnet[3] /= nSLGlobal;
+                for (int i = 0; i < nSL; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        value.srcLocalSL[4 * i + j] -= fnet[j];
+                    }
+                }
+                // must be trace-free for double layer
+                int nDLGlobal = nDL;
+                MPI_Allreduce(MPI_IN_PLACE, &nDLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+                assert(kdimDL == 9);
+                double trD = 0;
+                for (int i = 0; i < nDL; i++) {
+                    trD += value.srcLocalDL[9 * i + 0];
+                    trD += value.srcLocalDL[9 * i + 4];
+                    trD += value.srcLocalDL[9 * i + 8];
+                }
+                MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                trD /= (3 * nDL);
+                for (int i = 0; i < nDL; i++) {
+                    value.srcLocalDL[9 * i + 0] -= trD;
+                    value.srcLocalDL[9 * i + 4] -= trD;
+                    value.srcLocalDL[9 * i + 8] -= trD;
                 }
             }
-            // must be trace-free for double layer
-            int nDLGlobal = nDL;
-            MPI_Allreduce(MPI_IN_PLACE, &nDLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            assert(kdimDL == 9);
-            double trD = 0;
-            for (int i = 0; i < nDL; i++) {
-                trD += value.srcLocalDL[9 * i + 0];
-                trD += value.srcLocalDL[9 * i + 4];
-                trD += value.srcLocalDL[9 * i + 8];
-            }
-            MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            trD /= (3 * nDL);
-            for (int i = 0; i < nDL; i++) {
-                value.srcLocalDL[9 * i + 0] -= trD;
-                value.srcLocalDL[9 * i + 4] -= trD;
-                value.srcLocalDL[9 * i + 8] -= trD;
+
+            if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+                // sphere radius/regularization must be small
+                const double reg = parser.get<double>("e");
+                auto setreg = [&](double &v) { v = std::abs(v) * reg; };
+                for (int i = 0; i < nSL; i++) {
+                    setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
+                }
             }
         }
-
-        if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
-            // sphere radius/regularization must be small
-            const double reg = parser.get<double>("e");
-            auto setreg = [&](double &v) { v = std::abs(v) * reg; };
-            for (int i = 0; i < nSL; i++) {
-                setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
-            }
-        }
-
         inputs[kernel] = value;
     }
 }
@@ -392,7 +393,7 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMin
             printf("WallFMM supports only Stokes and RPY Single Layer kernels\n");
             std::exit(1);
         }
-        // fmmPtr = std::make_shared(new StkWallFMM(p, maxPoints, paxis, k));
+        fmmPtr = std::make_shared<StkWallFMM>(p, maxPoints, paxis, k);
     } else {
         fmmPtr = std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
     }

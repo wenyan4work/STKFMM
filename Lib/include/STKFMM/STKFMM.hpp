@@ -211,25 +211,19 @@ class StkWallFMM : public STKFMM {
   public:
     StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 2);
 
-    // virtual void setPoints(const int nSL, const double *srcSLCoordPtr,
-    //                        const int nTrg, const double *trgCoordPtr,
-    //                        const int nDL = 0,
-    //                        const double *srcDLCoordPtr = nullptr);
+    virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
+                           const int nDL = 0, const double *srcDLCoordPtr = nullptr);
 
-    // virtual void setupTree(KERNEL kernel);
+    virtual void setupTree(KERNEL kernel);
 
-    // virtual void evaluateFMM(const KERNEL kernel, const int nSL,
-    //                          const double *srcSLValuePtr, const int nTrg,
-    //                          double *trgValuePtr, const int nDL = 0,
-    //                          const double *srcDLValuePtr = nullptr);
+    virtual void evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
+                             double *trgValuePtr, const int nDL = 0, const double *srcDLValuePtr = nullptr);
 
-    // virtual void clearFMM(KERNEL kernel);
+    virtual void clearFMM(KERNEL kernel);
 
-    // virtual std::tuple<double, double, double, double, double, double>
-    // getBox() const {
-    //     return std::make_tuple(origin[0], origin[0] + len, origin[1],
-    //                            origin[1] + len, origin[2], origin[2] + len);
-    // };
+    virtual std::tuple<double, double, double, double, double, double> getBox() const {
+        return std::make_tuple(origin[0], origin[0] + len, origin[1], origin[1] + len, origin[2], origin[2] + len);
+    };
 
     ~StkWallFMM();
 };

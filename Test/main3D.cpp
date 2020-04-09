@@ -1,5 +1,3 @@
-
-#include "SimpleKernel.hpp"
 #include "Test.hpp"
 
 #include <mpi.h>
@@ -22,7 +20,7 @@ int main(int argc, char **argv) {
     FMMresult true_results;
 
     genPoint(parser, point);
-    genSrcValue(parser, point, inputs);
+    genSrcValue(parser, point, inputs, true);
     printf("src value generated\n");
 
     if (parser.get<int>("V")) {
