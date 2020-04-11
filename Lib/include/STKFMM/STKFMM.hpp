@@ -211,11 +211,38 @@ class StkWallFMM : public STKFMM {
   public:
     StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 2);
 
+    /**
+     * @brief Set the Points
+     * DL points are ignored
+     * call setBox() before calling this
+     * srcSLCoord & trgCoord inside box
+     * wall bc imposed on zlow of getBox()
+     *
+     * @param nSL
+     * @param srcSLCoordPtr
+     * @param nTrg
+     * @param trgCoordPtr
+     * @param nDL
+     * @param srcDLCoordPtr
+     */
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr);
 
     virtual void setupTree(KERNEL kernel);
 
+    /**
+     * @brief
+     *
+     * DL points are ignored
+     *
+     * @param kernel
+     * @param nSL
+     * @param srcSLValuePtr
+     * @param nTrg
+     * @param trgValuePtr
+     * @param nDL
+     * @param srcDLValuePtr
+     */
     virtual void evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
                              double *trgValuePtr, const int nDL = 0, const double *srcDLValuePtr = nullptr);
 
@@ -226,6 +253,14 @@ class StkWallFMM : public STKFMM {
     };
 
     ~StkWallFMM();
+
+  protected:
+    std::vector<double> srcSLImageCoordInternal;
+    std::vector<double> srcSLOriginCoordInternal;
+
+    // evaluate from srcSLValueInternal to trgValueInternal
+    void evalStokes();
+    void evalRPY();
 };
 
 } // namespace stkfmm

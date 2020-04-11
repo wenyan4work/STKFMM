@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     FMMinput inputs;
     FMMresult true_results;
 
-    genPoint(parser, point);
+    genPoint(3, parser, point);
     genSrcValue(parser, point, inputs, true);
     printf("src value generated\n");
 
@@ -53,8 +53,7 @@ int main(int argc, char **argv) {
                 printf("---------Error vs Translation------\n");
             }
             checkError(results, trans_results, true);
-            dumpValue("trans_p" + std::to_string(p), trans_point, inputs,
-                      trans_results);
+            dumpValue("trans_p" + std::to_string(p), trans_point, inputs, trans_results);
         }
 
         if (myRank == 0)

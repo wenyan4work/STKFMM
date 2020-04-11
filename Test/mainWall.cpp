@@ -8,17 +8,8 @@ void checkWallError(const cli::Parser &parser, const FMMpoint &point, const FMMr
     const int nTrg = point.trgLocal.size() / 3;
     for (auto &data : results) {
         auto kernel = data.first;
-        std::vector<double> v;
-        for (int i = 0; i < nTrg; i++) {
-            if ((point.trgLocal[3 * i + 2] - Z) < 1e-10 * B) {
-                v.push_back(data.second[3 * i]);
-                v.push_back(data.second[3 * i + 1]);
-                v.push_back(data.second[3 * i + 2]);
-            }
-        }
-
-        std::vector<double> zero(v.size(), 0);
-        PointDistribution::checkError(v, zero, 3);
+        std::vector<double> zero(data.second.size(), 0);
+        PointDistribution::checkError(data.second, zero, 3);
     }
 }
 
@@ -33,7 +24,9 @@ int main(int argc, char **argv) {
     parser.run_and_exit_if_error();
 
     if (myRank == 0) {
-        printf("The options V and F have no effect.\n");
+        printf("The option D must be zero.\n");
+        printf("The option F has no effect.\n");
+        printf("For this Wall test, V=1 means verify (T+1)^2 trg points on the wall.\n");
         printf("Check wall velocity error only when R=0.\n");
         showOption(parser);
     }
@@ -42,7 +35,12 @@ int main(int argc, char **argv) {
     FMMinput inputs;
     FMMresult true_results;
 
-    genPoint(parser, point, true);
+    const int V = parser.get<int>("V");
+    if (V) {
+        genPoint(2, parser, point, true);
+    } else {
+        genPoint(3, parser, point, true);
+    }
     genSrcValue(parser, point, inputs, false);
     printf("src value generated\n");
 
@@ -60,16 +58,14 @@ int main(int argc, char **argv) {
         checkError(results, true_results, true);
         dumpValue("p" + std::to_string(p), point, inputs, results);
 
-        // check error on wall
-        if (parser.get<int>("R") == 0) {
+        const int pbc = parser.get<int>("P");
+        if (V) {
+            // check error on wall
             if (myRank == 0)
                 printf("---------Error on the Wall------\n");
             checkWallError(parser, point, results);
-        }
-
-        // check error vs translational shift
-        const int pbc = parser.get<int>("P");
-        if (pbc) {
+        } else if (pbc) {
+            // check error vs translational shift
             FMMpoint trans_point = point;
             FMMresult trans_results;
             translatePoints(parser, trans_point);

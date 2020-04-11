@@ -11,21 +11,20 @@
 #include "ChebNodal.hpp"
 #include "PointDistribution.hpp"
 
-void PointDistribution::fixedPoints(int nPts, double box, double shift,
-                                    std::vector<double> &srcCoord) {
+void PointDistribution::fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord) {
     switch (nPts) {
     case 1: {
-        srcCoord.push_back(0.7 * box + shift);
-        srcCoord.push_back(0.6 * box + shift);
-        srcCoord.push_back(0.4 * box + shift);
+        srcCoord.push_back(0.3 * box + shift);
+        srcCoord.push_back(0.2 * box + shift);
+        srcCoord.push_back(0.1 * box + shift);
     } break;
     case 2: {
-        srcCoord.push_back(0.7 * box + shift); // 1
-        srcCoord.push_back(0.6 * box + shift);
-        srcCoord.push_back(0.5 * box + shift);
+        srcCoord.push_back(0.3 * box + shift); // 1
+        srcCoord.push_back(0.2 * box + shift);
+        srcCoord.push_back(0.1 * box + shift);
         srcCoord.push_back(0.2 * box + shift); // 2
-        srcCoord.push_back(0.8 * box + shift);
-        srcCoord.push_back(0.7 * box + shift);
+        srcCoord.push_back(0.4 * box + shift);
+        srcCoord.push_back(0.3 * box + shift);
     } break;
     case 4: {                                  // quadrupole, no dipole
         srcCoord.push_back(0.1 * box + shift); // 1
@@ -47,8 +46,8 @@ void PointDistribution::fixedPoints(int nPts, double box, double shift,
     }
 }
 
-void PointDistribution::meshPoints(int nPts, double box, double shift,
-                                   std::vector<double> &ptsCoord, bool cheb) {
+void PointDistribution::meshPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord,
+                                   bool cheb) {
     std::vector<double> pts; // nPts+1 points on [-1,1]
     if (cheb) {
         ChebNodal chebData(nPts, true);
@@ -63,33 +62,57 @@ void PointDistribution::meshPoints(int nPts, double box, double shift,
     pts.back() -= 1e-12;
 
     const int dimension = pts.size();
-    ptsCoord.resize(pow(dimension, 3) * 3);
-
-    for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++) {
-            for (int k = 0; k < dimension; k++) {
-                const int index =
-                    3 * (i * dimension * dimension + j * dimension + k);
+    const int n = pow(dimension, dim);
+    ptsCoord.resize(n * 3);
+    if (dim == 3) {
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                for (int k = 0; k < dimension; k++) {
+                    const int index = 3 * (i * dimension * dimension + j * dimension + k);
+                    ptsCoord[index] = (pts[i] + 1) * box / 2 + shift;
+                    ptsCoord[index + 1] = (pts[j] + 1) * box / 2 + shift;
+                    ptsCoord[index + 2] = (pts[k] + 1) * box / 2 + shift;
+                }
+            }
+        }
+    }
+    if (dim == 2) {
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                const int index = 3 * (i * dimension + j);
                 ptsCoord[index] = (pts[i] + 1) * box / 2 + shift;
                 ptsCoord[index + 1] = (pts[j] + 1) * box / 2 + shift;
-                ptsCoord[index + 2] = (pts[k] + 1) * box / 2 + shift;
+                ptsCoord[index + 2] = shift;
             }
+        }
+    }
+    if (dim == 1) {
+        for (int i = 0; i < dimension; i++) {
+            const int index = 3 * i;
+            ptsCoord[index] = (pts[i] + 1) * box / 2 + shift;
+            ptsCoord[index + 1] = shift;
+            ptsCoord[index + 2] = shift;
         }
     }
 }
 
-void PointDistribution::randomPoints(int nPts, double box, double shift,
-                                     std::vector<double> &ptsCoord) {
-    ptsCoord.resize(pow(nPts + 1, 3) * 3);
+void PointDistribution::randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+    const int n = pow(nPts + 1, dim);
+    ptsCoord.resize(n * 3);
     randomLogNormalFill(ptsCoord, 1.0, 1.0);
     for (auto &v : ptsCoord) {
         v = fmod(v, 1.0); // put to [0,1)
         v = v * box + shift;
     }
+    for (int i = 0; i < n; i++) {
+        if (dim < 3)
+            ptsCoord[3 * i + 2] = shift;
+        if (dim < 2)
+            ptsCoord[3 * i + 1] = shift;
+    }
 }
 
-void PointDistribution::shiftAndScalePoints(std::vector<double> &ptsCoord,
-                                            double shift[3], double scale) {
+void PointDistribution::shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale) {
     // user's job to guarantee pts stays in the unit cube after shift
     const int nPts = ptsCoord.size() / 3;
     for (int i = 0; i < nPts; i++) {
@@ -99,8 +122,7 @@ void PointDistribution::shiftAndScalePoints(std::vector<double> &ptsCoord,
     }
 }
 
-void PointDistribution::randomUniformFill(std::vector<double> &vec, double low,
-                                          double high) {
+void PointDistribution::randomUniformFill(std::vector<double> &vec, double low, double high) {
     // random fill every entry between [-1,1)
     std::uniform_real_distribution<double> dist(low, high);
     for (auto &v : vec) {
@@ -108,8 +130,7 @@ void PointDistribution::randomUniformFill(std::vector<double> &vec, double low,
     }
 }
 
-void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double a,
-                                            double b) {
+void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double a, double b) {
     // random fill according to log normal
     std::lognormal_distribution<double> dist(log(a), b);
     for (auto &v : vec) {
@@ -117,10 +138,8 @@ void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double a,
     }
 }
 
-void PointDistribution::dumpPoints(const std::string &filename,
-                                   std::vector<double> &coordLocal,
-                                   std::vector<double> &valueLocal,
-                                   const int valueDimension) {
+void PointDistribution::dumpPoints(const std::string &filename, std::vector<double> &coordLocal,
+                                   std::vector<double> &valueLocal, const int valueDimension) {
     FILE *fp = fopen(filename.c_str(), "w");
 
     auto coord = coordLocal;
@@ -134,8 +153,7 @@ void PointDistribution::dumpPoints(const std::string &filename,
         exit(1);
     }
     for (int i = 0; i < npts; i++) {
-        fprintf(fp, "%.10e, %.10e, %.10e", coord[3 * i], coord[3 * i + 1],
-                coord[3 * i + 2]);
+        fprintf(fp, "%.10e, %.10e, %.10e", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
         for (int j = 0; j < valueDimension; j++) {
             fprintf(fp, ", %.10e", value[valueDimension * i + j]);
         }
@@ -145,8 +163,7 @@ void PointDistribution::dumpPoints(const std::string &filename,
     fclose(fp);
 }
 
-void PointDistribution::checkError(const std::vector<double> &valueLocal,
-                                   const std::vector<double> &valueTrueLocal,
+void PointDistribution::checkError(const std::vector<double> &valueLocal, const std::vector<double> &valueTrueLocal,
                                    const int kdim) {
     // value and valueTrue are distributed
     // collect to rank 0 first
@@ -160,8 +177,8 @@ void PointDistribution::checkError(const std::vector<double> &valueLocal,
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
     MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 
-    auto calcDrift = [&](std::vector<double> &A, const std::vector<double> &B,
-                         const int base = 0, const int stride = 1) {
+    auto calcDrift = [&](std::vector<double> &A, const std::vector<double> &B, const int base = 0,
+                         const int stride = 1) {
         if (A.size() != B.size()) {
             printf("size error calc drift\n");
         }
@@ -176,9 +193,8 @@ void PointDistribution::checkError(const std::vector<double> &valueLocal,
             A[i] -= drift;
         }
     };
-    auto calcError = [&](std::vector<double> &value,
-                         const std::vector<double> &valueTrue,
-                         const int base = 0, const int stride = 1) {
+    auto calcError = [&](std::vector<double> &value, const std::vector<double> &valueTrue, const int base = 0,
+                         const int stride = 1) {
         if (value.size() != valueTrue.size()) {
             printf("size error calc drift\n");
         }
@@ -193,8 +209,7 @@ void PointDistribution::checkError(const std::vector<double> &valueLocal,
             L2 += pow(valueTrue[i], 2);
             errorMaxL2 = std::max(sqrt(temp), errorMaxL2);
             maxU = std::max(maxU, fabs(valueTrue[i]));
-            errorMaxRel =
-                std::max(sqrt(temp) / std::abs(valueTrue[i]), errorMaxRel);
+            errorMaxRel = std::max(sqrt(temp) / std::abs(valueTrue[i]), errorMaxRel);
         }
         const int n = (N - base) / stride;
         printf("Max Abs Error L2: %18.16g \n", errorMaxL2);
@@ -249,11 +264,9 @@ void PointDistribution::distributePts(std::vector<double> &pts, int dimension) {
     // each take a portion
     const int nPts = ptsGlobalSize / dimension;
     // inclusive low
-    int indexlow =
-        dimension * floor(myRank * nPts / static_cast<double>(nProcs));
+    int indexlow = dimension * floor(myRank * nPts / static_cast<double>(nProcs));
     // non-inclusive high
-    int indexhigh =
-        dimension * floor((myRank + 1) * nPts / static_cast<double>(nProcs));
+    int indexhigh = dimension * floor((myRank + 1) * nPts / static_cast<double>(nProcs));
     if (myRank == nProcs - 1) {
         indexhigh = ptsGlobalSize;
     }
@@ -281,8 +294,7 @@ void PointDistribution::collectPts(std::vector<double> &pts) {
         recvSize.resize(nProcs);
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Gather(&ptsLocalSize, 1, MPI_INT, recvSize.data(), 1, MPI_INT, 0,
-               MPI_COMM_WORLD);
+    MPI_Gather(&ptsLocalSize, 1, MPI_INT, recvSize.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
     // MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
     // void *recvbuf, int recvcount, MPI_Datatype recvtype, int root,
     // MPI_Comm comm)
@@ -307,12 +319,10 @@ void PointDistribution::collectPts(std::vector<double> &pts) {
     std::vector<double> ptsRecv(ptsGlobalSize); // size=0 on rank !=0
     // std::cout << "globalSize " << ptsGlobalSize << std::endl;
     if (myRank == 0) {
-        MPI_Gatherv(pts.data(), pts.size(), MPI_DOUBLE, ptsRecv.data(),
-                    recvSize.data(), displs.data(), MPI_DOUBLE, 0,
+        MPI_Gatherv(pts.data(), pts.size(), MPI_DOUBLE, ptsRecv.data(), recvSize.data(), displs.data(), MPI_DOUBLE, 0,
                     MPI_COMM_WORLD);
     } else {
-        MPI_Gatherv(pts.data(), pts.size(), MPI_DOUBLE, NULL, NULL, NULL,
-                    MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Gatherv(pts.data(), pts.size(), MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 
     pts = std::move(ptsRecv);

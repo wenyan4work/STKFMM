@@ -15,7 +15,7 @@
 #include <iostream>
 #include <vector>
 
-constexpr int maxP = 16;
+constexpr int maxP = 8;
 
 struct FMMpoint {
     std::vector<double> srcLocalSL;
@@ -41,7 +41,7 @@ extern std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernel
 void configure_parser(cli::Parser &parser);
 void showOption(const cli::Parser &parser);
 
-void genPoint(const cli::Parser &parser, FMMpoint &point, bool wall = false);
+void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall = false);
 void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs, bool neutral = false);
 void translatePoints(const cli::Parser &parser, FMMpoint &point);
 void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &inputs, const FMMresult &results);

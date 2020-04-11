@@ -37,13 +37,185 @@ StkWallFMM::~StkWallFMM() {
 }
 
 void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
-                           const int nDL, const double *srcDLCoordPtr) {}
+                           const int nDL, const double *srcDLCoordPtr) {
+    if (!poolFMM.empty()) {
+        for (auto &fmm : poolFMM) {
+            if (rank == 0)
+                printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
+            fmm.second->deleteTree();
+        }
+        if (rank == 0)
+            printf("ALL FMM Tree Cleared\n");
+    }
 
-void StkWallFMM::setupTree(KERNEL kernel) {}
+    // setup point coordinates
+    auto setCoord = [&](const int nPts, const double *coordPtr, std::vector<double> &coord) {
+        coord.resize(nPts * 3);
+        std::copy(coordPtr, coordPtr + 3 * nPts, coord.begin());
+        scaleCoord(nPts, coord.data()); // scale to [0,1)^2x[0,0.5)
+        wrapCoord(nPts, coord.data());  // pbc wrap
+#pragma omp parallel for
+        for (int i = 0; i < nPts; i++) {
+            coord[3 * i + 2] += 0.5; // shift z from [0,0.5) to [0.5,1)
+        }
+    };
+
+    // trg origin -> trgInternal
+    setCoord(nTrg, trgCoordPtr, trgCoordInternal);
+
+    // src origin+image -> srcSLInternal
+    srcSLCoordInternal.reserve(6 * nSL);
+    setCoord(nSL, srcSLCoordPtr, srcSLCoordInternal);
+    srcSLCoordInternal.resize(6 * nSL);
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        srcSLCoordInternal[3 * (i + nSL)] = srcSLCoordInternal[3 * i];
+        srcSLCoordInternal[3 * (i + nSL) + 1] = srcSLCoordInternal[3 * i + 1];
+        srcSLCoordInternal[3 * (i + nSL) + 2] = 1 - srcSLCoordInternal[3 * i + 2];
+    }
+
+    // src origin/image
+    srcSLImageCoordInternal.resize(3 * nSL);
+    std::copy(srcSLCoordInternal.begin() + 3 * nSL, srcSLCoordInternal.begin() + 6 * nSL,
+              srcSLImageCoordInternal.begin());
+    srcSLOriginCoordInternal.resize(3 * nSL);
+    std::copy(srcSLCoordInternal.begin(), srcSLCoordInternal.begin() + 3 * nSL, srcSLOriginCoordInternal.begin());
+
+    if (rank == 0)
+        printf("points set\n");
+
+    auto showPts = [&](const std::vector<double> &vec) {
+        for (auto &v : vec) {
+            printf("%g\t", v);
+        }
+        printf("\n");
+    };
+
+    showPts(srcSLOriginCoordInternal);
+    showPts(srcSLImageCoordInternal);
+    showPts(srcSLCoordInternal);
+    showPts(trgCoordInternal);
+}
+
+void StkWallFMM::setupTree(KERNEL kernel) {
+    if (kernel == KERNEL::Stokes) {
+        poolFMM[KERNEL::Stokes]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
+        poolFMM[KERNEL::LapPGrad]->setupTree(srcSLCoordInternal, srcSLImageCoordInternal, trgCoordInternal);
+        poolFMM[KERNEL::LapPGradGrad]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
+    } else if (kernel == KERNEL::RPY) {
+        poolFMM[KERNEL::RPY]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
+        poolFMM[KERNEL::LapPGrad]->setupTree(srcSLCoordInternal, srcSLCoordInternal, trgCoordInternal);
+        poolFMM[KERNEL::LapPGradGrad]->setupTree(srcSLCoordInternal, srcSLImageCoordInternal, trgCoordInternal);
+        poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLOriginCoordInternal, std::vector<double>(), trgCoordInternal);
+    } else {
+        printf("Kernel not supported\n");
+        std::exit(1);
+    }
+}
 
 void StkWallFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
-                             double *trgValuePtr, const int nDL, const double *srcDLValuePtr) {}
+                             double *trgValuePtr, const int nDL, const double *srcDLValuePtr) {
 
-void StkWallFMM::clearFMM(KERNEL kernel) {}
+    if (kernel == KERNEL::Stokes) {
+        // 3->3
+        srcSLValueInternal.resize(nSL * 3);
+        trgValueInternal.resize(nTrg * 3);
+        std::copy(srcSLValuePtr, srcSLValuePtr + 3 * nSL, srcSLValueInternal.begin());
+        evalStokes();
+        const int nloop = 3 * nTrg;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i];
+        }
+    } else if (kernel == KERNEL::RPY) {
+        // 4->6
+        srcSLValueInternal.resize(nSL * 4);
+        trgValueInternal.resize(nTrg * 6);
+        std::copy(srcSLValuePtr, srcSLValuePtr + 4 * nSL, srcSLValueInternal.begin());
+        evalRPY();
+        const int nloop = 6 * nTrg;
+#pragma omp parallel for
+        for (int i = 0; i < nloop; i++) {
+            trgValuePtr[i] += trgValueInternal[i];
+        }
+    } else {
+        printf("Kernel not supported\n");
+        std::exit(1);
+    }
+}
+
+void StkWallFMM::clearFMM(KERNEL kernel) {
+    if (kernel == KERNEL::Stokes) {
+        poolFMM[KERNEL::Stokes]->clear();
+        poolFMM[KERNEL::LapPGrad]->clear();
+        poolFMM[KERNEL::LapPGradGrad]->clear();
+    } else if (kernel == KERNEL::RPY) {
+        poolFMM[KERNEL::RPY]->clear();
+        poolFMM[KERNEL::LapPGrad]->clear();
+        poolFMM[KERNEL::LapPGradGrad]->clear();
+        poolFMM[KERNEL::LapQPGradGrad]->clear();
+    } else {
+        printf("Kernel not supported\n");
+        std::exit(1);
+    }
+}
+
+void StkWallFMM::evalStokes() {
+    const int nSL = srcSLOriginCoordInternal.size() / 3;
+    const int nTrg = trgCoordInternal.size() / 3;
+    std::vector<double> srcValStk(nSL * 3 * 2, 0), trgValStk(nTrg * 3, 0);                 // StokesFMM, 3->3
+    std::vector<double> srcValL1(nSL * 2, 0), srcValD(nSL * 3, 0), trgValL1D(nTrg * 4, 0); // LapPGrad, 1/3->4
+    std::vector<double> srcValL2(nSL * 2, 0), trgValL2(nTrg * 10, 0);                      // LapPGradGrad, 1->10
+    std::vector<double> empty;
+    const double sF = scaleFactor;
+    // step1 Stokes FMM
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        srcValStk[3 * i] = srcSLValueInternal[3 * i];
+        srcValStk[3 * i + 1] = srcSLValueInternal[3 * i + 1];
+        srcValStk[3 * (i + nSL)] = -srcSLValueInternal[3 * i];
+        srcValStk[3 * (i + nSL) + 1] = -srcSLValueInternal[3 * i + 1];
+    }
+    empty.clear();
+    poolFMM[KERNEL::Stokes]->evaluateFMM(srcValStk, empty, trgValStk, scaleFactor);
+
+    // step2 LapPGrad L1D
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        srcValL1[i] = -0.5 * srcSLValueInternal[3 * i + 2];
+        srcValL1[i + nSL] = 0.5 * srcSLValueInternal[3 * i + 2];
+    }
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        const double y3 = (srcSLOriginCoordInternal[3 * i + 2] - 0.5) / sF;
+        srcValD[3 * i + 0] = -y3 * srcSLValueInternal[3 * i + 0];
+        srcValD[3 * i + 1] = -y3 * srcSLValueInternal[3 * i + 1];
+        srcValD[3 * i + 2] = y3 * srcSLValueInternal[3 * i + 2];
+    }
+    poolFMM[KERNEL::LapPGrad]->evaluateFMM(srcValL1, srcValD, trgValL1D, scaleFactor);
+
+    // step3 LapPGradGrad L2
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        const double y3 = (srcSLOriginCoordInternal[3 * i + 2] - 0.5) / sF;
+        srcValL2[i] = srcSLValueInternal[3 * i + 2] * y3;
+        srcValL2[i + nSL] = -srcValL2[i];
+    }
+    empty.clear();
+    poolFMM[KERNEL::LapPGradGrad]->evaluateFMM(srcValL2, empty, trgValL2, scaleFactor);
+
+    // step 4 Assemble together
+#pragma omp parallel for
+    for (int i = 0; i < nTrg; i++) {
+        const double x3 = (trgCoordInternal[3 * i + 2] - 0.5) / sF;
+        for (int j = 0; j < 3; j++) {
+            trgValueInternal[3 * i + j] =
+                trgValStk[3 * i + j] + 0.5 * trgValL2[10 * i + j + 1] + x3 * trgValL1D[4 * i + j + 1];
+        }
+        trgValueInternal[3 * i + 2] -= trgValL1D[4 * i];
+    }
+}
+
+void StkWallFMM::evalRPY() {}
 
 } // namespace stkfmm

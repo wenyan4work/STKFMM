@@ -50,7 +50,7 @@ void showOption(const cli::Parser &parser) {
 }
 
 // generate (distributed) FMM points
-void genPoint(const cli::Parser &parser, FMMpoint &point, bool wall) {
+void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
     const double shift = parser.get<double>("M");
     const double box = parser.get<double>("B");
     int myRank;
@@ -69,9 +69,9 @@ void genPoint(const cli::Parser &parser, FMMpoint &point, bool wall) {
         // set trg coord
         const int nPts = parser.get<int>("T");
         if (parser.get<int>("R") > 0) {
-            pd.randomPoints(nPts, box, shift, trgLocal);
+            pd.randomPoints(dim,nPts, box, shift, trgLocal);
         } else {
-            PointDistribution::meshPoints(nPts, box, shift, trgLocal);
+            PointDistribution::meshPoints(dim,nPts, box, shift, trgLocal);
         }
 
         // set src SL coord
