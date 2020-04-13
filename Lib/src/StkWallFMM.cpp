@@ -216,6 +216,90 @@ void StkWallFMM::evalStokes() {
     }
 }
 
-void StkWallFMM::evalRPY() {}
+void StkWallFMM::evalRPY() {
+    const int nSL = srcSLOriginCoordInternal.size() / 3;
+    const int nTrg = trgCoordInternal.size() / 3;
+    std::vector<double> srcValRPY(nSL * 4 * 2, 0), trgValRPY(nTrg * 6, 0);                    // RPYFMM, 4->6
+    std::vector<double> srcValLS(nSL * 2, 0), srcValLD(nSL * 3, 0), trgValSD(nTrg * 10, 0);   // LapPGradGrad S, 1/3->10
+    std::vector<double> srcValLSZ(nSL * 2, 0), srcValLDZ(nSL * 6, 0), trgValSDZ(nTrg * 4, 0); // LapPGrad, 1/3->4
+    std::vector<double> srcValQ(nSL * 9, 0), trgValQ(nTrg * 10, 0);                           // LapQPGradGrad, 9->10
+    std::vector<double> empty;
+    const double sF = scaleFactor;
+
+// step1 RPYFMM
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        srcValRPY[4 * i] = srcSLValueInternal[4 * i];         // fx
+        srcValRPY[4 * i + 1] = srcSLValueInternal[4 * i + 1]; // fy
+        srcValRPY[4 * i + 2] = 0;                             // fz
+        srcValRPY[4 * i + 3] = srcSLValueInternal[4 * i + 3]; // b
+        srcValRPY[4 * (i + nSL)] = -srcSLValueInternal[4 * i];
+        srcValRPY[4 * (i + nSL) + 1] = -srcSLValueInternal[4 * i + 1];
+        srcValRPY[4 * (i + nSL) + 2] = 0;
+        srcValRPY[4 * (i + nSL) + 3] = srcSLValueInternal[4 * i + 3]; // b
+    }
+    empty.clear();
+    poolFMM[KERNEL::RPY]->evaluateFMM(srcValRPY, empty, trgValRPY, sF);
+
+// step2 Laplace SD
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        srcValLS[i] = srcSLValueInternal[4 * i + 2] * (-0.5);
+        srcValLS[i + nSL] = -srcSLValueInternal[4 * i + 2] * (-0.5);
+        const double y3 = (srcSLOriginCoordInternal[3 * i + 2] - 0.5) / sF;
+        srcValLD[3 * i] = -y3 * srcSLValueInternal[4 * i];
+        srcValLD[3 * i + 1] = -y3 * srcSLValueInternal[4 * i + 1];
+        srcValLD[3 * i + 2] = y3 * srcSLValueInternal[4 * i + 2];
+    }
+    poolFMM[KERNEL::LapPGradGrad]->evaluateFMM(srcValLS, srcValLD, trgValSD, sF);
+
+// step3 Laplace SDZ
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        const double y3 = (srcSLOriginCoordInternal[3 * i + 2] - 0.5) / sF;
+        const double b = srcSLValueInternal[4 * i + 3];
+        const double b2 = b * b;
+        const double f3 = srcSLValueInternal[4 * i + 2];
+        srcValLSZ[i] = y3 * f3 * 0.5;
+        srcValLSZ[i + nSL] = -y3 * f3 * 0.5;
+        srcValLDZ[3 * i + 2] = b2 * f3 * (1. / 6.);
+        srcValLDZ[3 * (i + nSL) + 2] = b2 * f3 * (1. / 6.);
+    }
+    poolFMM[KERNEL::LapPGrad]->evaluateFMM(srcValLSZ, srcValLDZ, trgValSDZ, sF);
+
+// step4 Laplace QPGradGrad
+#pragma omp parallel for
+    for (int i = 0; i < nSL; i++) {
+        const double b = srcSLValueInternal[4 * i + 3];
+        const double twob2 = 2 * b * b;
+        const double f1 = srcSLValueInternal[4 * i];
+        const double f2 = srcSLValueInternal[4 * i + 1];
+        const double f3 = srcSLValueInternal[4 * i + 2];
+        srcValQ[9 * i] = twob2 * f3 * (1. / 6.);
+        srcValQ[9 * i + 4] = twob2 * f3 * (1. / 6.);
+        srcValQ[9 * i + 6] = twob2 * f1 * (1. / 6.);
+        srcValQ[9 * i + 7] = twob2 * f2 * (1. / 6.);
+    }
+    empty.clear();
+    poolFMM[KERNEL::LapQPGradGrad]->evaluateFMM(srcValQ, empty, trgValQ, sF);
+
+// assemble
+#pragma omp parallel for
+    for (int i = 0; i < nTrg; i++) {
+        // 6 dimensional array per target [vx,vy,vz,gx,gy,gz]
+        // u = [vx,vy,vz]+a^2/6*[gx,gy,gz]
+        const double x3 = (trgCoordInternal[3 * i + 2] - 0.5) / sF;
+        trgValueInternal[6 * i + 0] = //
+            trgValRPY[6 * i + 0] + trgValSDZ[4 * i + 1] + x3 * trgValSD[10 * i + 1] + x3 * trgValQ[10 * i + 1];
+        trgValueInternal[6 * i + 1] = //
+            trgValRPY[6 * i + 1] + trgValSDZ[4 * i + 2] + x3 * trgValSD[10 * i + 2] + x3 * trgValQ[10 * i + 2];
+        trgValueInternal[6 * i + 2] =                                                                          //
+            trgValRPY[6 * i + 2] + trgValSDZ[4 * i + 3] + x3 * trgValSD[10 * i + 3] + x3 * trgValQ[10 * i + 3] //
+            - trgValSD[10 * i] - trgValQ[10 * i];
+        trgValueInternal[6 * i + 3] = trgValRPY[6 * i + 3] + 2 * trgValSD[10 * i + 6] + 2 * trgValQ[10 * i + 6];
+        trgValueInternal[6 * i + 4] = trgValRPY[6 * i + 4] + 2 * trgValSD[10 * i + 8] + 2 * trgValQ[10 * i + 8];
+        trgValueInternal[6 * i + 5] = trgValRPY[6 * i + 5] + 2 * trgValSD[10 * i + 9] + 2 * trgValQ[10 * i + 9];
+    }
+}
 
 } // namespace stkfmm
