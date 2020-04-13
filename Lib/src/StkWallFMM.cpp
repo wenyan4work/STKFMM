@@ -84,17 +84,17 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
     if (rank == 0)
         printf("points set\n");
 
-    auto showPts = [&](const std::vector<double> &vec) {
-        for (auto &v : vec) {
-            printf("%g\t", v);
-        }
-        printf("\n");
-    };
+    // auto showVec = [&](const std::vector<double> &vec) {
+    //     for (auto &v : vec) {
+    //         printf("%g\t", v);
+    //     }
+    //     printf("\n");
+    // };
 
-    showPts(srcSLOriginCoordInternal);
-    showPts(srcSLImageCoordInternal);
-    showPts(srcSLCoordInternal);
-    showPts(trgCoordInternal);
+    // showVec(srcSLOriginCoordInternal);
+    // showVec(srcSLImageCoordInternal);
+    // showVec(srcSLCoordInternal);
+    // showVec(trgCoordInternal);
 }
 
 void StkWallFMM::setupTree(KERNEL kernel) {
@@ -106,7 +106,7 @@ void StkWallFMM::setupTree(KERNEL kernel) {
         poolFMM[KERNEL::RPY]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
         poolFMM[KERNEL::LapPGrad]->setupTree(srcSLCoordInternal, srcSLCoordInternal, trgCoordInternal);
         poolFMM[KERNEL::LapPGradGrad]->setupTree(srcSLCoordInternal, srcSLImageCoordInternal, trgCoordInternal);
-        poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLOriginCoordInternal, std::vector<double>(), trgCoordInternal);
+        poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLImageCoordInternal, std::vector<double>(), trgCoordInternal);
     } else {
         printf("Kernel not supported\n");
         std::exit(1);
@@ -231,11 +231,9 @@ void StkWallFMM::evalRPY() {
     for (int i = 0; i < nSL; i++) {
         srcValRPY[4 * i] = srcSLValueInternal[4 * i];         // fx
         srcValRPY[4 * i + 1] = srcSLValueInternal[4 * i + 1]; // fy
-        srcValRPY[4 * i + 2] = 0;                             // fz
         srcValRPY[4 * i + 3] = srcSLValueInternal[4 * i + 3]; // b
         srcValRPY[4 * (i + nSL)] = -srcSLValueInternal[4 * i];
         srcValRPY[4 * (i + nSL) + 1] = -srcSLValueInternal[4 * i + 1];
-        srcValRPY[4 * (i + nSL) + 2] = 0;
         srcValRPY[4 * (i + nSL) + 3] = srcSLValueInternal[4 * i + 3]; // b
     }
     empty.clear();
@@ -270,11 +268,11 @@ void StkWallFMM::evalRPY() {
 // step4 Laplace QPGradGrad
 #pragma omp parallel for
     for (int i = 0; i < nSL; i++) {
-        const double b = srcSLValueInternal[4 * i + 3];
-        const double twob2 = 2 * b * b;
         const double f1 = srcSLValueInternal[4 * i];
         const double f2 = srcSLValueInternal[4 * i + 1];
         const double f3 = srcSLValueInternal[4 * i + 2];
+        const double b = srcSLValueInternal[4 * i + 3];
+        const double twob2 = 2 * b * b;
         srcValQ[9 * i] = twob2 * f3 * (1. / 6.);
         srcValQ[9 * i + 4] = twob2 * f3 * (1. / 6.);
         srcValQ[9 * i + 6] = twob2 * f1 * (1. / 6.);

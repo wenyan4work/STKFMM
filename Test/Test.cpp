@@ -69,9 +69,9 @@ void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
         // set trg coord
         const int nPts = parser.get<int>("T");
         if (parser.get<int>("R") > 0) {
-            pd.randomPoints(dim,nPts, box, shift, trgLocal);
+            pd.randomPoints(dim, nPts, box, shift, trgLocal);
         } else {
-            PointDistribution::meshPoints(dim,nPts, box, shift, trgLocal);
+            PointDistribution::meshPoints(dim, nPts, box, shift, trgLocal);
         }
 
         // set src SL coord
@@ -145,7 +145,18 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
         pd.randomUniformFill(value.srcLocalSL, -1, 1);
         pd.randomUniformFill(value.srcLocalDL, -1, 1);
 
+        if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+            // sphere radius/regularization must be small
+            const double reg = parser.get<double>("e");
+            auto setreg = [&](double &v) { v = std::abs(v) * reg; };
+            for (int i = 0; i < nSL; i++) {
+                setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
+            }
+        }
+
         if (neutral) {
+            if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+            }
             // special requirements
             if ((kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) && pbc) { // must be neutral for periodic
                 int nSLGlobal = nSL;
@@ -197,15 +208,6 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
                     value.srcLocalDL[9 * i + 0] -= trD;
                     value.srcLocalDL[9 * i + 4] -= trD;
                     value.srcLocalDL[9 * i + 8] -= trD;
-                }
-            }
-
-            if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
-                // sphere radius/regularization must be small
-                const double reg = parser.get<double>("e");
-                auto setreg = [&](double &v) { v = std::abs(v) * reg; };
-                for (int i = 0; i < nSL; i++) {
-                    setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
                 }
             }
         }

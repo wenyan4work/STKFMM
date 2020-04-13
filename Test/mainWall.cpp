@@ -9,7 +9,9 @@ void checkWallError(const cli::Parser &parser, const FMMpoint &point, const FMMr
     for (auto &data : results) {
         auto kernel = data.first;
         std::vector<double> zero(data.second.size(), 0);
-        PointDistribution::checkError(data.second, zero, 3);
+        int kdimSL, kdimDL, kdimTrg;
+        std::tie(kdimSL, kdimDL, kdimTrg) = stkfmm::getKernelDimension(kernel);
+        PointDistribution::checkError(data.second, zero, kdimTrg);
     }
 }
 
