@@ -31,7 +31,7 @@ struct StokesLayerKernel {
     // D2U - double-layer density — to — potential kernel
     // S2UdU - single-layer density — to — potential & gradient
     // D2UdU - double-layer density — to — potential & gradient
-
+    inline static const Kernel<T> &Vel(); ///< Stokeslet 3x3, SL->Vel
     inline static const Kernel<T> &PVel();          ///< SL+DL -> PVel
     inline static const Kernel<T> &PVelGrad();      ///< SL+DL -> PVelGrad
     inline static const Kernel<T> &PVelLaplacian(); ///< SL+DL -> PVelLaplacian
@@ -46,6 +46,12 @@ struct StokesLayerKernel {
      */
     static constexpr int NEWTON_ITE = sizeof(T) / 4;
 };
+
+template<class T> 
+inline const Kernel<T>& StokesLayerKernel<T>::Vel(){
+  static Kernel<T> ker=BuildKernel<T, stokes_vel<T,NEWTON_ITE>>("stokes_vel", 3, std::pair<int,int>(3,3));
+  return ker;
+}
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVel() {

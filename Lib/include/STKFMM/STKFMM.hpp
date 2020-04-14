@@ -65,7 +65,7 @@ class STKFMM {
      * @brief setup the tree for the chosen kernel
      * setPoints() must have been called
      *
-     * @param kernel_ one of the activated kernels to use
+     * @param kernel one of the activated kernels to use
      */
     virtual void setupTree(KERNEL kernel) = 0;
 

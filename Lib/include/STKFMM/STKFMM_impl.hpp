@@ -69,9 +69,11 @@ class FMMData {
      * @param srcSLCoord single layer source coordinate
      * @param srcDLCoord double layer source coordinate
      * @param trgCoord target coordinate
+     * @param ntreePts
+     * @param treePtsPtr
      */
     void setupTree(const std::vector<double> &srcSLCoord, const std::vector<double> &srcDLCoord,
-                   const std::vector<double> &trgCoord);
+                   const std::vector<double> &trgCoord, const int ntreePts = 0, const double *treePtsPtr = nullptr);
 
     /**
      * @brief run FMM
@@ -111,6 +113,14 @@ class FMMData {
      *
      */
     void clear();
+
+    /**
+     * @brief if this kernel has DL
+     *
+     * @return true
+     * @return false
+     */
+    bool hasDL() const { return kernelFunctionPtr->dbl_layer_poten; };
 
   private:
     pvfmm::PtFMM<double> *matrixPtr;        ///< pvfmm PtFMM pointer

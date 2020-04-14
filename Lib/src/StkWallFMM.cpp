@@ -98,6 +98,9 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
 }
 
 void StkWallFMM::setupTree(KERNEL kernel) {
+    std::vector<double> treeCoord(srcSLCoordInternal.size() + trgCoordInternal.size());
+    std::copy(srcSLCoordInternal.begin(), srcSLCoordInternal.end(), treeCoord.begin());
+    std::copy(trgCoordInternal.begin(), trgCoordInternal.end(), treeCoord.begin() + srcSLCoordInternal.size());
     if (kernel == KERNEL::Stokes) {
         poolFMM[KERNEL::Stokes]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
         poolFMM[KERNEL::LapPGrad]->setupTree(srcSLCoordInternal, srcSLImageCoordInternal, trgCoordInternal);
@@ -106,7 +109,8 @@ void StkWallFMM::setupTree(KERNEL kernel) {
         poolFMM[KERNEL::RPY]->setupTree(srcSLCoordInternal, std::vector<double>(), trgCoordInternal);
         poolFMM[KERNEL::LapPGrad]->setupTree(srcSLCoordInternal, srcSLCoordInternal, trgCoordInternal);
         poolFMM[KERNEL::LapPGradGrad]->setupTree(srcSLCoordInternal, srcSLImageCoordInternal, trgCoordInternal);
-        poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLImageCoordInternal, std::vector<double>(), trgCoordInternal);
+        poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLImageCoordInternal, std::vector<double>(), trgCoordInternal,
+                                                  srcSLCoordInternal.size() / 3, srcSLCoordInternal.data());
     } else {
         printf("Kernel not supported\n");
         std::exit(1);

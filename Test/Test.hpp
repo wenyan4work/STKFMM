@@ -15,7 +15,7 @@
 #include <iostream>
 #include <vector>
 
-constexpr int maxP = 8;
+constexpr int maxP = 16;
 
 struct FMMpoint {
     std::vector<double> srcLocalSL;

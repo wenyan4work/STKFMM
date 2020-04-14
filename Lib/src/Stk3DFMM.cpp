@@ -1,5 +1,5 @@
 #include "STKFMM/STKFMM.hpp"
-namespace stkfmm{
+namespace stkfmm {
 
 Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
@@ -66,7 +66,13 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
 }
 
 void Stk3DFMM::setupTree(KERNEL kernel) {
-    poolFMM[kernel]->setupTree(srcSLCoordInternal, srcDLCoordInternal, trgCoordInternal);
+    auto &fmmPtr = poolFMM[kernel];
+    if (fmmPtr->hasDL()) {
+        poolFMM[kernel]->setupTree(srcSLCoordInternal, srcDLCoordInternal, trgCoordInternal);
+    } else {
+        std::vector<double> empty;
+        poolFMM[kernel]->setupTree(srcSLCoordInternal, empty, trgCoordInternal);
+    }
     if (rank == 0)
         printf("Coord setup for kernel %d\n", static_cast<int>(kernel));
 }
@@ -82,14 +88,18 @@ void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *src
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
 
     srcSLValueInternal.resize(nSL * fmm.kdimSL);
-    srcDLValueInternal.resize(nDL * fmm.kdimDL);
     trgValueInternal.resize(nTrg * fmm.kdimTrg);
-
     std::copy(srcSLValuePtr, srcSLValuePtr + nSL * fmm.kdimSL, srcSLValueInternal.begin());
-    std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL, srcDLValueInternal.begin());
 
     // run FMM with proper scaling
-    fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal, scaleFactor);
+    if (fmm.hasDL()) {
+        srcDLValueInternal.resize(nDL * fmm.kdimDL);
+        std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL, srcDLValueInternal.begin());
+        fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal, scaleFactor);
+    } else {
+        std::vector<double> empty;
+        fmm.evaluateFMM(srcSLValueInternal, empty, trgValueInternal, scaleFactor);
+    }
 
     const int nloop = nTrg * fmm.kdimTrg;
 #pragma omp parallel for
@@ -111,4 +121,4 @@ void Stk3DFMM::clearFMM(KERNEL kernel) {
     }
 }
 
-}
+} // namespace stkfmm

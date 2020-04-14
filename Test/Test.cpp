@@ -6,7 +6,7 @@ std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
     SL_kernels({{KERNEL::LapPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
                 {KERNEL::LapPGradGrad, std::make_pair(LaplaceSLPGradGrad, LaplaceDLPGradGrad)},
                 {KERNEL::LapQPGradGrad, std::make_pair(LaplaceQPGradGrad, nullptr)},
-                {KERNEL::Stokes, std::make_pair(StokesSL, StokesDL)},
+                {KERNEL::Stokes, std::make_pair(StokesSL, nullptr)},
                 {KERNEL::RPY, std::make_pair(StokesSLRPY, nullptr)},
                 {KERNEL::StokesRegVel, std::make_pair(StokesRegSLVel, nullptr)},
                 {KERNEL::StokesRegVelOmega, std::make_pair(StokesRegSLVelOmega, nullptr)},
@@ -349,30 +349,32 @@ void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results
             double t[3] = {trg[0], trg[1], trg[2]};
 
             // add SL values
-            for (int j = 0; j < nSL; j++) {
-                double result[20] = {0.0};
-                double *s = srcSLCoordGlobal.data() + 3 * j;
-                double *sval = srcSLValueGlobal.data() + kdimSL * j;
+            if (kernelTestSL)
+                for (int j = 0; j < nSL; j++) {
+                    double result[20] = {0.0};
+                    double *s = srcSLCoordGlobal.data() + 3 * j;
+                    double *sval = srcSLValueGlobal.data() + kdimSL * j;
 
-                kernelTestSL(s, t, sval, result);
+                    kernelTestSL(s, t, sval, result);
 
-                for (int k = 0; k < kdimTrg; k++) {
-                    trgLocal[kdimTrg * i + k] += result[k];
+                    for (int k = 0; k < kdimTrg; k++) {
+                        trgLocal[kdimTrg * i + k] += result[k];
+                    }
                 }
-            }
 
             // add DL values
-            for (int j = 0; j < nDL; j++) {
-                double result[20] = {0.0};
-                double *s = srcDLCoordGlobal.data() + 3 * j;
-                double *sval = srcDLValueGlobal.data() + kdimDL * j;
+            if (kernelTestDL)
+                for (int j = 0; j < nDL; j++) {
+                    double result[20] = {0.0};
+                    double *s = srcDLCoordGlobal.data() + 3 * j;
+                    double *sval = srcDLValueGlobal.data() + kdimDL * j;
 
-                kernelTestDL(s, t, sval, result);
+                    kernelTestDL(s, t, sval, result);
 
-                for (int k = 0; k < kdimTrg; k++) {
-                    trgLocal[kdimTrg * i + k] += result[k];
+                    for (int k = 0; k < kdimTrg; k++) {
+                        trgLocal[kdimTrg * i + k] += result[k];
+                    }
                 }
-            }
         }
         results[kernel] = trgLocal;
     }

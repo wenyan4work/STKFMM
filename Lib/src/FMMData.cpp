@@ -1,6 +1,5 @@
 #include "STKFMM/STKFMM_impl.hpp"
 
-
 namespace stkfmm {
 namespace impl {
 
@@ -103,7 +102,6 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
     kernelFunctionPtr = getKernelFunction(kernelChoice);
     setKernel();
     treeDataPtr = new pvfmm::PtFMM_Data<double>;
-    // treeDataPtr remain nullptr after constructor
 
     // load periodicity M2L data
     if (periodicity != PAXIS::NONE) {
@@ -136,9 +134,8 @@ void FMMData::clear() {
 }
 
 void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector<double> &srcDLCoord,
-                        const std::vector<double> &trgCoord) {
+                        const std::vector<double> &trgCoord, const int ntreePts, const double *treePtsPtr) {
     // trgCoord and srcCoord have been scaled to [0,1)^3
-
     // setup treeData
     treeDataPtr->dim = 3;
     treeDataPtr->max_depth = PVFMM_MAX_DEPTH;
@@ -147,12 +144,24 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     treeDataPtr->src_coord = srcSLCoord;
     treeDataPtr->surf_coord = srcDLCoord;
     treeDataPtr->trg_coord = trgCoord;
-
-    // this is used to setup FMM octree
-    treeDataPtr->pt_coord = srcSLCoord.size() > trgCoord.size() ? srcSLCoord : trgCoord;
     const int nSL = srcSLCoord.size() / 3;
     const int nDL = srcDLCoord.size() / 3;
     const int nTrg = trgCoord.size() / 3;
+
+    // pt_coord is used to setup FMM octree
+    if (treePtsPtr == nullptr || ntreePts == 0) {
+        // default case, use the largest set of SL,DL,trg
+        if (nSL > nDL && nSL > nTrg)
+            treeDataPtr->pt_coord = srcSLCoord;
+        if (nDL > nSL && nDL > nTrg)
+            treeDataPtr->pt_coord = srcDLCoord;
+        if (nTrg > nSL && nTrg > nDL)
+            treeDataPtr->pt_coord = trgCoord;
+    } else {
+        // custom case, use custom set of points
+        treeDataPtr->pt_coord.Resize(3 * ntreePts);
+        std::copy(treePtsPtr, treePtsPtr + 3 * ntreePts, treeDataPtr->pt_coord.Begin());
+    }
 
     printf("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
 
@@ -459,4 +468,4 @@ void FMMData::scaleTrg(std::vector<double> &trgValue, const double scaleFactor) 
 }
 
 } // namespace impl
-}
+} // namespace stkfmm
