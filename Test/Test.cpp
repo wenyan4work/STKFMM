@@ -297,7 +297,7 @@ void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &in
         if (it != results.end()) {
             trgLocal = it->second;
         } else {
-            printf("result not found for kernel %d\n", asInteger(kernel));
+            std::cout<<"result not found for kernel "<< getKernelName(kernel)<<std::endl;
         }
         writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)), point.srcLocalSL, value.srcLocalSL, kdimSL);
         writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)), point.srcLocalDL, value.srcLocalDL, kdimDL);
@@ -313,7 +313,7 @@ void checkError(const FMMresult &A, const FMMresult &B, bool component) {
             printf("check result error, reference not found\n");
             exit(1);
         }
-        std::cout << "Error for kernel: " << asInteger(kernel) << std::endl;
+        std::cout << "Error for kernel " << getKernelName(kernel) << std::endl;
         if (component) {
             int kdimSL, kdimDL, kdimTrg;
             std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
@@ -410,7 +410,7 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMin
 
     std::shared_ptr<STKFMM> fmmPtr;
     if (wall) {
-        if (k != static_cast<int>(KERNEL::Stokes) & static_cast<int>(KERNEL::RPY)) {
+        if (k != asInteger(KERNEL::Stokes) & asInteger(KERNEL::RPY)) {
             printf("WallFMM supports only Stokes and RPY Single Layer kernels\n");
             std::exit(1);
         }

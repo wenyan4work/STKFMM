@@ -74,7 +74,7 @@ void Stk3DFMM::setupTree(KERNEL kernel) {
         poolFMM[kernel]->setupTree(srcSLCoordInternal, empty, trgCoordInternal);
     }
     if (rank == 0)
-        printf("Coord setup for kernel %d\n", static_cast<int>(kernel));
+        std::cout << "Coord setup for kernel " << getKernelName(kernel) << std::endl;
 }
 
 void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
@@ -82,7 +82,7 @@ void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *src
 
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
-        printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
+        std::cout << "Error: no such FMMData exists for kernel " << getKernelName(kernel) << std::endl;
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
@@ -112,7 +112,7 @@ void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *src
 
 void Stk3DFMM::clearFMM(KERNEL kernel) {
     trgValueInternal.clear();
-    auto it = poolFMM.find(static_cast<KERNEL>(kernel));
+    auto it = poolFMM.find(kernel);
     if (it != poolFMM.end())
         it->second->clear();
     else {

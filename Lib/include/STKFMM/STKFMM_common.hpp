@@ -66,6 +66,22 @@ extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
 std::tuple<int, int, int> getKernelDimension(KERNEL kernel_);
 
 /**
+ * @brief Get the name of the kernel
+ * 
+ * @param kernel_ 
+ * @return std::string 
+ */
+std::string getKernelName(KERNEL kernel_);
+
+/**
+ * @brief Get the Kernel Function Pointer
+ * 
+ * @param kernelChoice_ 
+ * @return const pvfmm::Kernel<double>* 
+ */
+const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) ;
+
+/**
  * @brief Enum to integer
  *
  * @tparam Enumeration

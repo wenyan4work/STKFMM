@@ -53,7 +53,7 @@ class FMMData {
      */
     ~FMMData();
 
-    static const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_);
+    // static const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_);
 
     /**
      * @brief Set kernel function in pvfmm data structure

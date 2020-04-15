@@ -27,14 +27,30 @@ const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
 
 std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
     using namespace impl;
-    const pvfmm::Kernel<double> *kernelFunctionPtr = FMMData::getKernelFunction(kernel_);
+    const pvfmm::Kernel<double> *kernelFunctionPtr = getKernelFunction(kernel_);
     int kdimSL = kernelFunctionPtr->ker_dim[0];
     int kdimTrg = kernelFunctionPtr->ker_dim[1];
     int kdimDL = kernelFunctionPtr->surf_dim;
     return std::tuple<int, int, int>(kdimSL, kdimDL, kdimTrg);
 }
 
+std::string getKernelName(KERNEL kernel_){
+    using namespace impl;
+    const pvfmm::Kernel<double> *kernelFunctionPtr = getKernelFunction(kernel_);
+    return kernelFunctionPtr->ker_name;
+}
 
+const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_)
+    {
+    auto it = kernelMap.find(kernelChoice_);
+    if (it != kernelMap.end()) {
+        return it->second;
+    } else {
+        printf("Error: Kernel not found.\n");
+        std::exit(1);
+        return nullptr;
+    }
+}
 
 // base class STKFMM
 
@@ -85,7 +101,7 @@ void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads, const PPKER
                             double *trgValuePtr) {
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
-        printf("Error: no such FMMData exists for kernel %d\n", static_cast<int>(kernel));
+        std::cout<<"Error: no such FMMData exists for kernel "<<getKernelName(kernel)<<std::endl;
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);

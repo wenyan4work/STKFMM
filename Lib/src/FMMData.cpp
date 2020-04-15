@@ -10,16 +10,16 @@ void FMMData::setKernel() {
     kdimDL = kernelFunctionPtr->surf_dim;
 }
 
-const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
-    auto it = kernelMap.find(kernelChoice_);
-    if (it != kernelMap.end()) {
-        return it->second;
-    } else {
-        printf("Error: Kernel not found.\n");
-        std::exit(1);
-        return nullptr;
-    }
-}
+// const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
+//     auto it = kernelMap.find(kernelChoice_);
+//     if (it != kernelMap.end()) {
+//         return it->second;
+//     } else {
+//         printf("Error: Kernel not found.\n");
+//         std::exit(1);
+//         return nullptr;
+//     }
+// }
 
 void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data) {
     // int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
