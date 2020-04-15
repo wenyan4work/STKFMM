@@ -154,11 +154,29 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
             }
         }
 
-        if (neutral) {
+        if (neutral) { // must be neutral for some periodic
             if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
+                int nSLGlobal = nSL;
+                MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+                assert(kdimSL == 4);
+                double fnet[4] = {0, 0, 0};
+                for (int i = 0; i < nSL; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        fnet[j] += value.srcLocalSL[4 * i + j];
+                    }
+                }
+                MPI_Allreduce(MPI_IN_PLACE, fnet, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                fnet[0] /= nSLGlobal;
+                fnet[1] /= nSLGlobal;
+                fnet[2] /= nSLGlobal;
+                for (int i = 0; i < nSL; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        value.srcLocalSL[4 * i + j] -= fnet[j];
+                    }
+                }
             }
-            // special requirements
-            if ((kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) && pbc) { // must be neutral for periodic
+
+            if (kernel == KERNEL::LapPGrad || kernel == KERNEL::LapPGradGrad) {
                 int nSLGlobal = nSL;
                 MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
                 double netCharge = std::accumulate(value.srcLocalSL.begin(), value.srcLocalSL.end(), 0.0);
@@ -169,9 +187,8 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
                 }
             }
 
-            if ((kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad || kernel == KERNEL::PVelLaplacian ||
-                 kernel == KERNEL::Traction) &&
-                pbc) {
+            if (kernel == KERNEL::PVel || kernel == KERNEL::PVelGrad || kernel == KERNEL::PVelLaplacian ||
+                kernel == KERNEL::Traction) {
                 // must be force-neutral for x-y-z-trD
                 int nSLGlobal = nSL;
                 MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

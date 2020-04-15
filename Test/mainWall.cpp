@@ -37,12 +37,14 @@ int main(int argc, char **argv) {
     FMMinput inputs;
     FMMresult true_results;
 
+    genPoint(3, parser, point, true);
     const int V = parser.get<int>("V");
     if (V) {
-        genPoint(2, parser, point, true);
-    } else {
-        genPoint(3, parser, point, true);
+        FMMpoint wall_point;
+        genPoint(2, parser, wall_point, true);
+        point.trgLocal = wall_point.trgLocal;
     }
+
     genSrcValue(parser, point, inputs, false);
     printf("src value generated\n");
 
