@@ -34,14 +34,13 @@ std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
     return std::tuple<int, int, int>(kdimSL, kdimDL, kdimTrg);
 }
 
-std::string getKernelName(KERNEL kernel_){
+std::string getKernelName(KERNEL kernel_) {
     using namespace impl;
     const pvfmm::Kernel<double> *kernelFunctionPtr = getKernelFunction(kernel_);
     return kernelFunctionPtr->ker_name;
 }
 
-const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_)
-    {
+const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) {
     auto it = kernelMap.find(kernelChoice_);
     if (it != kernelMap.end()) {
         return it->second;
@@ -101,7 +100,7 @@ void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads, const PPKER
                             double *trgValuePtr) {
     using namespace impl;
     if (poolFMM.find(kernel) == poolFMM.end()) {
-        std::cout<<"Error: no such FMMData exists for kernel "<<getKernelName(kernel)<<std::endl;
+        std::cout << "Error: no such FMMData exists for kernel " << getKernelName(kernel) << std::endl;
         exit(1);
     }
     FMMData &fmm = *((*poolFMM.find(kernel)).second);
@@ -111,11 +110,13 @@ void STKFMM::evaluateKernel(const KERNEL kernel, const int nThreads, const PPKER
 
 void STKFMM::showActiveKernels() const {
     if (!rank) {
+        std::cout << "active kernels: ";
         for (auto it : kernelMap) {
             if (kernelComb & asInteger(it.first)) {
-                std::cout << it.second->ker_name;
+                std::cout << "," << it.second->ker_name;
             }
         }
+        std::cout << std::endl;
     }
 }
 
