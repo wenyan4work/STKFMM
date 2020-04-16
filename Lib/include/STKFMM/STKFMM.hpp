@@ -38,25 +38,24 @@ class STKFMM {
     STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_);
 
     /**
-     * @brief Set FMM cubic Box
-     * a cubic box [origin,origin+len)^3
+     * @brief Set FMM Box
+     * a cubic or half-cubic box
      *
-     * @param origin
-     * @param len
+     * @param origin_
+     * @param len_
      */
     void setBox(double origin_[3], double len_);
 
     /**
      * @brief Set point coordinates
-     * coordinates are read from the pointers with (3nSL,3nDL,3nTrg) contiguous
-     * double numbers
+     * coordinates are read from the pointers with (3nSL,3nDL,3nTrg) contiguous double numbers
      *
      * @param nSL single layer source point number
      * @param srcSLCoordPtr single layer source point coordinate
-     * @param nDL double layer source point number
-     * @param srcDLCoordPtr double layer source point coordinate
      * @param nTrg target point number
      * @param trgCoordPtr target point coordinate
+     * @param nDL double layer source point number
+     * @param srcDLCoordPtr double layer source point coordinate
      */
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr) = 0;
@@ -74,15 +73,15 @@ class STKFMM {
      * results are added to values already in trgValuePtr
      * setPoints() and setupTree() must be called first
      * nSL, nDL, nTrg must be the same as used by setPoints()
-     * length of arrays must match (kdimSL,kdimDL,kdimTrg) in the chosen
-     * kernel
+     * length of arrays must match (kdimSL,kdimDL,kdimTrg) in the chosen kernel
+     *
+     * @param kernel one of the activated kernels to evaluate
      * @param nSL single layer source point number
      * @param srcSLValuePtr pointer to single layer source value
      * @param nDL double layer source point number
      * @param srcDLValuePtr pointer to double layer source value
      * @param nTrg target point number
      * @param trgValuePtr pointer to target value
-     * @param kernel one of the activated kernels to evaluate
      */
     virtual void evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
                              double *trgValuePtr, const int nDL = 0, const double *srcDLValuePtr = nullptr) = 0;
@@ -92,6 +91,7 @@ class STKFMM {
      * results are added to values already in trgValuePtr
      * setPoints() does not have to be called
      * length of arrays must match (kdimSL,kdimDL,kdimTrg) in the chosen kernel
+     * @param kernel one of the activated kernels to evaluate
      * @param nThreads number of threads
      * @param p2p choose which sub-kernel in the kernel to evaluate
      * @param nSrc number of source point
@@ -100,18 +100,15 @@ class STKFMM {
      * @param nTrg number of target point
      * @param trgCoordPtr pointer to target point coordinate
      * @param trgValuePtr pointer to target point value
-     * @param kernel one of the activated kernels to evaluate
      */
     void evaluateKernel(const KERNEL kernel, const int nThreads, const PPKERNEL p2p, const int nSrc,
                         double *srcCoordPtr, double *srcValuePtr, const int nTrg, double *trgCoordPtr,
-                        double *trgValuePtr
-
-    );
+                        double *trgValuePtr);
 
     /**
      * @brief clear the data and prepare for another FMM evaluation
      *
-     * @param kernelChoice
+     * @param kernel
      */
     virtual void clearFMM(KERNEL kernel) = 0;
 
@@ -145,7 +142,7 @@ class STKFMM {
     int getMultOrder() const { return multOrder; }
 
   protected:
-    int rank;
+    int rank;                  ///< MPI rank
     const int multOrder;       ///< multipole order
     const int maxPts;          ///< max number of points to use
     PAXIS pbc;                 ///< periodic boundary condition
@@ -162,14 +159,13 @@ class STKFMM {
     std::vector<double> srcDLValueInternal; ///< scaled DL value
     std::vector<double> trgValueInternal;   ///< scaled trg value
 
-    // using impl::FMMData;
     std::unordered_map<KERNEL, impl::FMMData *> poolFMM; ///< all FMMData objects
 
     /**
      * @brief scale and shift coordPtr
      *
      * @param npts number of points
-     * @param coord pointer to unscaled coordinate
+     * @param coordPtr pointer to unscaled coordinate
      */
     void scaleCoord(const int npts, double *coordPtr) const;
 
@@ -183,12 +179,21 @@ class STKFMM {
 };
 
 /**
- * @brief STKFMM3D class, exposed to user
+ * @brief FMM in 3D space
  *
  */
 class Stk3DFMM : public STKFMM {
   public:
-    Stk3DFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 2);
+    /**
+     * @brief Construct a new Stk3DFMM object
+     *
+     * @param multOrder
+     * @param maxPts
+     * @param pbc_
+     * @param kernelComb_
+     */
+    Stk3DFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
+               unsigned int kernelComb_ = asInteger(KERNEL::Stokes)|asInteger(KERNEL::RPY));
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr);
@@ -207,42 +212,28 @@ class Stk3DFMM : public STKFMM {
     ~Stk3DFMM();
 };
 
+/**
+ * @brief FMM in 3D space above a no-slip wall. Supports only Stokeslet and RPY kernels
+ *
+ */
 class StkWallFMM : public STKFMM {
   public:
-    StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE, unsigned int kernelComb_ = 2);
-
     /**
-     * @brief Set the Points
-     * DL points are ignored
-     * call setBox() before calling this
-     * srcSLCoord & trgCoord inside box
-     * wall bc imposed on zlow of getBox()
+     * @brief Construct a new StkWallFMM object
      *
-     * @param nSL
-     * @param srcSLCoordPtr
-     * @param nTrg
-     * @param trgCoordPtr
-     * @param nDL
-     * @param srcDLCoordPtr
+     * @param multOrder
+     * @param maxPts
+     * @param pbc_
+     * @param kernelComb_
      */
+    StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
+               unsigned int kernelComb_ = asInteger(KERNEL::Stokes)|asInteger(KERNEL::RPY));
+
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr);
 
     virtual void setupTree(KERNEL kernel);
 
-    /**
-     * @brief
-     *
-     * DL points are ignored
-     *
-     * @param kernel
-     * @param nSL
-     * @param srcSLValuePtr
-     * @param nTrg
-     * @param trgValuePtr
-     * @param nDL
-     * @param srcDLValuePtr
-     */
     virtual void evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,
                              double *trgValuePtr, const int nDL = 0, const double *srcDLValuePtr = nullptr);
 
@@ -255,11 +246,19 @@ class StkWallFMM : public STKFMM {
     ~StkWallFMM();
 
   protected:
-    std::vector<double> srcSLImageCoordInternal;
-    std::vector<double> srcSLOriginCoordInternal;
+    std::vector<double> srcSLImageCoordInternal;  ///< scaled SL point coord
+    std::vector<double> srcSLOriginCoordInternal; ///< scaled SL image point coord
 
-    // evaluate from srcSLValueInternal to trgValueInternal
+    /**
+     * @brief evaluate Stokes image system
+     *
+     */
     void evalStokes();
+
+    /**
+     * @brief evaluate RPY image system
+     *
+     */
     void evalRPY();
 };
 

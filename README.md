@@ -57,7 +57,7 @@ Instructions here.
 ### Step 0 Decide BC and Kernels to use
 ```cpp
 PAXIS paxis = PAXIS::NONE; // or other bc
-int k = KERNEL::Stokes | KERNEL::RPY; // bitwise | operator, other combinations also work
+int k = asInteger(KERNEL::Stokes) | asInteger(KERNEL::RPY); // bitwise | operator, other combinations also work
 ```
 
 ### Step 1 Construct an object

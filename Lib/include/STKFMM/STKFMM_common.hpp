@@ -12,7 +12,7 @@
 
 namespace stkfmm{
 /**
- * @brief choose the periodic boundary condition type
+ * @brief choose the periodic boundary condition 
  *
  */
 enum class PAXIS : unsigned {
@@ -34,32 +34,34 @@ enum class PPKERNEL : unsigned {
 
 /**
  * @brief choose a kernel
- * each kernel has booth single and double layer options
- * except RPY and StokesReg kernels
  */
 enum class KERNEL : unsigned {
     LapPGrad = 1,         ///< Laplace
     LapPGradGrad = 2,     ///< Laplace
-    LapQPGradGrad = 4, ///< Laplace
+    LapQPGradGrad = 4, ///< Laplace quadrupole
 
     Stokes = 8,             ///< Stokeslet 3x3
     RPY = 16,               ///< RPY
     StokesRegVel = 32,      ///< Regularized Stokes Velocity
     StokesRegVelOmega = 64, ///< Regularized Stokes Velocity/Rotation
 
-    PVel = 128,          ///< Stokes 4x4
+    PVel = 128,          ///< Stokes
     PVelGrad = 256,      ///< Stokes
     PVelLaplacian = 512, ///< Stokes
     Traction = 1024,     ///< Stokes
 };
 
+/**
+ * @brief map of kernel -> kernel function pointer
+ * 
+ */
 extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
     kernelMap;
 
 /**
  * @brief Get kernel dimension
  *
- * @param kernel_ one of the activated kernels
+ * @param kernel_ one of the kernels
  * @return [single layer kernel dimension, double layer kernel dimension,
  *          target kernel dimension]
  */
@@ -76,10 +78,10 @@ std::string getKernelName(KERNEL kernel_);
 /**
  * @brief Get the Kernel Function Pointer
  * 
- * @param kernelChoice_ 
+ * @param kernel_ 
  * @return const pvfmm::Kernel<double>* 
  */
-const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) ;
+const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernel_) ;
 
 /**
  * @brief Enum to integer

@@ -18,12 +18,9 @@ void safeDeletePtr(T *&ptr) {
 }
 
 /**
- * @brief return fraction part between [0,1)
- * This function is only applied in the PERIODIC DIRECTION
- * The user of the library must ensure that all points are located within [0,1)
- *
- * @param x
- * @return double
+ * @brief set x to its fractional part
+ * 
+ * @param x 
  */
 inline void fracwrap(double &x) { x = x - floor(x); }
 
@@ -78,6 +75,15 @@ std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
     return coord;
 }
 
+/**
+ * @brief inverse square root of a simd vec type
+ * 
+ * @tparam Vec_t 
+ * @tparam Real_t 
+ * @tparam nwtn number of newton iterations
+ * @param r2 
+ * @return Vec_t 
+ */
 template <typename Vec_t, typename Real_t, int nwtn>
 inline Vec_t rsqrt_wrapper(Vec_t r2) {
     switch (nwtn) {
