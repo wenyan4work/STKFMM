@@ -1,77 +1,159 @@
 # STKFMM
-A C++ wrapper for PVFMM. No extra dependence except PVFMM.
+A C++ library implementing mix-tree KIFMM based on pvfmm.
+
+# What does it compute
+It computes the classic kernel sum problem: for a given set of single layer sources $s^j$ at points $y_s^j$, double layer sources $d^j$ points $y_d^j$, target points $x_t$, and single layer potential $K_s$, double layer potential $K_d$:
+$$p(x_t^i)=\sum_j K_s(x_t^i,y_s^j) s^j +\sum_j K_d (x_t^i,y_d^j)d^j $$
+
+**Note** For some problems the kernels $K_s$ and $K_d$ may not be linear operators applied onto $s^j, d^j$. 
+
+This package computes Laplace kernel $L=\dfrac{1}{4\pi r}$ and Stokeslet kernel $G_{ij}=\dfrac{1}{8\pi}\left(\dfrac{1}{r}\delta_{ij}+\dfrac{1}{r^3}r_ir_j\right)$ and their derivatives.
+
+
+Here is a detailed table, in which the summation $\sum$ is dropped for clarity and the subscript indices $i,j,k,l$ denote the tensor indices.
+Einstein summation and comma notation are used to simplify the expressions, for example, $G_{ij,i}f_j=\nabla\cdot (\bm{G}\cdot\bm{f})$. 
+
+In the table:
+1. **NA** means input ignored
+2. **Q_{ij}, D_{ij}** are 3x3 tensors written as 9-dimension vectors in row-major format
+3. $\nabla\nabla p$ is symmetric so it is written as $p_{,xx},p_{,xy},p_{,xz},p_{,yy},p_{,yz},p_{,zz}$.
+4. For `RPY`, `StokesRegVel` and `StokesRegVelOmega` kernels, the parameter $b$ and $\epsilon$ can be different for each source point, and the summations are nonlinear functions of $b$ and $\epsilon$. Also $b$ and $\epsilon$ must be much smaller than the lower level leaf box of the adaptive octree, otherwise the convergence property of KIFMM is invalidated.
+5. For all kernels, the electrostatic conductivity and fluid viscosity are ignored (set to 1).
+6. The regularized Stokeslet is $G_{ij}^\epsilon = \dfrac{1}{8\pi}\dfrac{r^{2}+2 \epsilon^{2}}{\left(r^{2}+\epsilon^{2}\right)^{3 / 2}} \delta_{i j} f_j+\dfrac{1}{\left(r^{2}+\epsilon^{2}\right)^{3 / 2}} r_ir_jf_j$.
+7. For Stokes `PVel`, `PVelGrad`, `PVelLaplacian`, and `Traction` kernels, the pressure and velocity fields are:
+    $$ p=\frac{1}{4 \pi} \frac{r_{j}}{r^{3}} f_{j} + \frac{1}{4 \pi}\left(-3 \frac{r_{j} r_{k}}{r^{5}}+\frac{\delta_{j k}}{r^{3}}\right) D_{j k}, \quad u_{i}=G_{ij}f_j + \frac{1}{8 \pi \mu}\left(-\frac{r_{i}}{r^{3}} trD\right) + \frac{1}{8 \pi \mu}\left[-\frac{3 r_{i} r_{j} r_{k}}{r^{5}}\right] D_{j k} $$
+
+
+| Kernel              | Single Layer Source (dim)  | Double Layer Source (dim) | Summation                                       | Target Value (dim)                                                  |
+| ------------------- | -------------------------- | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `LapPGrad`          | $q$ (1)                    | $d$ (3)                   | $p=Lq-L_{,j}d_j$                                | $p,\nabla p$ (1+3)                                                  |
+| `LapPGradGrad`      | $q$ (1)                    | $d$ (3)                   | $p=Lq-L_{,j}d_j$                                | $p,\nabla p, \nabla\nabla p$ (1+3+6).                               |
+| `LapQPGradGrad`     | $Q_{ij}$ (9)               | NA                        | $p=L_{,ij}Q_{ij}$                               | $p,\nabla p, \nabla\nabla p$ (1+3+6).                               |
+| `Stokes`            | $f_j$ (3)                  | NA                        | $u_i = G_{ij} f_j$                              | $u_i$ (3)                                                           |
+| `RPY`               | $f_j,b$ (3+1)              | NA                        | $u_i = (1+\frac{1}{6}b^2\nabla^2) G_{ij} f_j$   | $u_i,\nabla^2 u_i$ (3+3)                                            |
+| `StokesRegVel`      | $f_j,\epsilon$ (3+1)       | NA                        | $u_i = G_{ij}^\epsilon f_j$                     | $u_i$                                                               |
+| `StokesRegVelOmega` | $f_k,n_l,\epsilon$ (3+3+1) | NA                        | See Appendix A of doi 10.1016/j.jcp.2012.12.026 | $u_i,w_j$ (3+3)                                                     |
+| `PVel`              | $f_j,trD$ (3+1)            | $D_{jk}$ (9)              | see above                                       | $p,u_i$ (1+3)                                                       |
+| `PVelGrad`          | $f_j,trD$ (3+1)            | $D_{jk}$ (9)              | see above                                       | $p,u_i,p_{,i},u_{i,j}$ (1+3+3+9)                                    |
+| `PVelLapLacian`     | $f_j,trD$ (3+1)            | $D_{jk}$ (9)              | see above                                       | $p,u_i,u_{i,jj}$ (1+3+3)                                            |
+| `Traction`          | $f_j,trD$ (3+1)            | $D_{jk}$ (9)              | see above                                       | $\sigma_{ij}=-p \delta_{i j}+\mu\left(u_{i, j}+u_{j, i}\right)$ (9) |
 
 # Features
-1. Convenient. All PVFMM data structures are wrapped in a single class, with scaling functions to fit source/target points into the unit cubic box required by PVFMM. 
-2. Flexible. Multiple kernels can be activated simultaneously
-3. Efficient. Single Layer and Double Layer potentials are simultaneously calculated through a single octree. M2M, M2L, L2L operations are combined into single layer operations only.
-4. Optimized. All kernels are hand-written with AVX intrinsic instructions.
-5. (To be implemented). Singly, doubly and triply periodicity in a unified interface.
+* All kernels are hand-written with optimized SIMD intrinsic instructions.
+* Singly, doubly and triply periodicity in a unified interface.
+* Support no-slip boundary condition imposed on a flat wall through image method.
+* Single Layer and Double Layer potentials are simultaneously calculated through a single octree. 
+* M2M, M2L, L2L operations are combined into single layer operations only.
+* All PVFMM data structures are wrapped in a single class.
+* Multiple kernels can be activated simultaneously.
+* Complete MPI and OpenMP support.
 
 # Usage
-You only need two files: `STKFMM.cpp` and `STKFMM.h`.
-Construct an STKFMM object, with chosen BC and kernels. Multiple kernels can be activated through bitwise combination of each kernel:
+This library defines an abstract base class `STKFMM` for the common interface and utility functions. Two concrete derived classes `Stk3DFMM` and `StkWallFMM` are defined for two separate cases: 3D spatial FMM and Stokes FMM with no-slip boundary condition imposed on a flat wall.
+
+For details of usage, look at the function `runFMM()` in `Test/Test.cpp`.
+
+Instructions here.
+### Step 0 Decide BC and Kernels to use
 ```cpp
-STKFMM myFMM(order, maxPts, PAXIS::NONE, KERNEL::PVel | KERNEL::LAPPGrad);
-//order: numer of equivalent points on each cubic octree box edge of KIFMM
-//maxPts: max number of points in an octree box 
-//PAXIS::NONE: The axis of periodic BC. (To be implemented)
-//KERNEL::PVel | KERNEL::LAPPGrad: A combination of supported kernels, using the bitwise | operator.
-```
-### Run FMM for one kernel:
-```cpp
-myFMM.setBox(xlow, xhigh, ylow, yhigh, zlow, zhigh); 
-myFMM.setPoints(srcSLCoord, srcDLCoord, trgCoord);
-auto testKernel1 = KERNEL::PVel;
-myFMM.setupTree(testKernel1);
-myFMM.evaluateFMM(srcSLValue, srcDLValue, trgValue, testKernel1);
-```
-If for another kernel the points (srcSLCoord, srcDLCoord, trgCoord) do not change, then no need to call setPoints() again.
-```cpp
-auto testKernel2 = KERNEL::Traction;
-myFMM.setupTree(testKernel2);
-myFMM.evaluateFMM(srcSLValue, srcDLValue, trgValue, testKernel2);
+PAXIS paxis = PAXIS::NONE; // or other bc
+int k = KERNEL::Stokes | KERNEL::RPY; // bitwise | operator, other combinations also work
 ```
 
-# Supported Kernel
-| Kernel | Single Layer Source(dim) | Double Layer Source(dim) | Target(dim) |
-| ---  | --- |---	|---|
-|PVel |force+TrD(4)| double layer (9)| pressure,velocity (1+3)|  
-|PVelGrad |force+TrD(4)| double layer (9)| pressure,velocity,grad pressure,grad velocity (1+3+3+9)|  
-|PVelLaplacian |force+TrD(4)| double layer (9)| pressure,velocity,Laplacian velocity (1+3+3)|  
-|Traction |force+TrD(4)| double layer (9)| traction(9)|  
-|LAPPGrad |charge(1)| double layer (3)| potential,gradpotential (1+3)|   
+### Step 1 Construct an object
+Construct an STKFMM object, with chosen BC and kernels, depending on if you need the no-slip wall.
+```cpp
+std::shared_ptr<STKFMM> fmmPtr;
+if (wall) {
+    fmmPtr = std::make_shared<StkWallFMM>(p, maxPoints, paxis, k);
+} else {
+    fmmPtr = std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
+}
+```
+* `order`: number of equivalent points on each cubic octree box edge of KIFMM, usually chosen from $8,10,12$. This affects the trade of between accuracy and computation time.
+* `maxPts`: max number of points in an octree leaf box, usually $500\sim2000$. This affects the depth of adaptive octree, thus the computation time.
+* `PAXIS::NONE`: the axis of periodic BC. For periodic boundary conditions, replace `NONE` with `PX`, `PXY`, or `PXYZ`.
+* `KERNEL::PVel | KERNEL::LAPPGrad`: A combination of supported kernels, using the | `bitwise or` operator.
 
-Here TrD means an arbitrary number performing as the trace of the double layer 3x3 matrix. The reason for including this extra dimension is to use the single layer kernel in the M2M, M2L, L2L operations for both single layer and double layer. Explanation is available in the document.
+### Step 2 Specify the box and source/target points
+```cpp
+double origin[3] = {x0, y0, z0};
+fmmPtr->setBox(origin, box);
+```
+* if both SL and DL points exist:
+```cpp
+fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data(), nDL, point.srcLocalDL.data());
+```
+* if no DL points:
+```cpp
+fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data());
+```
+* For `Stk3DFMM`, all points must in the cube defined by [x0,x0+box)$\times$[y0,y0+box)$\times$[z0,z0+box)
+* For `StkWallFMM`, all points must in the half cube defined by [x0,x0+box)$\times$[y0,y0+box)$\times$[z0,z0+box/2) 
 
-**For normal computations, set the input to single layer as (fx,fy,fz,0). The extra dimension of TrD is only for some tricky cases and internal uses.**
+### Step 3 Run FMM for one kernel:
+```cpp
+fmmPtr->setupTree(KERNEL::Stokes);
+fmmPtr->evaluateFMM(kernel, nSL, value.srcLocalSL.data(), nTrg, trgLocal.data(), nDL, value.srcLocalDL.data());
+```
+* `nDL` and the values for DL sources will be ignored if the chosen kernel does not support DL. 
 
-The `PVelLaplacian` and `Traction` kernels are provided only for convenience. The same results can be achieved by a proper combination and scaling of the kernel `PVelGrad`, since the Laplacian of velocity is just the gradient of pressure, and the traction is just a combination of gradients of pressure and velocity.
+# Supported kernels and boundary conditions
+In these tables
+* `SL Neutral` means the summation of each component of SL sources within the box must be zero
+* $trD$ Neutral means the summation of $trD$ within the box must be zero
+* $D_{jj}$ Neutral means the summation of trace of DL sources $D_{jk}$ within the box must be zero
+* `Yes` means no requirements
+### `Stk3DFMM`
+| Kernel              | `PNONE` | `PX`                 | `PXY`                | `PXYZ`                    |
+| ------------------- | ------- | -------------------- | -------------------- | ------------------------- |
+| `LapPGrad`          | Yes     | SL Neutral           | SL Neutral           | SL Neutral                |
+| `LapPGradGrad`      | Yes     | SL Neutral           | SL Neutral           | SL Neutral                |
+| `LapQPGradGrad`     | Yes     | SL Neutral           | SL Neutral           | SL Neutral                |
+| `Stokes`            | Yes     | SL Neutral           | SL Neutral           | Yes                       |
+| `RPY`               | Yes     | SL Neutral           | SL Neutral           | Yes                       |
+| `StokesRegVel`      | Yes     | SL Neutral           | SL Neutral           | Yes                       |
+| `StokesRegVelOmega` | Yes     | SL Neutral           | SL Neutral           | Yes Neutral               |
+| `PVel`              | Yes     | SL, $D_{jj}$ Neutral | SL, $D_{jj}$ Neutral | $trD$,  $D_{jj}$  Neutral |
+| `PVelGrad`          | Yes     | SL, $D_{jj}$ Neutral | SL, $D_{jj}$ Neutral | $trD$, $D_{jj}$  Neutral  |
+| `PVelLapLacian`     | Yes     | SL, $D_{jj}$ Neutral | SL, $D_{jj}$ Neutral | $trD$, $D_{jj}$  Neutral  |
+| `Traction`          | Yes     | SL, $D_{jj}$ Neutral | SL, $D_{jj}$ Neutral | $trD$, $D_{jj}$  Neutral  |
+
+### `StkWallFMM`
+| Kernel   | `PNONE` | `PX` | `PXY` | `PXYZ` |
+| -------- | ------- | ---- | ----- | ------ |
+| `Stokes` | Yes     | Yes  | Yes   | No     |
+| `RPY`    | Yes     | Yes  | Yes   | No     |
 
 # Compile and Run tests:
-If PVFMM is properly installed, you should be able to compile it by simply `make`. For documentation, simply `make doc` if you have pdflatex already installed.
+Install the following:
+* `new_BC` branch of `pvfmm`
+* `Eigen` if you want to generate periodicity precomputed data yourself
 
-To run the test driver, type:
+
+If PVFMM is properly installed, you should be able to compile this project using the `CMakeLists.txt`. The script `do-cmake.sh` is an example of how to invoke `cmake` command with optional features (python interface and doxygen documentation). 
+
+To run the test driver, go to the build folder and type:
 ```bash
-./TestSTKFMM.X --help
+./Test/Test3DFMM.X --help
+./Test/TestWallFMM.X --help
 ```
-Available test options will be displayed. MPI is supported. For example:
-```bash
-mpiexec -n 3 ./TestSTKFMM.X -S 1 -D 2 -T 32 -B 10 -R 0
-``` 
-means test the FMM on 3 mpi ranks. In total, there are 1 single layer source point, 2 double layer source point, (32+1)^3 target points distributed on a Chebyshev 3D grid (-R 0), in a cubic box with edge length 10.
+For possible test options.
 
-OpenMP parallelism is controlled by the environment variable, for example:
+For large scale convergence tests of all possible BCs (roughly ~100GB of memory will be used and a lot of precomputed data will be generated for the first run):
 ```bash
-export OMP_NUM_THREADS=10
+./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 0
+./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 1
+./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 2
+./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 3
 ```
-
-# Note
-1. For double layer source strength, this interface requires the input to be a full 3x3 matrix (9 entries per point) instead of a direction vector plus a strength vector (3+3=6 entries per point). This is for compatibility with situations where the double layer kernel is applied to a general stresslet tensor, which is not always an outer product of two vectors. The 3x3 matrix is flattened as (Dxx,Dxy,Dxz,Dyx,Dyy,Dyz,Dzx,Dzy,Dzz) in the object `srcDLValue` as an input ot the `evaluateFMM()` function. `srcDLValue` is a `std::vector<double>` object. (Dxx,Dxy,Dxz,Dyx,Dyy,Dyz,Dzx,Dzy,Dzz) can be arbitrary numbers, not limited to being trace-free or the outer product of two 3D vectors. 
-
-2. The mathematical formulas for each kernel (Stokes kernel only) can be found in the documentation. Note that the prefactor for Stokes double layer potential is 3/8pi in this code instead of 3/4pi in the usual representation of Stokes double layer. The codes computes eq. 35 for double layer in the document, and some clarifications can be found in the document also.
-
-3. If in question about what eactly is computed, refer to the mathematica scripts and the last section of the document in the folder `Scripts/`. They are used to symbolically generate the code in SimpleKernel.cpp, which is used to validate the FMM computation. 
+For `TestWallFMM.X`, since only two kernels are supported so you cannot specify `-K 0`. To test Stokes image kernel, use `-K 8` and to test RPY image kernel, use `-K 16`.
+```bash
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 0
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 1
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 2
+```
+**Note** If your machine's memory is limited (<24GB), use smaller number of points and test one kernel at a time. 
 
 # Acknowledgement
 Dhairya Malhotra and Alex Barnett for useful coding instructions and discussions.

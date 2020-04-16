@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
         printf("The option D must be zero.\n");
         printf("The option F has no effect.\n");
         printf("For this Wall test, V=1 means verify (T+1)^2 trg points on the wall.\n");
-        printf("Check wall velocity error only when R=0.\n");
         showOption(parser);
     }
 

@@ -410,10 +410,6 @@ void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMin
 
     std::shared_ptr<STKFMM> fmmPtr;
     if (wall) {
-        if (k != asInteger(KERNEL::Stokes) & asInteger(KERNEL::RPY)) {
-            printf("WallFMM supports only Stokes and RPY Single Layer kernels\n");
-            std::exit(1);
-        }
         fmmPtr = std::make_shared<StkWallFMM>(p, maxPoints, paxis, k);
     } else {
         fmmPtr = std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
