@@ -149,9 +149,9 @@ For large scale convergence tests of all possible BCs (roughly ~100GB of memory 
 ```
 For `TestWallFMM.X`, since only two kernels are supported so you cannot specify `-K 0`. To test Stokes image kernel, use `-K 8` and to test RPY image kernel, use `-K 16`.
 ```bash
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 0
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 1
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 0 -m 2000 -V 1 -P 2
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 0
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 1
+./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 2
 ```
 **Note** If your machine's memory is limited (<24GB), use smaller number of points and test one kernel at a time. 
 
