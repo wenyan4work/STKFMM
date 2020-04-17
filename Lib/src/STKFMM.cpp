@@ -1,10 +1,3 @@
-/*
- * STKFMM.cpp
- *
- *  Created on: Oct 20, 2016
- *      Author: wyan
- */
-
 #include "STKFMM/STKFMM.hpp"
 
 extern pvfmm::PeriodicType pvfmm::periodicType;
@@ -113,7 +106,7 @@ void STKFMM::showActiveKernels() const {
         std::cout << "active kernels: ";
         for (auto it : kernelMap) {
             if (kernelComb & asInteger(it.first)) {
-                std::cout << "," << it.second->ker_name;
+                std::cout << "\t" << it.second->ker_name;
             }
         }
         std::cout << std::endl;

@@ -19,8 +19,7 @@ namespace pvfmm {
  *              fx,fy,fz,eps -> ux,uy,uz                  *
  **********************************************************/
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
-void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
-                           Matrix<Real_t> &trg_coord,
+void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
 #define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
@@ -29,8 +28,7 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
     for (int i = 0; i < NWTN_ITER; i++) {
         nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
     }
-    const Real_t FACV =
-        1.0 / (8 * nwtn_scal * nwtn_scal * nwtn_scal * const_pi<Real_t>());
+    const Real_t FACV = 1.0 / (8 * nwtn_scal * nwtn_scal * nwtn_scal * const_pi<Real_t>());
     const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);
 
     size_t src_cnt_ = src_coord.Dim(1);
@@ -50,26 +48,21 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             Vec_t vz = zero_intrin<Vec_t>(); // vz
 
             for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                const Vec_t dx =
-                    sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                const Vec_t dy =
-                    sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                const Vec_t dz =
-                    sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+                const Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                const Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                const Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
 
                 const Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
                 const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
                 const Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
-                const Vec_t reg =
-                    bcast_intrin<Vec_t>(&src_value[3][s]); // reg parameter
+                const Vec_t reg = bcast_intrin<Vec_t>(&src_value[3][s]); // reg parameter
 
                 Vec_t r2 = mul_intrin(dx, dx);
                 r2 = add_intrin(r2, mul_intrin(dy, dy));
                 r2 = add_intrin(r2, mul_intrin(dz, dz));
                 r2 = add_intrin(r2, mul_intrin(reg, reg)); // r^2+eps^2
 
-                Vec_t r2reg2 =
-                    add_intrin(r2, mul_intrin(reg, reg)); // r^2 + 2 eps^2
+                Vec_t r2reg2 = add_intrin(r2, mul_intrin(reg, reg)); // r^2 + 2 eps^2
 
                 Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
                 Vec_t rinv3 = mul_intrin(mul_intrin(rinv, rinv), rinv);
@@ -78,26 +71,14 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
                 commonCoeff = add_intrin(commonCoeff, mul_intrin(fy, dy));
                 commonCoeff = add_intrin(commonCoeff, mul_intrin(fz, dz));
 
-                vx = add_intrin(
-                    vx, mul_intrin(add_intrin(mul_intrin(r2reg2, fx),
-                                              mul_intrin(dx, commonCoeff)),
-                                   rinv3));
-                vy = add_intrin(
-                    vy, mul_intrin(add_intrin(mul_intrin(r2reg2, fy),
-                                              mul_intrin(dy, commonCoeff)),
-                                   rinv3));
-                vz = add_intrin(
-                    vz, mul_intrin(add_intrin(mul_intrin(r2reg2, fz),
-                                              mul_intrin(dz, commonCoeff)),
-                                   rinv3));
+                vx = add_intrin(vx, mul_intrin(add_intrin(mul_intrin(r2reg2, fx), mul_intrin(dx, commonCoeff)), rinv3));
+                vy = add_intrin(vy, mul_intrin(add_intrin(mul_intrin(r2reg2, fy), mul_intrin(dy, commonCoeff)), rinv3));
+                vz = add_intrin(vz, mul_intrin(add_intrin(mul_intrin(r2reg2, fz), mul_intrin(dz, commonCoeff)), rinv3));
             }
 
-            vx = add_intrin(mul_intrin(vx, facv),
-                            load_intrin<Vec_t>(&trg_value[0][t]));
-            vy = add_intrin(mul_intrin(vy, facv),
-                            load_intrin<Vec_t>(&trg_value[1][t]));
-            vz = add_intrin(mul_intrin(vz, facv),
-                            load_intrin<Vec_t>(&trg_value[2][t]));
+            vx = add_intrin(mul_intrin(vx, facv), load_intrin<Vec_t>(&trg_value[0][t]));
+            vy = add_intrin(mul_intrin(vy, facv), load_intrin<Vec_t>(&trg_value[1][t]));
+            vz = add_intrin(mul_intrin(vz, facv), load_intrin<Vec_t>(&trg_value[2][t]));
 
             store_intrin(&trg_value[0][t], vx);
             store_intrin(&trg_value[1][t], vy);
@@ -115,8 +96,8 @@ GEN_KERNEL(stokes_regvel, stokes_regvel_uKernel, 4, 3)
  *       fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz                *
  **********************************************************/
 template <class T, int newton_iter = 0>
-void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                     int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
+void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
+                     mem::MemoryManager *mem_mgr) {
     constexpr T pi8 = (8 * 3.14159265358979323846);
     for (int i = 0; i < trg_cnt; i++) {
         T vx = 0, vy = 0, vz = 0;
@@ -176,8 +157,8 @@ void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
  *    fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz,wx,wy,wz         *
  **********************************************************/
 template <class T, int newton_iter = 0>
-void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                          int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
+void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
+                          mem::MemoryManager *mem_mgr) {
     constexpr T pi8 = (8 * 3.14159265358979323846);
     for (int i = 0; i < trg_cnt; i++) {
         T vx = 0, vy = 0, vz = 0, wx = 0, wy = 0, wz = 0;
@@ -251,8 +232,8 @@ void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
  *           fx,fy,fz -> ux,uy,uz, wx,wy,wz                *
  **********************************************************/
 template <class T, int newton_iter = 0>
-void stokes_velomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,
-                     int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {
+void stokes_velomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
+                     mem::MemoryManager *mem_mgr) {
     constexpr T pi8 = (8 * 3.14159265358979323846);
     for (int i = 0; i < trg_cnt; i++) {
         T vx = 0, vy = 0, vz = 0, wx = 0, wy = 0, wz = 0;
@@ -331,9 +312,9 @@ struct StokesRegKernel {
 template <class T>
 inline const Kernel<T> &StokesRegKernel<T>::Vel() {
     static Kernel<T> stk_ker = StokesKernel<T>::velocity();
-    static Kernel<T> s2t_ker = BuildKernel<T, stokes_regvel<T, NEWTON_ITE>>(
-        "stokes_regvel", 3, std::pair<int, int>(4, 3), NULL, NULL, NULL,
-        &stk_ker, &stk_ker, &stk_ker, &stk_ker, &stk_ker, NULL, true);
+    static Kernel<T> s2t_ker =
+        BuildKernel<T, stokes_regvel<T, NEWTON_ITE>>("stokes_regvel", 3, std::pair<int, int>(4, 3), NULL, NULL, NULL,
+                                                     &stk_ker, &stk_ker, &stk_ker, &stk_ker, &stk_ker, NULL, true);
 
     return s2t_ker;
 }
@@ -342,16 +323,12 @@ template <class T>
 inline const Kernel<T> &StokesRegKernel<T>::FTVelOmega() {
     static Kernel<T> stk_ker = StokesKernel<T>::velocity();
     static Kernel<T> stk_velomega =
-        BuildKernel<T, stokes_velomega<T, NEWTON_ITE>>(
-            "stokes_velomega", 3, std::pair<int, int>(3, 6));
+        BuildKernel<T, stokes_velomega<T, NEWTON_ITE>>("stokes_velomega", 3, std::pair<int, int>(3, 6));
     static Kernel<T> stk_regftvel =
-        BuildKernel<T, stokes_regftvel<T, NEWTON_ITE>>(
-            "stokes_regftvel", 3, std::pair<int, int>(7, 3));
-    static Kernel<T> s2t_ker =
-        BuildKernel<T, stokes_regftvelomega<T, NEWTON_ITE>>(
-            "stokes_regvel", 3, std::pair<int, int>(7, 6), &stk_regftvel,
-            &stk_regftvel, NULL, &stk_ker, &stk_ker, &stk_velomega, &stk_ker,
-            &stk_velomega);
+        BuildKernel<T, stokes_regftvel<T, NEWTON_ITE>>("stokes_regftvel", 3, std::pair<int, int>(7, 3));
+    static Kernel<T> s2t_ker = BuildKernel<T, stokes_regftvelomega<T, NEWTON_ITE>>(
+        "stokes_regvel", 3, std::pair<int, int>(7, 6), &stk_regftvel, &stk_regftvel, NULL, &stk_ker, &stk_ker,
+        &stk_velomega, &stk_ker, &stk_velomega);
 
     return s2t_ker;
 }

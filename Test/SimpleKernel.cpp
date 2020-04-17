@@ -1310,58 +1310,70 @@ void LaplaceQPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
                            Power(dz, 3) * (q0 + q4 - 2 * q8) + Power(dy, 2) * dz * (q0 - 4 * q4 + 3 * q8) +
                            Power(dx, 2) * (dy * (q5 + q7) + dz * (-4 * q0 + q4 + 3 * q8)))) /
                      Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 3.5));
-    
-    qlgxx=prefac*((3*(20*Power(dx,3)*(dy*(q1 + q3) + dz*(q2 + q6)) - 
-       15*dx*(Power(dy,2) + Power(dz,2))*(dy*(q1 + q3) + dz*(q2 + q6)) - 
-       3*Power(dx,2)*(-10*dy*dz*(q5 + q7) + Power(dz,2)*(8*q0 + q4 - 9*q8) + 
-          Power(dy,2)*(8*q0 - 9*q4 + q8)) + 
-       (Power(dy,2) + Power(dz,2))*
-        (-5*dy*dz*(q5 + q7) + Power(dz,2)*(3*q0 + q4 - 4*q8) + 
-          Power(dy,2)*(3*q0 - 4*q4 + q8)) + Power(dx,4)*(8*q0 - 4*(q4 + q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
-   qlgxy=prefac*((-3*(4*Power(dx,4)*(q1 + q3) + (Power(dy,2) + Power(dz,2))*
-        (4*Power(dy,2)*(q1 + q3) - Power(dz,2)*(q1 + q3) + 5*dy*dz*(q2 + q6)) - 
-       3*Power(dx,2)*(9*Power(dy,2)*(q1 + q3) - Power(dz,2)*(q1 + q3) + 
-          10*dy*dz*(q2 + q6)) + 5*dx*
-        (-6*Power(dy,2)*dz*(q5 + q7) + Power(dz,3)*(q5 + q7) + 
-          3*dy*Power(dz,2)*(q0 + q4 - 2*q8) + Power(dy,3)*(3*q0 - 4*q4 + q8)) + 
-       5*Power(dx,3)*(dz*(q5 + q7) + dy*(-4*q0 + 3*q4 + q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
-   qlgxz=prefac*((-3*(4*Power(dx,4)*(q2 + q6) + 3*Power(dx,2)*
-        (-10*dy*dz*(q1 + q3) + Power(dy,2)*(q2 + q6) - 9*Power(dz,2)*(q2 + q6)) - 
-       (Power(dy,2) + Power(dz,2))*
-        (-5*dy*dz*(q1 + q3) + Power(dy,2)*(q2 + q6) - 4*Power(dz,2)*(q2 + q6)) + 
-       5*dx*(Power(dy,3)*(q5 + q7) - 6*dy*Power(dz,2)*(q5 + q7) + 
-          Power(dz,3)*(3*q0 + q4 - 4*q8) + 3*Power(dy,2)*dz*(q0 - 2*q4 + q8)) + 
-       5*Power(dx,3)*(dy*(q5 + q7) + dz*(-4*q0 + q4 + 3*q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
-   qlgyy=prefac*((-3*(5*Power(dx,3)*(3*dy*(q1 + q3) + dz*(q2 + q6)) - 
-       5*dx*(4*Power(dy,3)*(q1 + q3) - 3*dy*Power(dz,2)*(q1 + q3) + 
-          6*Power(dy,2)*dz*(q2 + q6) - Power(dz,3)*(q2 + q6)) - 
-       20*Power(dy,3)*dz*(q5 + q7) + 15*dy*Power(dz,3)*(q5 + q7) + 
-       3*Power(dy,2)*Power(dz,2)*(q0 + 8*q4 - 9*q8) - 
-       Power(dz,4)*(q0 + 3*q4 - 4*q8) + Power(dx,4)*(4*q0 - 3*q4 - q8) + 
-       4*Power(dy,4)*(q0 - 2*q4 + q8) + 
-       3*Power(dx,2)*(5*dy*dz*(q5 + q7) + Power(dz,2)*(q0 - 2*q4 + q8) + 
-          Power(dy,2)*(-9*q0 + 8*q4 + q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
-   qlgyz=prefac*((3*(-5*Power(dx,3)*(dz*(q1 + q3) + dy*(q2 + q6)) - 
-       5*dx*(-6*Power(dy,2)*dz*(q1 + q3) + Power(dz,3)*(q1 + q3) + 
-          Power(dy,3)*(q2 + q6) - 6*dy*Power(dz,2)*(q2 + q6)) + 
-       Power(dx,4)*(q5 + q7) - 4*Power(dy,4)*(q5 + q7) + 
-       27*Power(dy,2)*Power(dz,2)*(q5 + q7) - 4*Power(dz,4)*(q5 + q7) - 
-       5*dy*Power(dz,3)*(q0 + 3*q4 - 4*q8) - 5*Power(dy,3)*dz*(q0 - 4*q4 + 3*q8) - 
-       3*Power(dx,2)*(Power(dy,2)*(q5 + q7) + Power(dz,2)*(q5 + q7) + 
-          5*dy*dz*(-2*q0 + q4 + q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
-   qlgzz=prefac*((-3*(5*Power(dx,3)*(dy*(q1 + q3) + 3*dz*(q2 + q6)) + 
-       5*dx*(Power(dy,3)*(q1 + q3) - 6*dy*Power(dz,2)*(q1 + q3) + 
-          3*Power(dy,2)*dz*(q2 + q6) - 4*Power(dz,3)*(q2 + q6)) + 
-       15*Power(dy,3)*dz*(q5 + q7) - 20*dy*Power(dz,3)*(q5 + q7) + 
-       Power(dx,4)*(4*q0 - q4 - 3*q8) + 4*Power(dz,4)*(q0 + q4 - 2*q8) - 
-       Power(dy,4)*(q0 - 4*q4 + 3*q8) + 
-       3*Power(dy,2)*Power(dz,2)*(q0 - 9*q4 + 8*q8) + 
-       3*Power(dx,2)*(5*dy*dz*(q5 + q7) + Power(dy,2)*(q0 + q4 - 2*q8) + 
-          Power(dz,2)*(-9*q0 + q4 + 8*q8))))/
-   Power(Power(dx,2) + Power(dy,2) + Power(dz,2),4.5));
+
+    qlgxx = prefac *
+            ((3 * (20 * Power(dx, 3) * (dy * (q1 + q3) + dz * (q2 + q6)) -
+                   15 * dx * (Power(dy, 2) + Power(dz, 2)) * (dy * (q1 + q3) + dz * (q2 + q6)) -
+                   3 * Power(dx, 2) *
+                       (-10 * dy * dz * (q5 + q7) + Power(dz, 2) * (8 * q0 + q4 - 9 * q8) +
+                        Power(dy, 2) * (8 * q0 - 9 * q4 + q8)) +
+                   (Power(dy, 2) + Power(dz, 2)) * (-5 * dy * dz * (q5 + q7) + Power(dz, 2) * (3 * q0 + q4 - 4 * q8) +
+                                                    Power(dy, 2) * (3 * q0 - 4 * q4 + q8)) +
+                   Power(dx, 4) * (8 * q0 - 4 * (q4 + q8)))) /
+             Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
+    qlgxy = prefac * ((-3 * (4 * Power(dx, 4) * (q1 + q3) +
+                             (Power(dy, 2) + Power(dz, 2)) *
+                                 (4 * Power(dy, 2) * (q1 + q3) - Power(dz, 2) * (q1 + q3) + 5 * dy * dz * (q2 + q6)) -
+                             3 * Power(dx, 2) *
+                                 (9 * Power(dy, 2) * (q1 + q3) - Power(dz, 2) * (q1 + q3) + 10 * dy * dz * (q2 + q6)) +
+                             5 * dx *
+                                 (-6 * Power(dy, 2) * dz * (q5 + q7) + Power(dz, 3) * (q5 + q7) +
+                                  3 * dy * Power(dz, 2) * (q0 + q4 - 2 * q8) + Power(dy, 3) * (3 * q0 - 4 * q4 + q8)) +
+                             5 * Power(dx, 3) * (dz * (q5 + q7) + dy * (-4 * q0 + 3 * q4 + q8)))) /
+                      Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
+    qlgxz = prefac * ((-3 * (4 * Power(dx, 4) * (q2 + q6) +
+                             3 * Power(dx, 2) *
+                                 (-10 * dy * dz * (q1 + q3) + Power(dy, 2) * (q2 + q6) - 9 * Power(dz, 2) * (q2 + q6)) -
+                             (Power(dy, 2) + Power(dz, 2)) *
+                                 (-5 * dy * dz * (q1 + q3) + Power(dy, 2) * (q2 + q6) - 4 * Power(dz, 2) * (q2 + q6)) +
+                             5 * dx *
+                                 (Power(dy, 3) * (q5 + q7) - 6 * dy * Power(dz, 2) * (q5 + q7) +
+                                  Power(dz, 3) * (3 * q0 + q4 - 4 * q8) + 3 * Power(dy, 2) * dz * (q0 - 2 * q4 + q8)) +
+                             5 * Power(dx, 3) * (dy * (q5 + q7) + dz * (-4 * q0 + q4 + 3 * q8)))) /
+                      Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
+    qlgyy = prefac *
+            ((-3 * (5 * Power(dx, 3) * (3 * dy * (q1 + q3) + dz * (q2 + q6)) -
+                    5 * dx *
+                        (4 * Power(dy, 3) * (q1 + q3) - 3 * dy * Power(dz, 2) * (q1 + q3) +
+                         6 * Power(dy, 2) * dz * (q2 + q6) - Power(dz, 3) * (q2 + q6)) -
+                    20 * Power(dy, 3) * dz * (q5 + q7) + 15 * dy * Power(dz, 3) * (q5 + q7) +
+                    3 * Power(dy, 2) * Power(dz, 2) * (q0 + 8 * q4 - 9 * q8) - Power(dz, 4) * (q0 + 3 * q4 - 4 * q8) +
+                    Power(dx, 4) * (4 * q0 - 3 * q4 - q8) + 4 * Power(dy, 4) * (q0 - 2 * q4 + q8) +
+                    3 * Power(dx, 2) *
+                        (5 * dy * dz * (q5 + q7) + Power(dz, 2) * (q0 - 2 * q4 + q8) +
+                         Power(dy, 2) * (-9 * q0 + 8 * q4 + q8)))) /
+             Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
+    qlgyz = prefac *
+            ((3 * (-5 * Power(dx, 3) * (dz * (q1 + q3) + dy * (q2 + q6)) -
+                   5 * dx *
+                       (-6 * Power(dy, 2) * dz * (q1 + q3) + Power(dz, 3) * (q1 + q3) + Power(dy, 3) * (q2 + q6) -
+                        6 * dy * Power(dz, 2) * (q2 + q6)) +
+                   Power(dx, 4) * (q5 + q7) - 4 * Power(dy, 4) * (q5 + q7) +
+                   27 * Power(dy, 2) * Power(dz, 2) * (q5 + q7) - 4 * Power(dz, 4) * (q5 + q7) -
+                   5 * dy * Power(dz, 3) * (q0 + 3 * q4 - 4 * q8) - 5 * Power(dy, 3) * dz * (q0 - 4 * q4 + 3 * q8) -
+                   3 * Power(dx, 2) *
+                       (Power(dy, 2) * (q5 + q7) + Power(dz, 2) * (q5 + q7) + 5 * dy * dz * (-2 * q0 + q4 + q8)))) /
+             Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
+    qlgzz = prefac *
+            ((-3 * (5 * Power(dx, 3) * (dy * (q1 + q3) + 3 * dz * (q2 + q6)) +
+                    5 * dx *
+                        (Power(dy, 3) * (q1 + q3) - 6 * dy * Power(dz, 2) * (q1 + q3) +
+                         3 * Power(dy, 2) * dz * (q2 + q6) - 4 * Power(dz, 3) * (q2 + q6)) +
+                    15 * Power(dy, 3) * dz * (q5 + q7) - 20 * dy * Power(dz, 3) * (q5 + q7) +
+                    Power(dx, 4) * (4 * q0 - q4 - 3 * q8) + 4 * Power(dz, 4) * (q0 + q4 - 2 * q8) -
+                    Power(dy, 4) * (q0 - 4 * q4 + 3 * q8) + 3 * Power(dy, 2) * Power(dz, 2) * (q0 - 9 * q4 + 8 * q8) +
+                    3 * Power(dx, 2) *
+                        (5 * dy * dz * (q5 + q7) + Power(dy, 2) * (q0 + q4 - 2 * q8) +
+                         Power(dz, 2) * (-9 * q0 + q4 + 8 * q8)))) /
+             Power(Power(dx, 2) + Power(dy, 2) + Power(dz, 2), 4.5));
 }

@@ -1,4 +1,5 @@
 #include "STKFMM/STKFMM.hpp"
+
 namespace stkfmm {
 
 Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
@@ -32,8 +33,8 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
 
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
-            if (rank == 0)
-                printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
+            // if (rank == 0)
+            //     printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
         if (rank == 0)
@@ -73,8 +74,6 @@ void Stk3DFMM::setupTree(KERNEL kernel) {
         std::vector<double> empty;
         poolFMM[kernel]->setupTree(srcSLCoordInternal, empty, trgCoordInternal);
     }
-    if (rank == 0)
-        std::cout << "Coord setup for kernel " << getKernelName(kernel) << std::endl;
 }
 
 void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *srcSLValuePtr, const int nTrg,

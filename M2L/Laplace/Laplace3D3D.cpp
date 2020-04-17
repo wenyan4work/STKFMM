@@ -28,8 +28,7 @@ constexpr double eps = 1e-10;
 inline double freal(double xi, double r) { return std::erfc(xi * r) / r; }
 
 inline double frealp(double xi, double r) {
-    return -(2. * exp(-r * r * (xi * xi)) * xi) / (sqrt(M_PI) * r) -
-           std::erfc(r * xi) / (r * r);
+    return -(2. * exp(-r * r * (xi * xi)) * xi) / (sqrt(M_PI) * r) - std::erfc(r * xi) / (r * r);
 }
 
 // xm: target, xn: source
@@ -78,8 +77,7 @@ inline double potEwald(const EVec3 &xm, const EVec3 &xn) {
                 }
                 EVec3 kvec = EVec3(i, j, k) * (2 * PI314);
                 double k2 = kvec.dot(kvec);
-                Kwave +=
-                    4 * PI314 * cos(kvec.dot(rmn)) * exp(-k2 / (4 * xi2)) / k2;
+                Kwave += 4 * PI314 * cos(kvec.dot(rmn)) * exp(-k2 / (4 * xi2)) / k2;
             }
         }
     }
@@ -89,8 +87,7 @@ inline double potEwald(const EVec3 &xm, const EVec3 &xn) {
     return Kreal + Kwave + Kself - PI314 / xi2;
 }
 
-inline void realGradSum(double xi, const EVec3 &target, const EVec3 &source,
-                        EVec3 &v) {
+inline void realGradSum(double xi, const EVec3 &target, const EVec3 &source, EVec3 &v) {
     EVec3 rvec = target - source;
     double rnorm = rvec.norm();
     if (rnorm < eps) {
@@ -100,8 +97,7 @@ inline void realGradSum(double xi, const EVec3 &target, const EVec3 &source,
     }
 }
 
-inline void gradkernel(const EVec3 &target, const EVec3 &source,
-                       EVec3 &answer) {
+inline void gradkernel(const EVec3 &target, const EVec3 &source, EVec3 &answer) {
     EVec3 rst = target - source;
     double rnorm = rst.norm();
     if (rnorm < eps) {
@@ -113,8 +109,7 @@ inline void gradkernel(const EVec3 &target, const EVec3 &source,
 }
 
 // grad of Laplace potential, without 1/4pi prefactor, periodic of -r_k/r^3
-inline void gradEwald(const EVec3 &target_, const EVec3 &source_,
-                      EVec3 &answer) {
+inline void gradEwald(const EVec3 &target_, const EVec3 &source_, EVec3 &answer) {
     EVec3 target = target_;
     EVec3 source = source_;
     target[0] = target[0] - floor(target[0]); // periodic BC
@@ -152,8 +147,7 @@ inline void gradEwald(const EVec3 &target_, const EVec3 &source_,
                 EVec3 kvec = EVec3(i, j, k) * (2 * M_PI);
                 double k2 = kvec.dot(kvec);
                 double knorm = kvec.norm();
-                Kwave +=
-                    -kvec * (sin(kvec.dot(rmn)) * exp(-k2 / (4 * xi2)) / k2);
+                Kwave += -kvec * (sin(kvec.dot(rmn)) * exp(-k2 / (4 * xi2)) / k2);
             }
         }
     }
@@ -192,8 +186,7 @@ inline EVec4 gKernelEwald(const EVec3 &target, const EVec3 &source) {
     return pgrad;
 }
 
-inline EVec4 gKernelNF(const EVec3 &target, const EVec3 &source,
-                       int N = DIRECTLAYER) {
+inline EVec4 gKernelNF(const EVec3 &target, const EVec3 &source, int N = DIRECTLAYER) {
     EVec4 gNF = EVec4::Zero();
     for (int i = -N; i < N + 1; i++) {
         for (int j = -N; j < N + 1; j++) {
@@ -213,8 +206,7 @@ inline EVec4 gKernelFF(const EVec3 &target, const EVec3 &source) {
     return fEwald;
 }
 
-inline double potNF(const EVec3 &target, const EVec3 &source,
-                    int N = DIRECTLAYER) {
+inline double potNF(const EVec3 &target, const EVec3 &source, int N = DIRECTLAYER) {
     double gNF = 0;
     for (int i = -N; i < N + 1; i++) {
         for (int j = -N; j < N + 1; j++) {
@@ -290,37 +282,28 @@ int main(int argc, char **argv) {
 
     std::cout << std::scientific << std::setprecision(18);
 
-    std::chrono::high_resolution_clock::time_point t1 =
-        std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
     const int pCheck = atoi(argv[1]);
     const double scaleEquiv = 1.05;
     const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {
-        -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {
-        -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
+    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
+    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
 
     const double scaleLEquiv = 1.05;
     const double scaleLCheck = 2.95;
-    const double pCenterLEquiv[3] = {
-        -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2};
-    const double pCenterLCheck[3] = {
-        -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2};
+    const double pCenterLEquiv[3] = {-(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2};
+    const double pCenterLCheck[3] = {-(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2};
 
-    auto pointMEquiv = surface(
-        pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(
-        pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(
-        pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(
-        pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     // calculate the operator M2L with least square
     const int equivN = pointMEquiv.size() / 3;
@@ -329,12 +312,9 @@ int main(int argc, char **argv) {
 
     Eigen::MatrixXd A(checkN, 1 * equivN);
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                               pointLCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
-                                         pointLEquiv[3 * l + 1],
-                                         pointLEquiv[3 * l + 2]);
+            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             // A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Lpoint);
             A(k, l) = pot(Cpoint, Lpoint);
         }
@@ -345,14 +325,12 @@ int main(int argc, char **argv) {
 
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1],
-                                     pointMEquiv[3 * i + 2]);
+        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         const EVec3 Npoint(0.5, 0.5, 0.5);
         // assemble linear system
         Eigen::VectorXd f(checkN * 4);
         for (int k = 0; k < checkN; k++) {
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                                   pointLCheck[3 * k + 2]);
+            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             // sum the images
             // f.block<4, 1>(4 * k, 0) =
             //     gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
@@ -364,16 +342,13 @@ int main(int argc, char **argv) {
         // std::cout << "debug f: \n" << f << std::endl;
         // std::cout << "debug M: \n" << M2L.col(i) << std::endl;
     }
-    std::chrono::high_resolution_clock::time_point t2 =
-        std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
 
     // dump M2L
     for (int i = 0; i < equivN; i++) {
         for (int j = 0; j < equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific
-                      << std::setprecision(18) << M2L(i, j) << std::endl;
+            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
 
@@ -384,19 +359,16 @@ int main(int argc, char **argv) {
     ApinvU.resize(A.cols(), A.rows());
     ApinvVT.resize(A.cols(), A.rows());
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             A(k, l) = pot(Cpoint, Mpoint);
         }
     }
     pinv(A, ApinvU, ApinvVT);
 
     // Test
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        chargePoint(2);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(2);
     std::vector<double> chargeValue(2);
     chargePoint[0] = Eigen::Vector3d(0.6, 0.6, 0.6);
     chargeValue[0] = -1;
@@ -407,8 +379,7 @@ int main(int argc, char **argv) {
     Eigen::VectorXd f(checkN);
     for (int k = 0; k < checkN; k++) {
         double temp = 0;
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (size_t p = 0; p < chargePoint.size(); p++) {
             temp = temp + pot(Cpoint, chargePoint[p]) * (chargeValue[p]);
         }
@@ -422,8 +393,7 @@ int main(int argc, char **argv) {
 
     for (int is = 0; is < 5; is++) {
 
-        Eigen::Vector3d samplePoint =
-            EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
+        Eigen::Vector3d samplePoint = EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
         EVec4 Usample = EVec4::Zero();
         EVec4 UsampleSP = EVec4::Zero();
         EVec4 UFF = EVec4::Zero();
@@ -432,9 +402,7 @@ int main(int argc, char **argv) {
             for (int j = -DIRECTLAYER; j < 1 + DIRECTLAYER; j++) {
                 for (int k = -DIRECTLAYER; k < 1 + DIRECTLAYER; k++) {
                     for (size_t p = 0; p < chargePoint.size(); p++) {
-                        Usample += gKernel(samplePoint,
-                                           chargePoint[p] + EVec3(i, j, k)) *
-                                   chargeValue[p];
+                        Usample += gKernel(samplePoint, chargePoint[p] + EVec3(i, j, k)) * chargeValue[p];
                     }
                 }
             }
@@ -445,8 +413,7 @@ int main(int argc, char **argv) {
         }
 
         for (int p = 0; p < equivN; p++) {
-            Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1],
-                                   pointLEquiv[3 * p + 2]);
+            Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
             UsampleSP += gKernel(samplePoint, Lpoint) * M2Lsource[p];
         }
 

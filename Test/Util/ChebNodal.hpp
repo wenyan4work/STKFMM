@@ -22,8 +22,7 @@ class ChebNodal {
     std::vector<double> weights;
 
   public:
-    ChebNodal(int chebN, bool includeEnd = true)
-        : chebN(chebN), includeEnd(includeEnd) {
+    ChebNodal(int chebN, bool includeEnd = true) : chebN(chebN), includeEnd(includeEnd) {
         points.resize(chebN + 1);
         weights.resize(chebN + 1);
 
@@ -78,8 +77,7 @@ class ChebNodal {
         for (int i = 0; i < chebN + 1; i++) {
             double temp = 0;
             for (int j = 0; j < chebN + 1; j++) {
-                temp += Dkn[j * (chebN + 1) + i] *
-                        dvec[j]; // not optimal layout for speed.
+                temp += Dkn[j * (chebN + 1) + i] * dvec[j]; // not optimal layout for speed.
             }
             weights[i] = temp;
             points[i] = -cos(i * Pi / chebN);

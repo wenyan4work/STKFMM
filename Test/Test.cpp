@@ -297,7 +297,7 @@ void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &in
         if (it != results.end()) {
             trgLocal = it->second;
         } else {
-            std::cout<<"result not found for kernel "<< getKernelName(kernel)<<std::endl;
+            std::cout << "result not found for kernel " << getKernelName(kernel) << std::endl;
         }
         writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)), point.srcLocalSL, value.srcLocalSL, kdimSL);
         writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)), point.srcLocalDL, value.srcLocalDL, kdimDL);

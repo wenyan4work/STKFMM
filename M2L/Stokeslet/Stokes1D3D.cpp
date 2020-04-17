@@ -66,8 +66,7 @@ std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
     return coord;
 }
 
-inline void Gkernel(const Eigen::Vector3d &target,
-                    const Eigen::Vector3d &source, Eigen::Matrix3d &answer) {
+inline void Gkernel(const Eigen::Vector3d &target, const Eigen::Vector3d &source, Eigen::Matrix3d &answer) {
     auto rst = target - source;
     double rnorm = rst.norm();
     if (rnorm < 1e-13) {
@@ -89,23 +88,17 @@ int main(int argc, char **argv) {
     const int pCheck = atoi(argv[1]);
     const double scaleEquiv = 1.05;
     const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {
-        -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {
-        -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
-    auto pointMEquiv = surface(
-        pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(
-        pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
+    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(
-        pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(
-        pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     //	for (int i = 0; i < pointLEquiv.size() / 3; i++) {
     //		std::cout << pointLEquiv[3 * i] << " " << pointLEquiv[3 * i + 1]
@@ -127,12 +120,9 @@ int main(int argc, char **argv) {
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
         Eigen::Matrix3d G = Eigen::Matrix3d::Zero();
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                               pointLCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
-                                         pointLEquiv[3 * l + 1],
-                                         pointLEquiv[3 * l + 2]);
+            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             Gkernel(Cpoint, Lpoint, G);
             A.block<3, 3>(3 * k, 3 * l) = G;
         }
@@ -144,14 +134,12 @@ int main(int argc, char **argv) {
     Eigen::MatrixXd M2L(3 * equivN, 3 * equivN);
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1],
-                                     pointMEquiv[3 * i + 2]);
+        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         Eigen::MatrixXd f(3 * checkN, 3);
         //		std::cout<<"debug:"<<Mpoint<<std::endl;
         for (int k = 0; k < checkN; k++) {
             Eigen::Matrix3d temp = Eigen::Matrix3d::Zero();
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                                   pointLCheck[3 * k + 2]);
+            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             //			std::cout<<"debug:"<<k<<std::endl;
             // sum the images
             for (int per = DIRECTLAYER + 1; per < imageN; per++) {
@@ -165,22 +153,18 @@ int main(int argc, char **argv) {
             //			std::cout << temp << std::endl;
             f.block<3, 3>(3 * k, 0) = temp;
         }
-        M2L.block(0, 3 * i, 3 * equivN, 3) =
-            (ApinvU.transpose() * (ApinvVT.transpose() * f));
+        M2L.block(0, 3 * i, 3 * equivN, 3) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
     }
 
     // dump M2L
     for (int i = 0; i < 3 * equivN; i++) {
         for (int j = 0; j < 3 * equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific
-                      << std::setprecision(18) << M2L(i, j) << std::endl;
+            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
 
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        forcePoint(3);
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        forceValue(3);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forcePoint(3);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forceValue(3);
     forcePoint[0] = Eigen::Vector3d(0.5, 0.55, 0.2);
     forceValue[0] = Eigen::Vector3d(-0.2, 0, 0);
     forcePoint[1] = Eigen::Vector3d(0.5, 0.5, 0.5);
@@ -197,16 +181,14 @@ int main(int argc, char **argv) {
     for (int k = 0; k < checkN; k++) {
         Eigen::Vector3d temp = Eigen::Vector3d::Zero();
         Eigen::Matrix3d G = Eigen::Matrix3d::Zero();
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (int p = 0; p < 3; p++) {
             Gkernel(Cpoint, forcePoint[p], G);
             temp = temp + G * (forceValue[p]);
         }
         f.block<3, 1>(3 * k, 0) = temp;
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             Gkernel(Cpoint, Mpoint, G);
             A.block<3, 3>(3 * k, 3 * l) = G;
         }
@@ -235,10 +217,8 @@ int main(int argc, char **argv) {
 
     std::cout << "Msource: " << Msource << std::endl;
 
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        forcePointExt(0);
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        forceValueExt(0);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forcePointExt(0);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forceValueExt(0);
     for (size_t p = 0; p < forcePoint.size(); p++) {
         for (int k = -DIRECTLAYER; k < DIRECTLAYER + 1; k++) {
             forcePointExt.push_back(Eigen::Vector3d(k, 0, 0) + forcePoint[p]);
@@ -258,10 +238,8 @@ int main(int argc, char **argv) {
     std::cout << "Usample Direct:" << Usample << std::endl;
 
     for (int p = 0; p < equivN; p++) {
-        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1],
-                               pointLEquiv[3 * p + 2]);
-        Eigen::Vector3d Fpoint(M2Lsource[3 * p], M2Lsource[3 * p + 1],
-                               M2Lsource[3 * p + 2]);
+        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
+        Eigen::Vector3d Fpoint(M2Lsource[3 * p], M2Lsource[3 * p + 1], M2Lsource[3 * p + 2]);
         Gkernel(samplePoint, Lpoint, G);
         UsampleSP = UsampleSP + G * (Fpoint);
     }

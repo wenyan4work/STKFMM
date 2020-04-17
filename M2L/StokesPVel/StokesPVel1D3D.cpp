@@ -117,23 +117,17 @@ int main(int argc, char **argv) {
     const int pCheck = atoi(argv[1]);
     const double scaleEquiv = 1.05;
     const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {
-        -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {
-        -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
-    auto pointMEquiv = surface(
-        pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(
-        pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
+    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(
-        pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(
-        pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     // calculate the operator M2L with least square
     const int equivN = pointMEquiv.size() / 3;
@@ -143,12 +137,9 @@ int main(int argc, char **argv) {
     for (int k = 0; k < checkN; k++) {
         EMat4 W;
         W.setZero();
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                               pointLCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
-                                         pointLEquiv[3 * l + 1],
-                                         pointLEquiv[3 * l + 2]);
+            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             Wkernel(Cpoint, Lpoint, W);
             A.block<4, 4>(4 * k, 4 * l) = W;
         }
@@ -160,25 +151,21 @@ int main(int argc, char **argv) {
     Eigen::MatrixXd M2L(4 * equivN, 4 * equivN);
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1],
-                                     pointMEquiv[3 * i + 2]);
+        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         Eigen::MatrixXd f(4 * checkN, 4);
         for (int k = 0; k < checkN; k++) {
             EMat4 temp = EMat4::Zero();
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                                   pointLCheck[3 * k + 2]);
+            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             WkernelFF(Cpoint, Mpoint, temp);
             f.block<4, 4>(4 * k, 0) = temp;
         }
-        M2L.block(0, 4 * i, 4 * equivN, 4) =
-            (ApinvU.transpose() * (ApinvVT.transpose() * f));
+        M2L.block(0, 4 * i, 4 * equivN, 4) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
     }
 
     // dump M2L
     for (int i = 0; i < 4 * equivN; i++) {
         for (int j = 0; j < 4 * equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific
-                      << std::setprecision(18) << M2L(i, j) << std::endl;
+            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
 
@@ -200,8 +187,7 @@ int main(int argc, char **argv) {
     Eigen::VectorXd f(4 * checkN);
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         EVec4 temp = EVec4::Zero();
         for (int p = 0; p < forceValue.size(); p++) {
             EMat4 W = EMat4::Zero();
@@ -210,8 +196,7 @@ int main(int argc, char **argv) {
         }
         f.block<4, 1>(4 * k, 0) = temp;
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Mpoint, W);
             A.block<4, 4>(4 * k, 4 * l) = W;
@@ -231,8 +216,7 @@ int main(int argc, char **argv) {
         EVec4 WFFK = EVec4::Zero();
 
         for (int k = 0; k < equivN; k++) {
-            EVec3 Lpoint(pointLEquiv[3 * k], pointLEquiv[3 * k + 1],
-                         pointLEquiv[3 * k + 2]);
+            EVec3 Lpoint(pointLEquiv[3 * k], pointLEquiv[3 * k + 1], pointLEquiv[3 * k + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(samplePoint, Lpoint, W);
             WFFL += W * M2Lsource.block<4, 1>(4 * k, 0);

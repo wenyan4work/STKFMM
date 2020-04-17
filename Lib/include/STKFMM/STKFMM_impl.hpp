@@ -43,11 +43,11 @@ class FMMData {
 
     /**
      * @brief Construct a new FMMData object
-     * 
-     * @param kernelChoice_ 
-     * @param periodicity_ 
-     * @param multOrder_ 
-     * @param maxPts_ 
+     *
+     * @param kernelChoice_
+     * @param periodicity_
+     * @param multOrder_
+     * @param maxPts_
      */
     FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_);
 
@@ -79,11 +79,11 @@ class FMMData {
 
     /**
      * @brief runFMM
-     * 
+     *
      * @param srcSLValue [in] single layer source value
      * @param srcDLValue [in] double layer source value
      * @param trgValue [out] target value
-     * @param scale 
+     * @param scale
      */
     void evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, std::vector<double> &trgValue,
                      const double scale);
@@ -134,19 +134,19 @@ class FMMData {
     /**
      * @brief scale SrcSl and SrcDL Values before FMM call
      *  operate on srcSLValue and srcDLValue
-     * 
-     * @param srcSLValue 
-     * @param srcDLValue 
-     * @param scaleFactor 
+     *
+     * @param srcSLValue
+     * @param srcDLValue
+     * @param scaleFactor
      */
     void scaleSrc(std::vector<double> &srcSLValue, std::vector<double> &srcDLValue, const double scaleFactor);
 
     /**
      * @brief scale Trg Values after FMM call
      *  operate on trgSLValue
-     * 
-     * @param trgDLValue 
-     * @param scaleFactor 
+     *
+     * @param trgDLValue
+     * @param scaleFactor
      */
     void scaleTrg(std::vector<double> &trgDLValue, const double scaleFactor);
 

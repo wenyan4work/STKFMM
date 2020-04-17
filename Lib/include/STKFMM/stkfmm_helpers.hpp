@@ -19,8 +19,8 @@ void safeDeletePtr(T *&ptr) {
 
 /**
  * @brief set x to its fractional part
- * 
- * @param x 
+ *
+ * @param x
  */
 inline void fracwrap(double &x) { x = x - floor(x); }
 
@@ -77,12 +77,12 @@ std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
 
 /**
  * @brief inverse square root of a simd vec type
- * 
- * @tparam Vec_t 
- * @tparam Real_t 
+ *
+ * @tparam Vec_t
+ * @tparam Real_t
  * @tparam nwtn number of newton iterations
- * @param r2 
- * @return Vec_t 
+ * @param r2
+ * @return Vec_t
  */
 template <typename Vec_t, typename Real_t, int nwtn>
 inline Vec_t rsqrt_wrapper(Vec_t r2) {
@@ -114,28 +114,25 @@ inline Vec_t rsqrt_wrapper(Vec_t r2) {
 #define Vec_td Real_t
 #endif
 
-#define GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, VEC_T, REAL_T)          \
-    generic_kernel<REAL_T, SRCDIM, TARDIM,                                     \
-                   MICROKERNEL<REAL_T, VEC_T, newton_iter>>(                   \
-        (REAL_T *)r_src, src_cnt, (REAL_T *)v_src, dof, (REAL_T *)r_trg,       \
-        trg_cnt, (REAL_T *)v_trg, mem_mgr)
+#define GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, VEC_T, REAL_T)                                                  \
+    generic_kernel<REAL_T, SRCDIM, TARDIM, MICROKERNEL<REAL_T, VEC_T, newton_iter>>(                                   \
+        (REAL_T *)r_src, src_cnt, (REAL_T *)v_src, dof, (REAL_T *)r_trg, trg_cnt, (REAL_T *)v_trg, mem_mgr)
 
-#define GEN_KERNEL(KERNEL, MICROKERNEL, SRCDIM, TARDIM)                        \
-    template <class T, int newton_iter = 0>                                    \
-    void KERNEL(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg,            \
-                int trg_cnt, T *v_trg, mem::MemoryManager *mem_mgr) {          \
-                                                                               \
-        if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {        \
-            typedef float Real_t;                                              \
-            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_ts, Real_t);    \
-        } else if (mem::TypeTraits<T>::ID() ==                                 \
-                   mem::TypeTraits<double>::ID()) {                            \
-            typedef double Real_t;                                             \
-            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_td, Real_t);    \
-        } else {                                                               \
-            typedef T Real_t;                                                  \
-            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Real_t, Real_t);    \
-        }                                                                      \
+#define GEN_KERNEL(KERNEL, MICROKERNEL, SRCDIM, TARDIM)                                                                \
+    template <class T, int newton_iter = 0>                                                                            \
+    void KERNEL(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,                             \
+                mem::MemoryManager *mem_mgr) {                                                                         \
+                                                                                                                       \
+        if (mem::TypeTraits<T>::ID() == mem::TypeTraits<float>::ID()) {                                                \
+            typedef float Real_t;                                                                                      \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_ts, Real_t);                                            \
+        } else if (mem::TypeTraits<T>::ID() == mem::TypeTraits<double>::ID()) {                                        \
+            typedef double Real_t;                                                                                     \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Vec_td, Real_t);                                            \
+        } else {                                                                                                       \
+            typedef T Real_t;                                                                                          \
+            GEN_KERNEL_HELPER(MICROKERNEL, SRCDIM, TARDIM, Real_t, Real_t);                                            \
+        }                                                                                                              \
     }
 
 #endif

@@ -74,31 +74,19 @@ std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
 
 inline Eigen::Matrix3d AEW(const double xi, const Eigen::Vector3d &rvec) {
     const double r = rvec.norm();
-    Eigen::Matrix3d A =
-        2 *
-            (xi * exp(-(xi * xi) * (r * r)) / (sqrt(M_PI) * r * r) +
-             erfc(xi * r) / (2 * r * r * r)) *
-            (r * r * Eigen::Matrix3d::Identity() + (rvec * rvec.transpose())) -
-        4 * xi / sqrt(M_PI) * exp(-(xi * xi) * (r * r)) *
-            Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d A = 2 * (xi * exp(-(xi * xi) * (r * r)) / (sqrt(M_PI) * r * r) + erfc(xi * r) / (2 * r * r * r)) *
+                            (r * r * Eigen::Matrix3d::Identity() + (rvec * rvec.transpose())) -
+                        4 * xi / sqrt(M_PI) * exp(-(xi * xi) * (r * r)) * Eigen::Matrix3d::Identity();
     return A;
 }
 
-inline double lbda(double k, double xi, double z) {
-    return exp(-k * k / (4 * xi * xi) - (xi * xi) * (z * z));
-}
+inline double lbda(double k, double xi, double z) { return exp(-k * k / (4 * xi * xi) - (xi * xi) * (z * z)); }
 
-inline double thetaplus(double k, double xi, double z) {
-    return exp(k * z) * std::erfc(k / (2 * xi) + xi * z);
-}
+inline double thetaplus(double k, double xi, double z) { return exp(k * z) * std::erfc(k / (2 * xi) + xi * z); }
 
-inline double thetaminus(double k, double xi, double z) {
-    return exp(-k * z) * std::erfc(k / (2 * xi) - xi * z);
-}
+inline double thetaminus(double k, double xi, double z) { return exp(-k * z) * std::erfc(k / (2 * xi) - xi * z); }
 
-inline double J00(double k, double xi, double z) {
-    return sqrt(M_PI) * lbda(k, xi, z) * xi;
-}
+inline double J00(double k, double xi, double z) { return sqrt(M_PI) * lbda(k, xi, z) * xi; }
 
 inline double J10(double k, double xi, double z) {
     return M_PI * (thetaplus(k, xi, z) + thetaminus(k, xi, z)) / (4 * k);
@@ -106,47 +94,37 @@ inline double J10(double k, double xi, double z) {
 
 inline double J20(double k, double xi, double z) {
     return sqrt(M_PI) * lbda(k, xi, z) / (4 * k * k * xi) +
-           M_PI *
-               ((thetaplus(k, xi, z) + thetaminus(k, xi, z)) / (8 * k * k * k) +
-                (thetaminus(k, xi, z) - thetaplus(k, xi, z)) * z / (8 * k * k) -
-                (thetaplus(k, xi, z) + thetaminus(k, xi, z)) /
-                    (16 * k * (xi * xi)));
+           M_PI * ((thetaplus(k, xi, z) + thetaminus(k, xi, z)) / (8 * k * k * k) +
+                   (thetaminus(k, xi, z) - thetaplus(k, xi, z)) * z / (8 * k * k) -
+                   (thetaplus(k, xi, z) + thetaminus(k, xi, z)) / (16 * k * (xi * xi)));
 }
 
 inline double J12(double k, double xi, double z) {
-    return M_PI * (-thetaplus(k, xi, z) - thetaminus(k, xi, z)) * k / 4 +
-           sqrt(M_PI) * lbda(k, xi, z) * xi;
+    return M_PI * (-thetaplus(k, xi, z) - thetaminus(k, xi, z)) * k / 4 + sqrt(M_PI) * lbda(k, xi, z) * xi;
 }
 
 inline double J22(double k, double xi, double z) {
-    return M_PI * ((thetaplus(k, xi, z) + thetaminus(k, xi, z)) * k /
-                       (16 * xi * xi) +
+    return M_PI * ((thetaplus(k, xi, z) + thetaminus(k, xi, z)) * k / (16 * xi * xi) +
                    (thetaplus(k, xi, z) + thetaminus(k, xi, z)) / (8 * k) +
                    (thetaplus(k, xi, z) - thetaminus(k, xi, z)) * z / 8) -
            sqrt(M_PI) * lbda(k, xi, z) / (4 * xi);
 }
 
-inline double K11(double k, double xi, double z) {
-    return M_PI * ((thetaminus(k, xi, z) - thetaplus(k, xi, z))) / 4;
-}
+inline double K11(double k, double xi, double z) { return M_PI * ((thetaminus(k, xi, z) - thetaplus(k, xi, z))) / 4; }
 
 inline double K12(double k, double xi, double z) {
-    return M_PI *
-           ((thetaplus(k, xi, z) - thetaminus(k, xi, z)) / (16 * xi * xi) +
-            (thetaminus(k, xi, z) + thetaplus(k, xi, z)) * z / (8 * k));
+    return M_PI * ((thetaplus(k, xi, z) - thetaminus(k, xi, z)) / (16 * xi * xi) +
+                   (thetaminus(k, xi, z) + thetaplus(k, xi, z)) * z / (8 * k));
 }
 
-inline void QI(const Eigen::Vector3d &kvec, double xi, double z,
-               Eigen::Matrix3d &QI) {
+inline void QI(const Eigen::Vector3d &kvec, double xi, double z, Eigen::Matrix3d &QI) {
     // 3*3 tensor
     // kvec: np.array([k1,k2,0])
     double knorm = sqrt(kvec[0] * kvec[0] + kvec[1] * kvec[1]);
-    QI = 2 * (J00(knorm, xi, z) / (4 * xi * xi) + J10(knorm, xi, z)) *
-         Eigen::Matrix3d::Identity();
+    QI = 2 * (J00(knorm, xi, z) / (4 * xi * xi) + J10(knorm, xi, z)) * Eigen::Matrix3d::Identity();
 }
 
-inline void Qkk(const Eigen::Vector3d &kvec, double xi, double z,
-                Eigen::Matrix3d &Qreal, Eigen::Matrix3d &Qimg) {
+inline void Qkk(const Eigen::Vector3d &kvec, double xi, double z, Eigen::Matrix3d &Qreal, Eigen::Matrix3d &Qimg) {
     double k1 = kvec[0];
     double k2 = kvec[1];
     double knorm = sqrt(k1 * k1 + k2 * k2);
@@ -188,8 +166,7 @@ inline void GkernelEwald(const Eigen::Vector3d &rvecIn, Eigen::Matrix3d &Gsum) {
     Eigen::Matrix3d real = Eigen::Matrix3d::Zero();
     const int N = 5;
     if (r < eps) {
-        auto Gself =
-            -4 * xi / sqrt(M_PI) * Eigen::Matrix3d::Identity(); // the self term
+        auto Gself = -4 * xi / sqrt(M_PI) * Eigen::Matrix3d::Identity(); // the self term
         for (int i = -N; i < N + 1; i++) {
             for (int j = -N; j < N + 1; j++) {
                 if (i == 0 && j == 0) {
@@ -224,8 +201,7 @@ inline void GkernelEwald(const Eigen::Vector3d &rvecIn, Eigen::Matrix3d &Gsum) {
             }
             Qkk(kvec, xi, zmn, Qreal, Qimg);
             QI(kvec, xi, zmn, QImat);
-            wave = wave + (QImat + Qreal) * cos(kvec.dot(rhomn)) -
-                   (Qimg)*sin(kvec.dot(rhomn));
+            wave = wave + (QImat + Qreal) * cos(kvec.dot(rhomn)) - (Qimg)*sin(kvec.dot(rhomn));
         }
     }
     wave *= 4;
@@ -239,9 +215,7 @@ inline void GkernelEwald(const Eigen::Vector3d &rvecIn, Eigen::Matrix3d &Gsum) {
      wavek0=-(4/1)*(np.pi*(zmn)*ss.erf(zmn*xi)+np.sqrt(np.pi)/(2*xi)*np.exp(-zmn**2*xi**2))*I2fn
      *
      * */
-    waveK0 = -(4 / 1.0) *
-             (M_PI * (zmn)*std::erf(zmn * xi) +
-              sqrt(M_PI) / (2 * xi) * exp(-zmn * zmn * xi * xi)) *
+    waveK0 = -(4 / 1.0) * (M_PI * (zmn)*std::erf(zmn * xi) + sqrt(M_PI) / (2 * xi) * exp(-zmn * zmn * xi * xi)) *
              Eigen::Matrix3d::Identity();
     waveK0(2, 2) = 0;
 
@@ -251,25 +225,21 @@ inline void GkernelEwald(const Eigen::Vector3d &rvecIn, Eigen::Matrix3d &Gsum) {
 inline double freal(double xi, double r) { return std::erfc(xi * r) / r; }
 
 inline double frealp(double xi, double r) {
-    return -(2. * exp(-r * r * (xi * xi)) * xi) / (sqrt(M_PI) * r) -
-           std::erfc(r * xi) / (r * r);
+    return -(2. * exp(-r * r * (xi * xi)) * xi) / (sqrt(M_PI) * r) - std::erfc(r * xi) / (r * r);
 }
 
 inline double gxkz(double xi, double k, double z) {
-    return exp(k * z) * std::erfc(xi * z + k / (2 * xi)) +
-           exp(-k * z) * std::erfc(-xi * z + k / (2 * xi));
+    return exp(k * z) * std::erfc(xi * z + k / (2 * xi)) + exp(-k * z) * std::erfc(-xi * z + k / (2 * xi));
 }
 
 inline double gxkzp(double xi, double k, double z) {
     double pisqrt = sqrt(M_PI);
-    return k * exp(k * z) * std::erfc(xi * z + k / (2 * xi)) -
-           k * exp(-k * z) * std::erfc(-xi * z + k / (2 * xi)) +
-           (2 * xi / pisqrt) * (exp(-pow((-xi * z + k / (2 * xi)), 2) - k * z) -
-                                exp(-pow((xi * z + k / (2 * xi)), 2) + k * z));
+    return k * exp(k * z) * std::erfc(xi * z + k / (2 * xi)) - k * exp(-k * z) * std::erfc(-xi * z + k / (2 * xi)) +
+           (2 * xi / pisqrt) *
+               (exp(-pow((-xi * z + k / (2 * xi)), 2) - k * z) - exp(-pow((xi * z + k / (2 * xi)), 2) + k * z));
 }
 
-inline void realSum(double xi, const EVec3 &target, const EVec3 &source,
-                    EVec3 &v) {
+inline void realSum(double xi, const EVec3 &target, const EVec3 &source, EVec3 &v) {
 
     EVec3 rvec = target - source;
     double rnorm = rvec.norm();
@@ -292,8 +262,7 @@ inline void Lkernel(const EVec3 &target, const EVec3 &source, EVec3 &answer) {
 }
 
 // grad of Laplace potential, without 1/4pi prefactor, periodic of -r_k/r^3
-inline void LkernelEwald(const EVec3 &target_, const EVec3 &source_,
-                         EVec3 &answer) {
+inline void LkernelEwald(const EVec3 &target_, const EVec3 &source_, EVec3 &answer) {
     EVec3 target = target_;
     EVec3 source = source_;
     target[0] = target[0] - floor(target[0]); // periodic BC
@@ -330,12 +299,10 @@ inline void LkernelEwald(const EVec3 &target_, const EVec3 &source_,
 
             double k2 = kvec.dot(kvec);
             double knorm = sqrt(k2);
-            double xyfac =
-                -M_PI * sin(kvec.dot(rxy)) * gxkz(xi, knorm, rz) / knorm;
+            double xyfac = -M_PI * sin(kvec.dot(rxy)) * gxkz(xi, knorm, rz) / knorm;
             Kwave[0] += xyfac * kvec[0];
             Kwave[1] += xyfac * kvec[1];
-            Kwave[2] +=
-                M_PI * cos(kvec.dot(rxy)) * gxkzp(xi, knorm, rz) / knorm;
+            Kwave[2] += M_PI * cos(kvec.dot(rxy)) * gxkzp(xi, knorm, rz) / knorm;
         }
     }
 
@@ -365,8 +332,7 @@ inline void Wkernel(const EVec3 &target, const EVec3 &source, EMat4 &answer) {
     answer.block<3, 4>(1, 0) *= (1 / (8 * M_PI));
 }
 
-inline void WkernelEwald(const EVec3 &target, const EVec3 &source,
-                         EMat4 &answer) {
+inline void WkernelEwald(const EVec3 &target, const EVec3 &source, EMat4 &answer) {
     EMat3 G = EMat3::Zero();
     GkernelEwald(target - source, G);
     EVec3 L = EVec3::Zero();
@@ -448,23 +414,17 @@ int main(int argc, char **argv) {
     const int pCheck = atoi(argv[1]);
     const double scaleEquiv = 1.05;
     const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {
-        -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {
-        -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
-    auto pointMEquiv = surface(
-        pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(
-        pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
+    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(
-        pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(
-        pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     // calculate the operator M2L with least square
     const int equivN = pointMEquiv.size() / 3;
@@ -472,12 +432,9 @@ int main(int argc, char **argv) {
     Eigen::MatrixXd A(4 * checkN, 4 * equivN);
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                               pointLCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
-                                         pointLEquiv[3 * l + 1],
-                                         pointLEquiv[3 * l + 2]);
+            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Lpoint, W);
             A.block<4, 4>(4 * k, 4 * l) = W;
@@ -491,25 +448,21 @@ int main(int argc, char **argv) {
 
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1],
-                                     pointMEquiv[3 * i + 2]);
+        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         Eigen::MatrixXd f(4 * checkN, 4);
         for (int k = 0; k < checkN; k++) {
             EMat4 temp = EMat4::Zero();
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                                   pointLCheck[3 * k + 2]);
+            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             WkernelFF(Cpoint, Mpoint, temp);
             f.block<4, 4>(4 * k, 0) = temp;
         }
-        M2L.block(0, 4 * i, 4 * equivN, 4) =
-            (ApinvU.transpose() * (ApinvVT.transpose() * f));
+        M2L.block(0, 4 * i, 4 * equivN, 4) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
     }
 
     // dump M2L
     for (int i = 0; i < 4 * equivN; i++) {
         for (int j = 0; j < 4 * equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific
-                      << std::setprecision(18) << M2L(i, j) << std::endl;
+            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
 
@@ -531,8 +484,7 @@ int main(int argc, char **argv) {
     Eigen::VectorXd f(4 * checkN);
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         EVec4 temp = EVec4::Zero();
         for (int p = 0; p < forceValue.size(); p++) {
             EMat4 W = EMat4::Zero();
@@ -541,8 +493,7 @@ int main(int argc, char **argv) {
         }
         f.block<4, 1>(4 * k, 0) = temp;
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Mpoint, W);
             A.block<4, 4>(4 * k, 4 * l) = W;
@@ -562,8 +513,7 @@ int main(int argc, char **argv) {
         EVec4 WFFK = EVec4::Zero();
 
         for (int k = 0; k < equivN; k++) {
-            EVec3 Lpoint(pointLEquiv[3 * k], pointLEquiv[3 * k + 1],
-                         pointLEquiv[3 * k + 2]);
+            EVec3 Lpoint(pointLEquiv[3 * k], pointLEquiv[3 * k + 1], pointLEquiv[3 * k + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(samplePoint, Lpoint, W);
             WFFL += W * M2Lsource.block<4, 1>(4 * k, 0);

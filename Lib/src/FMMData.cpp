@@ -10,17 +10,6 @@ void FMMData::setKernel() {
     kdimDL = kernelFunctionPtr->surf_dim;
 }
 
-// const pvfmm::Kernel<double> *FMMData::getKernelFunction(KERNEL kernelChoice_) {
-//     auto it = kernelMap.find(kernelChoice_);
-//     if (it != kernelMap.end()) {
-//         return it->second;
-//     } else {
-//         printf("Error: Kernel not found.\n");
-//         std::exit(1);
-//         return nullptr;
-//     }
-// }
-
 void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data) {
     // int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     int size = kDim * equivCoord.size() / 3;
@@ -163,7 +152,10 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
         std::copy(treePtsPtr, treePtsPtr + 3 * ntreePts, treeDataPtr->pt_coord.Begin());
     }
 
-    printf("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    printf("Rank %d, nSL %d, nDL %d, nTrg %d\n", rank, nSL, nDL, nTrg);
 
     // space allocate
     treeDataPtr->src_value.Resize(nSL * kdimSL);
@@ -266,7 +258,7 @@ void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc, double 
     }
 
     if (kerPtr == nullptr) {
-        std::cout << "PPKernel " << (uint)p2p << " not found for direct evaluation" << std::endl;
+        std::cout << "PPKernel " << asInteger(p2p) << " not found for direct evaluation" << std::endl;
         return;
     }
 

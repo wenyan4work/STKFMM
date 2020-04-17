@@ -10,9 +10,9 @@
 
 #include <pvfmm.hpp>
 
-namespace stkfmm{
+namespace stkfmm {
 /**
- * @brief choose the periodic boundary condition 
+ * @brief choose the periodic boundary condition
  *
  */
 enum class PAXIS : unsigned {
@@ -36,8 +36,8 @@ enum class PPKERNEL : unsigned {
  * @brief choose a kernel
  */
 enum class KERNEL : unsigned {
-    LapPGrad = 1,         ///< Laplace
-    LapPGradGrad = 2,     ///< Laplace
+    LapPGrad = 1,      ///< Laplace
+    LapPGradGrad = 2,  ///< Laplace
     LapQPGradGrad = 4, ///< Laplace quadrupole
 
     Stokes = 8,             ///< Stokeslet 3x3
@@ -53,10 +53,9 @@ enum class KERNEL : unsigned {
 
 /**
  * @brief map of kernel -> kernel function pointer
- * 
+ *
  */
-extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *>
-    kernelMap;
+extern const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap;
 
 /**
  * @brief Get kernel dimension
@@ -69,19 +68,19 @@ std::tuple<int, int, int> getKernelDimension(KERNEL kernel_);
 
 /**
  * @brief Get the name of the kernel
- * 
- * @param kernel_ 
- * @return std::string 
+ *
+ * @param kernel_
+ * @return std::string
  */
 std::string getKernelName(KERNEL kernel_);
 
 /**
  * @brief Get the Kernel Function Pointer
- * 
- * @param kernel_ 
- * @return const pvfmm::Kernel<double>* 
+ *
+ * @param kernel_
+ * @return const pvfmm::Kernel<double>*
  */
-const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernel_) ;
+const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernel_);
 
 /**
  * @brief Enum to integer
@@ -91,10 +90,9 @@ const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernel_) ;
  * @return std::underlying_type<Enumeration>::type
  */
 template <typename Enumeration>
-auto asInteger(Enumeration const value) ->
-    typename std::underlying_type<Enumeration>::type {
+auto asInteger(Enumeration const value) -> typename std::underlying_type<Enumeration>::type {
     return static_cast<typename std::underlying_type<Enumeration>::type>(value);
 }
 
-}
+} // namespace stkfmm
 #endif

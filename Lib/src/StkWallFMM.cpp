@@ -1,6 +1,7 @@
 #include "STKFMM/STKFMM.hpp"
 
 namespace stkfmm {
+
 StkWallFMM::StkWallFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
     using namespace impl;
@@ -40,8 +41,8 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
                            const int nDL, const double *srcDLCoordPtr) {
     if (!poolFMM.empty()) {
         for (auto &fmm : poolFMM) {
-            if (rank == 0)
-                printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
+            // if (rank == 0)
+            //     printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
         if (rank == 0)
@@ -83,18 +84,6 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
 
     if (rank == 0)
         printf("points set\n");
-
-    // auto showVec = [&](const std::vector<double> &vec) {
-    //     for (auto &v : vec) {
-    //         printf("%g\t", v);
-    //     }
-    //     printf("\n");
-    // };
-
-    // showVec(srcSLOriginCoordInternal);
-    // showVec(srcSLImageCoordInternal);
-    // showVec(srcSLCoordInternal);
-    // showVec(trgCoordInternal);
 }
 
 void StkWallFMM::setupTree(KERNEL kernel) {

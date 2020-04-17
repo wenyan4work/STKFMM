@@ -38,14 +38,12 @@ inline double realSum(const double xi, const EVec3 &xn, const EVec3 &xm) {
 // xm: target, xn: source
 inline double realSum2(const double xi, const EVec3 &xn, const EVec3 &xm) {
     double zmn = xm[2] - xn[2];
-    double answer =
-        exp(-xi * xi * zmn * zmn) / xi + sqrt(PI314) * zmn * ERF(xi * zmn);
+    double answer = exp(-xi * xi * zmn * zmn) / xi + sqrt(PI314) * zmn * ERF(xi * zmn);
     return answer;
 }
 
 inline double gkzxi(const double k, double zmn, double xi) {
-    double answer = exp(k * zmn) * ERFC(k / (2 * xi) + xi * zmn) +
-                    exp(-k * zmn) * ERFC(k / (2 * xi) - xi * zmn);
+    double answer = exp(k * zmn) * ERFC(k / (2 * xi) + xi * zmn) + exp(-k * zmn) * ERFC(k / (2 * xi) - xi * zmn);
     return answer;
 }
 
@@ -87,8 +85,7 @@ inline double gKernelEwald(const EVec3 &xm, const EVec3 &xn) {
             }
             EVec3 kvec = EVec3(i, j, 0) * (2 * PI314);
             double knorm = kvec.norm();
-            Kwave += cos(kvec[0] * rmn[0] + kvec[1] * rmn[1]) * (1 / knorm) *
-                     gkzxi(knorm, zmn, xi);
+            Kwave += cos(kvec[0] * rmn[0] + kvec[1] * rmn[1]) * (1 / knorm) * gkzxi(knorm, zmn, xi);
         }
     }
     Kwave *= PI314;
@@ -179,37 +176,28 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     Eigen::setNbThreads(1);
 
-    std::chrono::high_resolution_clock::time_point t1 =
-        std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
     const int pCheck = atoi(argv[1]);
     const double scaleEquiv = 1.05;
     const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {
-        -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {
-        -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
+    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
+    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
 
     const double scaleLEquiv = 1.05;
     const double scaleLCheck = 2.95;
-    const double pCenterLEquiv[3] = {
-        -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2};
-    const double pCenterLCheck[3] = {
-        -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2};
+    const double pCenterLEquiv[3] = {-(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2};
+    const double pCenterLCheck[3] = {-(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2};
 
-    auto pointMEquiv = surface(
-        pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(
-        pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(
-        pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(
-        pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv,
-        0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv,
+                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     // calculate the operator M2L with least square
     const int equivN = pointMEquiv.size() / 3;
@@ -218,12 +206,9 @@ int main(int argc, char **argv) {
 
     Eigen::MatrixXd A(1 * checkN, 1 * equivN);
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                               pointLCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l],
-                                         pointLEquiv[3 * l + 1],
-                                         pointLEquiv[3 * l + 2]);
+            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             A(k, l) = gKernel(Cpoint, Lpoint);
         }
     }
@@ -233,15 +218,13 @@ int main(int argc, char **argv) {
 
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1],
-                                     pointMEquiv[3 * i + 2]);
+        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         //		std::cout << "debug:" << Mpoint << std::endl;
 
         // assemble linear system
         Eigen::VectorXd f(checkN);
         for (int k = 0; k < checkN; k++) {
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1],
-                                   pointLCheck[3 * k + 2]);
+            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             //			std::cout<<"debug:"<<k<<std::endl;
             // sum the images
             f(k) = gKernelFF(Cpoint, Mpoint);
@@ -250,16 +233,13 @@ int main(int argc, char **argv) {
 
         M2L.col(i) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
     }
-    std::chrono::high_resolution_clock::time_point t2 =
-        std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
 
     // dump M2L
     for (int i = 0; i < equivN; i++) {
         for (int j = 0; j < equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific
-                      << std::setprecision(18) << M2L(i, j) << std::endl;
+            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
         }
     }
 
@@ -267,13 +247,11 @@ int main(int argc, char **argv) {
 
     // testing Ewald routine
     double Madelung2D =
-        gKernelEwald(EVec3(0, 0, 0), EVec3(0.5, 0.5, 0)) * (-1) +
-        gKernelEwald(EVec3(0, 0, 0), EVec3(0, 0, 0)) * 1;
-    std::cout << std::setprecision(16) << "Madelung2D: " << Madelung2D
-              << " Error: " << Madelung2D + 2.2847222932891311 << std::endl;
+        gKernelEwald(EVec3(0, 0, 0), EVec3(0.5, 0.5, 0)) * (-1) + gKernelEwald(EVec3(0, 0, 0), EVec3(0, 0, 0)) * 1;
+    std::cout << std::setprecision(16) << "Madelung2D: " << Madelung2D << " Error: " << Madelung2D + 2.2847222932891311
+              << std::endl;
 
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
-        chargePoint(2);
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(2);
     std::vector<double> chargeValue(2);
     chargePoint[0] = Eigen::Vector3d(0.5, 0.5, 0);
     chargeValue[0] = -1;
@@ -287,15 +265,13 @@ int main(int argc, char **argv) {
     Eigen::VectorXd f(checkN);
     for (int k = 0; k < checkN; k++) {
         double temp = 0;
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1],
-                               pointMCheck[3 * k + 2]);
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (size_t p = 0; p < chargePoint.size(); p++) {
             temp = temp + gKernel(Cpoint, chargePoint[p]) * (chargeValue[p]);
         }
         f(k) = temp;
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1],
-                                   pointMEquiv[3 * l + 2]);
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             A(k, l) = gKernel(Mpoint, Cpoint);
         }
     }
@@ -313,16 +289,13 @@ int main(int argc, char **argv) {
     for (int i = -DIRECTLAYER; i < 1 + DIRECTLAYER; i++) {
         for (int j = -DIRECTLAYER; j < 1 + DIRECTLAYER; j++) {
             for (size_t p = 0; p < chargePoint.size(); p++) {
-                Usample +=
-                    gKernel(samplePoint, chargePoint[p] + EVec3(i, j, 0)) *
-                    chargeValue[p];
+                Usample += gKernel(samplePoint, chargePoint[p] + EVec3(i, j, 0)) * chargeValue[p];
             }
         }
     }
 
     for (int p = 0; p < equivN; p++) {
-        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1],
-                               pointLEquiv[3 * p + 2]);
+        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
         UsampleSP += gKernel(samplePoint, Lpoint) * M2Lsource[p];
     }
 
@@ -330,8 +303,7 @@ int main(int argc, char **argv) {
     std::cout << "Usample NF:" << Usample << std::endl;
     std::cout << "Usample FF:" << UsampleSP << std::endl;
     std::cout << "Usample FF+NF total:" << UsampleSP + Usample << std::endl;
-    std::cout << "Error : " << UsampleSP + Usample + 2.284722293289131159
-              << std::endl;
+    std::cout << "Error : " << UsampleSP + Usample + 2.284722293289131159 << std::endl;
 
     samplePoint = EVec3(0.5, 0.5, 0);
     Usample = 0;
@@ -340,16 +312,13 @@ int main(int argc, char **argv) {
     for (int i = -DIRECTLAYER; i < 1 + DIRECTLAYER; i++) {
         for (int j = -DIRECTLAYER; j < 1 + DIRECTLAYER; j++) {
             for (size_t p = 0; p < chargePoint.size(); p++) {
-                Usample +=
-                    gKernel(samplePoint, chargePoint[p] + EVec3(i, j, 0)) *
-                    chargeValue[p];
+                Usample += gKernel(samplePoint, chargePoint[p] + EVec3(i, j, 0)) * chargeValue[p];
             }
         }
     }
 
     for (int p = 0; p < equivN; p++) {
-        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1],
-                               pointLEquiv[3 * p + 2]);
+        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
         UsampleSP += gKernel(samplePoint, Lpoint) * M2Lsource[p];
     }
 
@@ -357,8 +326,7 @@ int main(int argc, char **argv) {
     std::cout << "Usample NF:" << Usample << std::endl;
     std::cout << "Usample FF:" << UsampleSP << std::endl;
     std::cout << "Usample FF+NF total:" << UsampleSP + Usample << std::endl;
-    std::cout << "Error : " << UsampleSP + Usample - 2.284722293289131159
-              << std::endl;
+    std::cout << "Error : " << UsampleSP + Usample - 2.284722293289131159 << std::endl;
 
     return 0;
 }

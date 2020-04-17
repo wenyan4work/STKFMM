@@ -16,8 +16,8 @@
 #include <Eigen/Dense>
 
 template <class T>
-inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A,
-                 int lda, T *B, int ldb, T beta, T *C, int ldc) {
+inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A, int lda, T *B, int ldb, T beta, T *C,
+                 int ldc) {
     if ((TransA == 'N' || TransA == 'n') && (TransB == 'N' || TransB == 'n')) {
 #pragma omp parallel for
         for (auto n = 0; n < N; n++) {     // Columns of C
@@ -26,8 +26,7 @@ inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A,
                 for (auto k = 0; k < K; k++) {
                     AxB += A[m + lda * k] * B[k + ldb * n];
                 }
-                C[m + ldc * n] =
-                    alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
+                C[m + ldc * n] = alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
             }
         }
     } else if (TransA == 'N' || TransA == 'n') {
@@ -38,8 +37,7 @@ inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A,
                 for (auto k = 0; k < K; k++) {
                     AxB += A[m + lda * k] * B[n + ldb * k];
                 }
-                C[m + ldc * n] =
-                    alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
+                C[m + ldc * n] = alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
             }
         }
     } else if (TransB == 'N' || TransB == 'n') {
@@ -50,8 +48,7 @@ inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A,
                 for (auto k = 0; k < K; k++) {
                     AxB += A[k + lda * m] * B[k + ldb * n];
                 }
-                C[m + ldc * n] =
-                    alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
+                C[m + ldc * n] = alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
             }
         }
     } else {
@@ -62,8 +59,7 @@ inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A,
                 for (auto k = 0; k < K; k++) {
                     AxB += A[k + lda * m] * B[n + ldb * k];
                 }
-                C[m + ldc * n] =
-                    alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
+                C[m + ldc * n] = alpha * AxB + (beta == 0 ? 0 : beta * C[m + ldc * n]);
             }
         }
     }
@@ -249,8 +245,7 @@ void SVD(const size_t dim[2], T *U_, T *S_, T *V_, T eps = -1) {
                 C[0][0] += S(n - 3, n - 2) * S(n - 3, n - 2);
             C[0][1] = S(n - 2, n - 2) * S(n - 2, n - 1);
             C[1][0] = S(n - 2, n - 2) * S(n - 2, n - 1);
-            C[1][1] = S(n - 1, n - 1) * S(n - 1, n - 1) +
-                      S(n - 2, n - 1) * S(n - 2, n - 1);
+            C[1][1] = S(n - 1, n - 1) * S(n - 1, n - 1) + S(n - 2, n - 1) * S(n - 2, n - 1);
 
             T b = -(C[0][0] + C[1][1]) / 2;
             T c = C[0][0] * C[1][1] - C[0][1] * C[1][0];
@@ -327,11 +322,9 @@ void SVD(const size_t dim[2], T *U_, T *S_, T *V_, T eps = -1) {
             for (size_t j = 0; j < E.Dim(1); j++) {
                 if (max_err < pvfmm::fabs<T>(E[i][j]))
                     max_err = pvfmm::fabs<T>(E[i][j]);
-                if ((i > j + 0 || i + 0 < j) &&
-                    max_nondiag0 < pvfmm::fabs<T>(S0[i][j]))
+                if ((i > j + 0 || i + 0 < j) && max_nondiag0 < pvfmm::fabs<T>(S0[i][j]))
                     max_nondiag0 = pvfmm::fabs<T>(S0[i][j]);
-                if ((i > j + 1 || i + 1 < j) &&
-                    max_nondiag1 < pvfmm::fabs<T>(S0[i][j]))
+                if ((i > j + 1 || i + 1 < j) && max_nondiag1 < pvfmm::fabs<T>(S0[i][j]))
                     max_nondiag1 = pvfmm::fabs<T>(S0[i][j]);
             }
         std::cout << max_err << '\n';
@@ -347,12 +340,10 @@ void SVD(const size_t dim[2], T *U_, T *S_, T *V_, T eps = -1) {
 #undef SVD_DEBUG
 
 template <class T>
-inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA, T *S,
-                T *U, int *LDU, T *VT, int *LDVT, T *WORK, int *LWORK,
-                int *INFO) {
+inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA, T *S, T *U, int *LDU, T *VT, int *LDVT,
+                T *WORK, int *LWORK, int *INFO) {
 
-    const size_t dim[2] = {static_cast<size_t>(std::max(*N, *M)),
-                           static_cast<size_t>(std::min(*N, *M))};
+    const size_t dim[2] = {static_cast<size_t>(std::max(*N, *M)), static_cast<size_t>(std::min(*N, *M))};
 
     std::vector<T> Udata(dim[0] * dim[0], 0);
     std::vector<T> Vdata(dim[1] * dim[1], 0);
@@ -426,8 +417,7 @@ inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA, T *S,
     //	mem::aligned_delete < T > (V_);
 
     if (0) { // Verify
-        const size_t dim[2] = {static_cast<size_t>(std::max(*N, *M)),
-                               static_cast<size_t>(std::min(*N, *M))};
+        const size_t dim[2] = {static_cast<size_t>(std::max(*N, *M)), static_cast<size_t>(std::min(*N, *M))};
         const size_t lda = *LDA;
         const size_t ldu = *LDU;
         const size_t ldv = *LDVT;
@@ -494,8 +484,7 @@ void pinv_pvfmm(T *M, int n1, int n2, T eps, T *M_) {
     std::vector<T> wsbufdata(wssize);
     T *wsbuf = wsbufdata.data();
 
-    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
-        wsbuf, &wssize, &INFO);
+    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k, wsbuf, &wssize, &INFO);
     if (INFO != 0)
         std::cout << INFO << '\n';
     assert(INFO == 0);
@@ -549,8 +538,7 @@ inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinv) {
     }
 }
 
-inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinvU,
-                 Eigen::MatrixXd &MatPinvVT) {
+inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinvU, Eigen::MatrixXd &MatPinvVT) {
     // this is the really backward stable SVD used by pvfmm
 
     double eps = 1;
@@ -603,8 +591,7 @@ inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinvU,
     std::vector<double> wsbufdata(wssize);
     double *wsbuf = wsbufdata.data();
 
-    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
-        wsbuf, &wssize, &INFO);
+    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k, wsbuf, &wssize, &INFO);
     if (INFO != 0) {
         std::cout << INFO << '\n';
     }
