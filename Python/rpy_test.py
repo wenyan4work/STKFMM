@@ -82,7 +82,7 @@ if __name__ == '__main__':
     comm.Barrier()
 
     # Setup FMM
-    myFMM = PySTKFMM.STKFMM(mult_order, max_pts, pbc, kernel)
+    myFMM = PySTKFMM.Stk3DFMM(mult_order, max_pts, pbc, kernel)
     kdim, _, kdimTrg = myFMM.getKernelDimension(kernel)
 
     # Create sources and target values
@@ -95,17 +95,17 @@ if __name__ == '__main__':
         print('kdimTrg = ', kdimTrg)
 
     # Set tree
-    myFMM.setBox(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)
-    myFMM.setPoints(nsrc, src_coord, 0, 0, ntrg, trg_coord)
+    myFMM.setBox(np.array([0.0, 0.0, 0.0]), 2.0)
+    myFMM.setPoints(nsrc, src_coord, ntrg, trg_coord, 0, 0)
     myFMM.setupTree(kernel)
 
     # Evaluate FMM
-    myFMM.evaluateFMM(nsrc, src_value, 0, 0, ntrg, trg_value, kernel)
+    myFMM.evaluateFMM(kernel, nsrc, src_value, ntrg, trg_value, 0, 0)
 
     # Clear FMM and evaluate again
     trg_value[:,:] = 0
     myFMM.clearFMM(kernel)
-    myFMM.evaluateFMM(nsrc, src_value, 0, 0, ntrg, trg_value, kernel)
+    myFMM.evaluateFMM(kernel, nsrc, src_value, ntrg, trg_value, 0, 0)
 
     comm.Barrier()
 
