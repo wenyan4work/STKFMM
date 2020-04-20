@@ -51,9 +51,9 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def("showActiveKernels", &stkfmm::STKFMM::showActiveKernels)
         .def("getBox", &stkfmm::STKFMM::getBox)
         .def("setPoints",
-             [](stkfmm::Stk3DFMM &fmm, const int nSL, py::array_t<double> src_SL_coord, const int nDL,
-                py::array_t<double> src_DL_coord, const int nTrg, py::array_t<double> trg_coord) {
-                 fmm.setPoints(nSL, src_SL_coord.data(), nDL, src_DL_coord.data(), nTrg, trg_coord.data());
+             [](stkfmm::Stk3DFMM &fmm, const int nSL, py::array_t<double> src_SL_coord, const int nTrg,
+                py::array_t<double> trg_coord, const int nDL, py::array_t<double> src_DL_coord) {
+                 fmm.setPoints(nSL, src_SL_coord.data(), nTrg, trg_coord.data(), nDL, src_DL_coord.data());
              })
         .def_static("getKernelDimension", &stkfmm::getKernelDimension)
         .def("setupTree", &stkfmm::STKFMM::setupTree)
@@ -67,9 +67,9 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def("isKernelActive", &stkfmm::STKFMM::isKernelActive)
         .def("clearFMM", &stkfmm::STKFMM::clearFMM)
         .def("evaluateKernel",
-             [](stkfmm::Stk3DFMM &fmm, const int nThreads, const stkfmm::PPKERNEL p2p, const int nSrc,
-                py::array_t<double> src_coord, py::array_t<double> src_value, const int nTrg,
-                py::array_t<double> trg_coord, py::array_t<double> trg_value, const stkfmm::KERNEL kernel) {
+             [](stkfmm::Stk3DFMM &fmm, const stkfmm::KERNEL kernel, const int nThreads, const stkfmm::PPKERNEL p2p,
+                const int nSrc, py::array_t<double> src_coord, py::array_t<double> src_value, const int nTrg,
+                py::array_t<double> trg_coord, py::array_t<double> trg_value) {
                  // Call method
                  fmm.evaluateKernel(kernel, nThreads, p2p, nSrc, (double *)src_coord.data(), (double *)src_value.data(),
                                     nTrg, (double *)trg_coord.data(), (double *)trg_value.data());
@@ -88,8 +88,8 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def("showActiveKernels", &stkfmm::STKFMM::showActiveKernels)
         .def("getBox", &stkfmm::STKFMM::getBox)
         .def("setPoints",
-             [](stkfmm::StkWallFMM &fmm, const int nSL, py::array_t<double> src_SL_coord, const int nDL,
-                py::array_t<double> src_DL_coord, const int nTrg, py::array_t<double> trg_coord) {
+             [](stkfmm::StkWallFMM &fmm, const int nSL, py::array_t<double> src_SL_coord, const int nTrg,
+                py::array_t<double> trg_coord, const int nDL, py::array_t<double> src_DL_coord) {
                  fmm.setPoints(nSL, src_SL_coord.data(), nDL, src_DL_coord.data(), nTrg, trg_coord.data());
              })
         .def_static("getKernelDimension", &stkfmm::getKernelDimension)
@@ -104,9 +104,9 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def("isKernelActive", &stkfmm::STKFMM::isKernelActive)
         .def("clearFMM", &stkfmm::STKFMM::clearFMM)
         .def("evaluateKernel",
-             [](stkfmm::StkWallFMM &fmm, const int nThreads, const stkfmm::PPKERNEL p2p, const int nSrc,
-                py::array_t<double> src_coord, py::array_t<double> src_value, const int nTrg,
-                py::array_t<double> trg_coord, py::array_t<double> trg_value, const stkfmm::KERNEL kernel) {
+             [](stkfmm::StkWallFMM &fmm, const stkfmm::KERNEL kernel, const int nThreads, const stkfmm::PPKERNEL p2p,
+                const int nSrc, py::array_t<double> src_coord, py::array_t<double> src_value, const int nTrg,
+                py::array_t<double> trg_coord, py::array_t<double> trg_value) {
                  // Call method
                  fmm.evaluateKernel(kernel, nThreads, p2p, nSrc, (double *)src_coord.data(), (double *)src_value.data(),
                                     nTrg, (double *)trg_coord.data(), (double *)trg_value.data());
