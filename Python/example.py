@@ -23,7 +23,7 @@ def calc_true_value(kernel_index, src_SL_coord, trg_coord, src_SL_value):
     elif kernel_index == PySTKFMM.KERNEL.Traction:
         trg_value  = kr.StokesSLTraction(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.StokesDLTraction(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
-    elif kernel_index == PySTKFMM.KERNEL.LAPPGrad:
+    elif kernel_index == PySTKFMM.KERNEL.LapPGrad:
         trg_value  = kr.LaplaceSLPGrad(src_SL_coord, trg_coord, src_SL_value, epsilon_distance = epsilon_distance)
         trg_value += kr.LaplaceDLPGrad(src_DL_coord, trg_coord, src_DL_value, epsilon_distance = epsilon_distance)
     else:
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     mult_order = 10
     max_pts = 128
     pbc = PySTKFMM.PAXIS.NONE
-    kernels = [PySTKFMM.KERNEL.PVel, PySTKFMM.KERNEL.PVelGrad, PySTKFMM.KERNEL.PVelLaplacian, PySTKFMM.KERNEL.Traction, PySTKFMM.KERNEL.LAPPGrad]
+    kernels = [PySTKFMM.KERNEL.PVel, PySTKFMM.KERNEL.PVelGrad, PySTKFMM.KERNEL.PVelLaplacian, PySTKFMM.KERNEL.Traction, PySTKFMM.KERNEL.LapPGrad]
     kernels_index = [PySTKFMM.KERNEL(k) for k in kernels]
     verify = True
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         # Create FMM
         print('\n\n==============================')
         timer.timer('create_fmm')
-        myFMM = PySTKFMM.STKFMM(mult_order, max_pts, pbc, kernels_index[k])
+        myFMM = PySTKFMM.Stk3DFMM(mult_order, max_pts, pbc, kernels_index[k])
         timer.timer('create_fmm')
         timer.timer('show_active_kernels')
         myFMM.showActiveKernels()
@@ -80,10 +80,10 @@ if __name__ == '__main__':
 
         # Set tree
         timer.timer('set_box')
-        myFMM.setBox(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)
+        myFMM.setBox([0.0, 0.0, 0.0], 2)
         timer.timer('set_box')
         timer.timer('set_points')
-        myFMM.setPoints(nsrc_SL, src_SL_coord, nsrc_DL, src_DL_coord, ntrg, trg_coord)
+        myFMM.setPoints(nsrc_SL, src_SL_coord, ntrg, trg_coord, nsrc_DL, src_DL_coord)
         timer.timer('set_points')
         timer.timer('setup_tree')
         myFMM.setupTree(kernel)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
         # Evaluate FMM
         timer.timer('evaluate_fmm')
-        myFMM.evaluateFMM(nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
+        myFMM.evaluateFMM(kernel, nsrc_SL, src_SL_value, ntrg, trg_value, nsrc_DL, src_DL_value)
         timer.timer('evaluate_fmm')
 
         # Clear FMM and evaluate again
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         myFMM.clearFMM(kernel)
         timer.timer('clear_fmm')
         timer.timer('evaluate_fmm')
-        myFMM.evaluateFMM(nsrc_SL, src_SL_value, nsrc_DL, src_DL_value, ntrg, trg_value, kernel)
+        myFMM.evaluateFMM(kernel, nsrc_SL, src_SL_value, ntrg, trg_value, nsrc_DL, src_DL_value)
         timer.timer('evaluate_fmm')
 
         if verify:
