@@ -16,7 +16,7 @@ if(PyInterface)
   target_compile_options(PySTKFMM PUBLIC ${OpenMP_CXX_FLAGS}
                                          ${MPI_CXX_INCLUDE_DIRS})
   target_link_libraries(
-    PySTKFMM PUBLIC STKFMM ${pybind11_LIBRARIES} ${PVFMM_SHARED_LIBRARY}
+    PySTKFMM PUBLIC STKFMM_SHARED ${pybind11_LIBRARIES} ${PVFMM_SHARED_LIBRARY}
                     OpenMP::OpenMP_CXX ${PVFMM_DEP_LIB} MPI::MPI_CXX)
 
   # add example.py as

@@ -35,9 +35,28 @@ find_package(Eigen3 REQUIRED)
 
 enable_testing()
 
-add_subdirectory(M2L)
+set(BUILD_M2L
+    OFF
+    CACHE BOOL "compile M2L data generator")
+set(BUILD_TEST
+    ON
+    CACHE BOOL "compile c++ test driver")
+set(BUILD_DOC
+    OFF
+    CACHE BOOL "build doxygen doc")
+set(PyInterface
+    OFF
+    CACHE BOOL "build python interface")
+
 add_subdirectory(Lib)
-add_subdirectory(Test)
+
+if(BUILD_M2L)
+  add_subdirectory(M2L)
+endif()
+
+if(BUILD_TEST)
+  add_subdirectory(Test)
+endif()
 
 if(PyInterface)
   add_subdirectory(Python)
