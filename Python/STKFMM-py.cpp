@@ -90,7 +90,7 @@ PYBIND11_MODULE(PySTKFMM, m) {
         .def("setPoints",
              [](stkfmm::StkWallFMM &fmm, const int nSL, py::array_t<double> src_SL_coord, const int nTrg,
                 py::array_t<double> trg_coord, const int nDL, py::array_t<double> src_DL_coord) {
-                 fmm.setPoints(nSL, src_SL_coord.data(), nDL, src_DL_coord.data(), nTrg, trg_coord.data());
+                 fmm.setPoints(nSL, src_SL_coord.data(), nTrg, trg_coord.data(), nDL, src_DL_coord.data());
              })
         .def_static("getKernelDimension", &stkfmm::getKernelDimension)
         .def("setupTree", &stkfmm::STKFMM::setupTree)
