@@ -89,7 +89,7 @@ fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data(), nDL
 fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data());
 ```
 * For `Stk3DFMM`, all points must in the cube defined by [x0,x0+box)$\times$[y0,y0+box)$\times$[z0,z0+box)
-* For `StkWallFMM`, all points must in the half cube defined by [x0,x0+box)$\times$[y0,y0+box)$\times$[z0,z0+box/2) 
+* For `StkWallFMM`, all points must in the half cube defined by [x0,x0+box)$\times$[y0,y0+box)$\times$[z0,z0+box/2), and the no-slip boundary condition is always imposed at the z0 plane. 
 
 ### Step 3 Run FMM for one kernel:
 ```cpp
