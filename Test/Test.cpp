@@ -23,7 +23,8 @@ std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
                 {KERNEL::PVelLaplacian, std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)}});
 
 void Config::parse(int argc, char **argv) {
-    CLI::App app("Testing Stk3DFMM and StkWallFMM\n");
+    CLI::App app("Test Driver for Stk3DFMM and StkWallFMM\n");
+    app.set_config("--config", "", "config file name");
     // basic settings
     app.add_option("-S,--nsl", nSL, "number of source SL points");
     app.add_option("-D,--ndl", nDL, "number of source DL points");
@@ -57,6 +58,8 @@ void Config::parse(int argc, char **argv) {
         app.exit(e);
         exit(1);
     }
+
+    //  std::cout<<app.config_to_str(true,true);
 
     if (wall) {
         if (pbc == 3) {
