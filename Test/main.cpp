@@ -21,16 +21,26 @@ int main(int argc, char **argv) {
     genPoint(config, point, 3);
     genSrcValue(config, point, input);
 
-    printf("src value generated\n");
+    printf_rank0("src value generated\n");
 
     if (config.verify) {
-        runSimpleKernel(point, input, verifyResult);
+        if (config.wall) {
+            // verify with zero on wall
+            for (auto &k : input) {
+                auto kernel = k.first;
+                int kdimTrg = std::get<2>(stkfmm::getKernelDimension(kernel));
+                int nTrg = point.trgLocal.size() / 3;
+                verifyResult[kernel].resize(nTrg * kdimTrg, 0);
+            }
+        } else {
+            runSimpleKernel(point, input, verifyResult);
+        }
         dumpValue("verify", point, input, verifyResult);
     }
 
     if (config.convergence) {
         runFMM(config, maxP, point, input, convResult, timing);
-        dumpValue("P" + std::to_string(maxP), point, input, verifyResult);
+        dumpValue("maxp" + std::to_string(maxP), point, input, verifyResult);
         for (auto &t : timing) {
             Record record;
             record.kernel = t.first;

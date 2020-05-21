@@ -201,6 +201,14 @@ void genPoint(const Config &config, Point &point, int dim) {
         scaleZ(point.srcLocalSL);
         scaleZ(point.srcLocalDL);
         scaleZ(point.trgLocal);
+
+        if (config.verify) {
+            // verify wall vel = 0.
+            const int ntrg = point.trgLocal.size() / 3;
+            for (int i = 0; i < ntrg; i++) {
+                point.trgLocal[3 * i + 2] = origin[2];
+            }
+        }
     }
 }
 
