@@ -327,7 +327,7 @@ inline const Kernel<T> &StokesRegKernel<T>::FTVelOmega() {
     static Kernel<T> stk_regftvel =
         BuildKernel<T, stokes_regftvel<T, NEWTON_ITE>>("stokes_regftvel", 3, std::pair<int, int>(7, 3));
     static Kernel<T> s2t_ker = BuildKernel<T, stokes_regftvelomega<T, NEWTON_ITE>>(
-        "stokes_regvel", 3, std::pair<int, int>(7, 6), &stk_regftvel, &stk_regftvel, NULL, &stk_ker, &stk_ker,
+        "stokes_regftvelomega", 3, std::pair<int, int>(7, 6), &stk_regftvel, &stk_regftvel, NULL, &stk_ker, &stk_ker,
         &stk_velomega, &stk_ker, &stk_velomega);
 
     return s2t_ker;

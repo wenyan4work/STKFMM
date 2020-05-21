@@ -1,0 +1,16 @@
+nsl = 32
+ndl = 32
+ntrg = 32
+box = 10
+origin = [1,2,3]
+kernel = 0 
+pbc = 0
+seed = 0
+eps = 1e-4
+max = 500
+direct = false
+verify = true
+convergence = false
+random = true
+wall = false
+

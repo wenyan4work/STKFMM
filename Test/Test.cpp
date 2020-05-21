@@ -40,16 +40,13 @@ void Config::parse(int argc, char **argv) {
     app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
 
     // flags
-    auto directParse = app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
+    app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
     app.add_flag("--verify,!--no-verify", verify, "verify results with O(N^2) direct summation");
     app.add_flag("--convergence,!--no-convergence", convergence, "calculate convergence error relative to FMM at p=16");
     app.add_flag("--random,!--no-random", random, "use random points, otherwise regular mesh");
 
     // wall settings
-    auto wallParse = app.add_flag("--wall,!--no-wall", wall, "test StkWallFMM, otherwise Stk3DFMM");
-
-    // conflict settings
-    wallParse->excludes(directParse);
+    app.add_flag("--wall,!--no-wall", wall, "test StkWallFMM, otherwise Stk3DFMM");
 
     // parse
     try {
@@ -59,22 +56,25 @@ void Config::parse(int argc, char **argv) {
         exit(1);
     }
 
-    //  std::cout<<app.config_to_str(true,true);
-
+    // sanity check
     if (wall) {
         if (pbc == 3) {
-            printf_rank0("PXYZ cannot be used with wall\n");
+            printf_rank0("PXYZ doesn't work for wall fmm\n");
             exit(1);
         }
         if (verify) {
             printf_rank0("Verify + wall checks no-slip condition only\n");
         }
+        if (direct) {
+            printf_rank0("option direct doesn't work for wall fmm\n");
+            exit(1);
+        }
     }
 
-    // sanity check
-    int rank = 0, nProcs = 1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
+    if (pbc && verify) {
+        printf_rank0("option verify doesn't work for periodic boundary conditions\n");
+        exit(1);
+    }
 }
 
 void Config::print() const {
@@ -484,12 +484,10 @@ void runSimpleKernel(const Point &point, Input &input, Result &result) {
 void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result, Timing &timing) {
     using namespace stkfmm;
     result.clear();
-    const double box = config.box;
+
     const int k = (config.K == 0) ? ~((int)0) : config.K;
     const PAXIS paxis = static_cast<PAXIS>(config.pbc);
     const int maxPoints = config.maxPoints;
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     std::shared_ptr<STKFMM> fmmPtr;
     if (config.wall) {
@@ -500,6 +498,7 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
     fmmPtr->showActiveKernels();
 
     double origin[3] = {config.origin[0], config.origin[1], config.origin[2]};
+    const double box = config.box;
     fmmPtr->setBox(origin, box);
 
     const int nSL = point.srcLocalSL.size() / 3;
