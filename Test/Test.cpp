@@ -1,6 +1,13 @@
 #include "Test.hpp"
+#include "Util/CLI11.hpp"
+#include "Util/json.hpp"
 
+#include <iostream>
 #include <memory>
+
+#include <mpi.h>
+
+typedef void (*kernel_func)(double *, double *, double *, double *);
 
 std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
     SL_kernels({{KERNEL::LapPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
@@ -15,44 +22,113 @@ std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
                 {KERNEL::Traction, std::make_pair(StokesSLTraction, StokesDLTraction)},
                 {KERNEL::PVelLaplacian, std::make_pair(StokesSLPVelLaplacian, StokesDLPVelLaplacian)}});
 
-void configure_parser(cli::Parser &parser) {
-    parser.set_optional<int>("S", "nSLSource", 1, "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
-    parser.set_optional<int>("D", "nDLSource", 1, "1/2/4 for 1/2/4 point forces, other for same as target, default=1");
-    parser.set_optional<int>("T", "nTarget", 2, "total number of targets = (T+1)^3, default T=2");
-    parser.set_optional<int>("s", "Seed", 1, "RNG Seed");
-    parser.set_optional<double>("B", "box", 1.0, "box edge length, default B=1.0");
-    parser.set_optional<double>("M", "move", 0.0, "box origin shift move, default M=0");
-    parser.set_optional<int>("K", "Kernel Combination", 0, "activated kernels, default=0 means all kernels");
-    parser.set_optional<int>("R", "Random", 1, "0 for random, 1 for regular mesh, default 1");
-    parser.set_optional<int>("F", "FMM", 1, "0 to test S2T kernel, 1 to test FMM, default 1");
-    parser.set_optional<int>("V", "Verify", 1, "1 for O(N^2) and 0 for p=16 verification, default 1");
-    parser.set_optional<int>("P", "Periodic", 0, "0 for NONE, 1 for PX, 2 for PXY, 3 for PXYZ, default 0");
-    parser.set_optional<int>("m", "maxPoints", 50, "Max number of points in adaptive Octree, default 50");
-    parser.set_optional<double>("e", "epsilon", 0.01,
-                                "Maximum size of particle for RPY and StokesReg kernels, default 0.01");
+void Config::parse(int argc, char **argv) {
+    CLI::App app("Testing Stk3DFMM and StkWallFMM\n");
+    // basic settings
+    app.add_option("-S,--nsl", nSL, "number of source SL points");
+    app.add_option("-D,--ndl", nDL, "number of source DL points");
+    app.add_option("-T,--ntrg", nTrg, "number of source TRG points");
+    app.add_option("-B,--box", box, "testing cubic box edge length");
+    app.add_option("-O,--origin", origin[0], "testing cubic box origin point");
+    app.add_option("-K,--kernel", K, "test which kernels");
+    app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
+
+    // tunnings
+    app.add_option("--seed", rngseed, "seed for random number generator");
+    app.add_option("--eps", epsilon, "epsilon or a for Regularized and RPY kernels");
+    app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
+
+    // flags
+    auto directParse = app.add_flag("-d,--direct", direct, "run O(N^2) direct summation with S2T kernels");
+    app.add_flag("-v,--verify", verify, "verify results with O(N^2) direct summation");
+    app.add_flag("-c,--convergence", convergence, "calculate convergence error relative to FMM at p=16");
+    app.add_flag("-r,--random", random, "use random points, otherwise regular mesh");
+
+    // wall settings
+    auto wallParse = app.add_flag("--wall", wall, "test StkWallFMM, otherwise Stk3DFMM");
+
+    // conflict settings
+    wallParse->excludes(directParse);
+
+    // parse
+    try {
+        app.parse(argc, argv);
+    } catch (const CLI::ParseError &e) {
+        app.exit(e);
+        exit(1);
+    }
+
+    if (wall) {
+        if (pbc == 3) {
+            printf_rank0("PXYZ cannot be used with wall\n");
+            exit(1);
+        }
+        if (verify) {
+            printf_rank0("Verify + wall checks no-slip condition only\n");
+        }
+    }
+
+    // sanity check
+    int rank = 0, nProcs = 1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nProcs);
 }
 
-void showOption(const cli::Parser &parser) {
-    std::cout << "Running setting: " << std::endl;
-    std::cout << "nSL Source: " << parser.get<int>("S") << std::endl;
-    std::cout << "nDL Source: " << parser.get<int>("D") << std::endl;
-    std::cout << "nTarget: " << parser.get<int>("T") << std::endl;
-    std::cout << "RNG Seed: " << parser.get<int>("s") << std::endl;
-    std::cout << "Box: " << parser.get<double>("B") << std::endl;
-    std::cout << "Shift: " << parser.get<double>("M") << std::endl;
-    std::cout << "KERNEL: " << parser.get<int>("K") << std::endl;
-    std::cout << "Random: " << parser.get<int>("R") << std::endl;
-    std::cout << "Using FMM: " << parser.get<int>("F") << std::endl;
-    std::cout << "Verification: " << parser.get<int>("V") << std::endl;
-    std::cout << "Periodic BC: " << parser.get<int>("P") << std::endl;
-    std::cout << "maxPoints: " << parser.get<int>("m") << std::endl;
-    std::cout << "eps: " << parser.get<double>("e") << std::endl;
+void Config::print() const {
+    printf_rank0("Testing settings:\n");
+    printf_rank0("nSL %d, nDL %d, nTrg %d\n");
+    printf_rank0("box %g\n", box);
+    printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
+    printf_rank0("Kernel %d\n", K);
+    printf_rank0("PBC %d\n", pbc);
+
+    printf_rank0("rngseed %d\n", rngseed);
+    printf_rank0("maxPoints %d\n", maxPoints);
+    printf_rank0("epsilon RPY/REG %g\n", epsilon);
+
+    printf_rank0(direct ? "Run S2T N2 direct summation\n" : "Run FMM\n");
+    printf_rank0(verify ? "Show true error\n" : "");
+    printf_rank0(convergence ? "Show convergence error\n" : "");
+    printf_rank0(random ? "Random points\n" : "Regular mesh\n");
+
+    printf_rank0(wall ? "Testing StkWallFMM\n" : "Testing Stk3DFMM\n");
+}
+
+ComponentError::ComponentError(const std::vector<double> &A, const std::vector<double> &B) {
+    if (A.size() != B.size()) {
+        printf("size error calc drift\n");
+        exit(1);
+    }
+    const int N = A.size();
+    drift = 0;
+    for (int i = 0; i < N; i++) {
+        drift += A[i] - B[i];
+    }
+    drift /= N;
+
+    std::vector<double> value = A;
+    const auto &valueTrue = B;
+    for (auto &v : value) {
+        v -= drift;
+    }
+
+    double L2 = 0;
+    for (int i = 0; i < N; i++) {
+        double e2 = pow(valueTrue[i] - value[i], 2);
+        errorL2 += e2;
+        L2 += pow(valueTrue[i], 2);
+        errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
+    }
+    errorRMS = sqrt(errorL2 / N);
+    errorL2 = sqrt(errorL2 / L2);
+    driftL2 = drift * N / sqrt(L2);
 }
 
 // generate (distributed) FMM points
-void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
-    const double shift = parser.get<double>("M");
-    const double box = parser.get<double>("B");
+void genPoint(const Config &config, Point &point, int dim) {
+    const auto &origin = config.origin;
+    const auto &box = config.box;
+
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
@@ -63,35 +139,46 @@ void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
     srcLocalDL.clear();
     trgLocal.clear();
 
-    PointDistribution pd(parser.get<int>("s"));
+    PointDistribution pd(config.rngseed);
 
     if (myRank == 0) {
-        // set trg coord
-        const int nPts = parser.get<int>("T");
-        if (parser.get<int>("R") > 0) {
-            pd.randomPoints(dim, nPts, box, shift, trgLocal);
+        const int nTrg = config.nTrg;
+        if (config.random) {
+            pd.randomPoints(dim, nTrg, box, 0, trgLocal);
         } else {
-            PointDistribution::meshPoints(dim, nPts, box, shift, trgLocal);
+            PointDistribution::meshPoints(dim, nTrg, box, 0, trgLocal);
         }
 
-        // set src SL coord
-        const int nSL = parser.get<int>("S");
+        const int nSL = config.nSL;
         if (nSL == 0) {
             srcLocalSL.clear();
         } else if (nSL == 1 || nSL == 2 || nSL == 4) {
-            PointDistribution::fixedPoints(nSL, box, shift, srcLocalSL);
+            PointDistribution::fixedPoints(nSL, box, 0, srcLocalSL);
         } else {
             srcLocalSL = trgLocal;
         }
 
-        const int nDL = parser.get<int>("D");
+        const int nDL = config.nDL;
         if (nDL == 0) {
             srcLocalDL.clear();
         } else if (nDL == 1 || nDL == 2 || nDL == 4) {
-            PointDistribution::fixedPoints(nDL, box, shift, srcLocalDL);
+            PointDistribution::fixedPoints(nDL, box, 0, srcLocalDL);
         } else {
             srcLocalDL = trgLocal;
         }
+
+        // shift points
+        auto shift = [&](std::vector<double> &pts, int npts) {
+            for (int i = 0; i < npts; i++) {
+                pts[3 * i + 0] += origin[0];
+                pts[3 * i + 1] += origin[1];
+                pts[3 * i + 2] += origin[2];
+            }
+        };
+
+        shift(trgLocal, nTrg);
+        shift(srcLocalSL, nSL);
+        shift(srcLocalDL, nDL);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -103,12 +190,12 @@ void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if (wall) {
+    if (config.wall) {
         auto scaleZ = [&](std::vector<double> &pts) {
             const int npts = pts.size() / 3;
             // from [shift,shift+box) to [shift,shift+box/2)
             for (int i = 0; i < npts; i++) {
-                pts[3 * i + 2] = shift + 0.5 * (pts[3 * i + 2] - shift);
+                pts[3 * i + 2] = origin[2] + 0.5 * (pts[3 * i + 2] - origin[2]);
             }
         };
         scaleZ(point.srcLocalSL);
@@ -117,17 +204,66 @@ void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall) {
     }
 }
 
-// generate SrcValue, distributed with given points
-void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs, bool neutral) {
-    using namespace stkfmm;
-    inputs.clear();
+// translate distributed points
+void translatePoint(const Config &config, Point &point) {
+    const double box = config.box;
+    const int paxis = config.pbc;
+    const auto &origin = config.origin;
+
     const int nSL = point.srcLocalSL.size() / 3;
     const int nDL = point.srcLocalDL.size() / 3;
     const int nTrg = point.trgLocal.size() / 3;
-    const int pbc = parser.get<int>("P");
-    const int kernelComb = parser.get<int>("K");
 
-    PointDistribution pd(parser.get<int>("s"));
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double trans[3] = {0, 0, 0};
+    if (!rank) {
+        // generate random number on rank0
+        // Standard mersenne_twister_engine seeded
+        std::mt19937 gen(config.rngseed);
+        std::uniform_real_distribution<double> dis(-1, 1);
+        if (paxis == 1)
+            trans[0] = dis(gen);
+        else if (paxis == 2) {
+            trans[0] = dis(gen);
+            trans[1] = dis(gen);
+        } else if (paxis == 3) {
+            trans[0] = dis(gen);
+            trans[1] = dis(gen);
+            trans[2] = dis(gen);
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Bcast(trans, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    auto translate = [&](std::vector<double> &coord, const int np) {
+        for (int i = 0; i < np; i++) {
+            for (int j = 0; j < 3; j++) {
+                auto &pos = coord[3 * i + j];
+                pos += trans[j] * box;
+                while (pos < origin[j])
+                    pos += box;
+                while (pos >= origin[j] + box)
+                    pos -= box;
+            }
+        }
+    };
+    translate(point.srcLocalSL, nSL);
+    translate(point.srcLocalDL, nDL);
+    translate(point.trgLocal, nTrg);
+}
+
+// generate SrcValue, distributed with given points
+void genSrcValue(const Config &config, const Point &point, Input &input, bool neutral) {
+    using namespace stkfmm;
+    input.clear();
+    const int nSL = point.srcLocalSL.size() / 3;
+    const int nDL = point.srcLocalDL.size() / 3;
+    const int nTrg = point.trgLocal.size() / 3;
+    const int pbc = config.pbc;
+    const int kernelComb = config.K;
+
+    PointDistribution pd(config.rngseed);
 
     // loop over each activated kernel
     for (const auto &it : kernelMap) {
@@ -135,7 +271,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
         if (kernelComb != 0 && !(asInteger(kernel) & kernelComb)) {
             continue;
         }
-        FMMsrcval value;
+        Source value;
         int kdimSL, kdimDL, kdimTrg;
         std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
         value.srcLocalSL.resize(kdimSL * nSL);
@@ -147,7 +283,7 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
 
         if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
             // sphere radius/regularization must be small
-            const double reg = parser.get<double>("e");
+            const double reg = config.rngseed;
             auto setreg = [&](double &v) { v = std::abs(v) * reg; };
             for (int i = 0; i < nSL; i++) {
                 setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);
@@ -228,58 +364,11 @@ void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inp
                 }
             }
         }
-        inputs[kernel] = value;
+        input[kernel] = value;
     }
 }
 
-void translatePoints(const cli::Parser &parser, FMMpoint &point) {
-    const double box = parser.get<double>("B");
-    const int paxis = parser.get<int>("P");
-    const double shift = parser.get<double>("M");
-
-    const int nSL = point.srcLocalSL.size() / 3;
-    const int nDL = point.srcLocalDL.size() / 3;
-    const int nTrg = point.trgLocal.size() / 3;
-
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    double trans[3] = {0, 0, 0};
-    if (!rank) {
-        // Standard mersenne_twister_engine seeded
-        std::mt19937 gen(parser.get<int>("s"));
-        std::uniform_real_distribution<double> dis(-1, 1);
-        if (paxis == 1)
-            trans[0] = dis(gen);
-        else if (paxis == 2) {
-            trans[0] = dis(gen);
-            trans[1] = dis(gen);
-        } else if (paxis == 3) {
-            trans[0] = dis(gen);
-            trans[1] = dis(gen);
-            trans[2] = dis(gen);
-        }
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Bcast(trans, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    auto translate = [&](std::vector<double> &coord, const int np) {
-        for (int i = 0; i < np; i++) {
-            for (int j = 0; j < 3; j++) {
-                auto &pos = coord[3 * i + j];
-                pos += trans[j] * box;
-                while (pos < shift)
-                    pos += box;
-                while (pos >= shift + box)
-                    pos -= box;
-            }
-        }
-    };
-    translate(point.srcLocalSL, nSL);
-    translate(point.srcLocalDL, nDL);
-    translate(point.trgLocal, nTrg);
-}
-
-void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &inputs, const FMMresult &results) {
+void dumpValue(const std::string &tag, const Point &point, const Input &inputs, const Result &results) {
     auto writedata = [&](std::string name, const std::vector<double> &coord_, const std::vector<double> &value_,
                          const int kdim) {
         auto coord = coord_;
@@ -298,6 +387,7 @@ void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &in
             trgLocal = it->second;
         } else {
             std::cout << "result not found for kernel " << getKernelName(kernel) << std::endl;
+            exit(1);
         }
         writedata(tag + "_srcSL_K" + std::to_string(asInteger(kernel)), point.srcLocalSL, value.srcLocalSL, kdimSL);
         writedata(tag + "_srcDL_K" + std::to_string(asInteger(kernel)), point.srcLocalDL, value.srcLocalDL, kdimDL);
@@ -305,25 +395,7 @@ void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &in
     }
 }
 
-void checkError(const FMMresult &A, const FMMresult &B, bool component) {
-    for (auto &data : A) {
-        auto kernel = data.first;
-        auto it = B.find(kernel);
-        if (it == B.end()) {
-            printf("check result error, reference not found\n");
-            exit(1);
-        }
-        std::cout << "Error for kernel " << getKernelName(kernel) << std::endl;
-        if (component) {
-            int kdimSL, kdimDL, kdimTrg;
-            std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
-            PointDistribution::checkError(data.second, it->second, kdimTrg);
-        } else
-            PointDistribution::checkError(data.second, it->second);
-    }
-}
-
-void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results) {
+void runSimpleKernel(const Point &point, Input &input, Result &result) {
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
@@ -338,7 +410,7 @@ void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results
     PointDistribution::collectPtsAll(srcDLCoordGlobal);
 
     // loop over all activated kernels
-    for (auto &data : inputs) {
+    for (auto &data : input) {
         KERNEL kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
@@ -393,65 +465,126 @@ void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results
                     }
                 }
         }
-        results[kernel] = trgLocal;
+        result[kernel] = trgLocal;
     }
 }
 
-void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMinput &inputs, FMMresult &results,
-            bool wall) {
+void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result,
+            std::vector<Record> &history) {
     using namespace stkfmm;
-    results.clear();
-    const double shift = parser.get<double>("M");
-    const double box = parser.get<double>("B");
-    const int temp = parser.get<int>("K");
-    const int k = (temp == 0) ? ~((int)0) : temp;
-    const PAXIS paxis = (PAXIS)parser.get<int>("P");
-    const int maxPoints = parser.get<int>("m");
+    result.clear();
+    const double box = config.box;
+    const int k = (config.K == 0) ? ~((int)0) : config.K;
+    const PAXIS paxis = static_cast<PAXIS>(config.pbc);
+    const int maxPoints = config.maxPoints;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     std::shared_ptr<STKFMM> fmmPtr;
-    if (wall) {
+    if (config.wall) {
         fmmPtr = std::make_shared<StkWallFMM>(p, maxPoints, paxis, k);
     } else {
         fmmPtr = std::make_shared<Stk3DFMM>(p, maxPoints, paxis, k);
     }
-
-    double origin[3] = {shift, shift, shift};
-    fmmPtr->setBox(origin, box);
     fmmPtr->showActiveKernels();
+
+    double origin[3] = {config.origin[0], config.origin[1], config.origin[2]};
+    fmmPtr->setBox(origin, box);
+
     const int nSL = point.srcLocalSL.size() / 3;
     const int nDL = point.srcLocalDL.size() / 3;
     const int nTrg = point.trgLocal.size() / 3;
-
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     fmmPtr->setPoints(nSL, point.srcLocalSL.data(), nTrg, point.trgLocal.data(), nDL, point.srcLocalDL.data());
 
-    for (auto &data : inputs) {
+    for (auto &data : input) {
         auto &kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
         std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
         std::vector<double> trgLocal(nTrg * kdimTrg, 0);
-        if (parser.get<int>("F")) {
 
+        Timer timer;
+        double treeTime, runTime;
+        Record record;
+
+        if (config.direct) {
+            auto srcLocalCoord = point.srcLocalSL; // a copy
+            auto trgLocalCoord = point.trgLocal;
+            PointDistribution::collectPtsAll(srcLocalCoord); // src from all ranks
+
+            timer.tick();
+            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T, nSL, srcLocalCoord.data(), value.srcLocalSL.data(), nTrg,
+                                   trgLocalCoord.data(), trgLocal.data());
+            timer.tock("evaluateKernel");
+            const auto &time = timer.getTime();
+            treeTime = 0;
+            runTime = time[0];
+        } else {
             fmmPtr->clearFMM(kernel);
-            Timer timer;
+
             timer.tick();
             fmmPtr->setupTree(kernel);
             timer.tock("setupTree");
+
             timer.tick();
             fmmPtr->evaluateFMM(kernel, nSL, value.srcLocalSL.data(), nTrg, trgLocal.data(), nDL,
                                 value.srcLocalDL.data());
             timer.tock("evaluateFMM");
-            if (!rank)
-                timer.dump();
-        } else {
-            auto srcLocalCoord = point.srcLocalSL;
-            auto trgLocalCoord = point.trgLocal;
-            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T, nSL, srcLocalCoord.data(), value.srcLocalSL.data(), nTrg,
-                                   trgLocalCoord.data(), trgLocal.data());
+            const auto &time = timer.getTime();
+            treeTime = time[0];
+            runTime = time[1];
         }
-        results[kernel] = trgLocal;
+        result[kernel] = trgLocal;
+        record.kernel = kernel;
+        record.multOrder = p;
+        record.treeTime = treeTime;
+        record.runTime = runTime;
+        history.push_back(record);
     }
 }
+
+void checkError(const int nPts, const int dim, std::vector<double> &A, std::vector<double> &B,
+                std::vector<ComponentError> &error) {
+    error.clear();
+    // collect to rank0
+    std::vector<double> value = A;
+    std::vector<double> valueTrue = B;
+    PointDistribution::collectPts(value);
+    PointDistribution::collectPts(valueTrue);
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank) {
+        MPI_Barrier(MPI_COMM_WORLD);
+    } else {
+        // check error for each component on rank 0
+        if (nPts * dim != valueTrue.size()) {
+            printf("error check size error\n");
+            exit(1);
+        }
+        std::vector<double> comp(nPts), compTrue(nPts);
+        auto getComp = [&](int k) {
+            comp.clear();
+            compTrue.clear();
+            comp.resize(nPts);
+            compTrue.resize(nPts);
+            for (int i = 0; i < nPts; i++) {
+                comp[i] = value[i * dim + k];
+                compTrue[i] = valueTrue[i * dim + k];
+            }
+        };
+        for (int i = 0; i < dim; i++) {
+            getComp(i);
+            error.emplace_back(comp, compTrue);
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    return;
+}
+
+// void recordJson(const cli::Parser &parser, const std::vector<Record> &record) {
+//     // write settings and record to a json file
+//     using json = nlohmann::json;
+//     json output;
+// }

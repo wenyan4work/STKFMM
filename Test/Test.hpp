@@ -7,48 +7,93 @@
 
 #include "Util/PointDistribution.hpp"
 #include "Util/Timer.hpp"
-#include "Util/cmdparser.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <iomanip>
-#include <iostream>
+#include <unordered_map>
 #include <vector>
 
 constexpr int maxP = 16;
+using KERNEL = stkfmm::KERNEL;
+using Stk3DFMM = stkfmm::Stk3DFMM;
+using StkWallFMM = stkfmm::StkWallFMM;
 
-struct FMMpoint {
+struct Config {
+    int nSL = 1, nDL = 1, nTrg = 1;
+    int rngseed = 0;
+    double box = 1;
+    double origin[3] = {0, 0, 0};
+    int K = 1;
+    int pbc = 0;
+    int maxPoints = 50;
+    double epsilon = 1e-3;
+    bool random = true;
+    bool direct = false;
+    bool verify = false;
+    bool convergence = true;
+    bool wall = false;
+
+    Config() = default;
+    void parse(int argc, char **argv);
+    void print() const;
+};
+
+struct Point {
     std::vector<double> srcLocalSL;
     std::vector<double> srcLocalDL;
     std::vector<double> trgLocal;
 };
 
-struct FMMsrcval {
+struct Source {
     std::vector<double> srcLocalSL;
     std::vector<double> srcLocalDL;
 };
 
-using KERNEL = stkfmm::KERNEL;
-using Stk3DFMM = stkfmm::Stk3DFMM;
-using StkWallFMM = stkfmm::StkWallFMM;
-using FMMinput = std::unordered_map<KERNEL, FMMsrcval>;
-using FMMresult = std::unordered_map<KERNEL, std::vector<double>>;
+struct ComponentError {
+    double drift = 0;       // mean drift
+    double driftL2 = 0;     // drift * n / L2norm(vec)
+    double errorL2 = 0;     // L2 error
+    double errorRMS = 0;    // RMS error
+    double errorMaxRel = 0; // max relative error
 
-typedef void (*kernel_func)(double *, double *, double *, double *);
+    ComponentError() = default;
+    ComponentError(const std::vector<double> &A, const std::vector<double> &B);
+};
 
-extern std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>> SL_kernels;
+struct Record {
+    KERNEL kernel;
+    int multOrder;
+    double treeTime = 0;
+    double runTime = 0;
+    std::vector<ComponentError> errorConvergence; // error for each trgValue component
+    std::vector<ComponentError> errorVerify;      // error for each trgValue component
+};
 
-void configure_parser(cli::Parser &parser);
-void showOption(const cli::Parser &parser);
+using Input = std::unordered_map<KERNEL, Source>;
+using Result = std::unordered_map<KERNEL, std::vector<double>>;
 
-void genPoint(int dim, const cli::Parser &parser, FMMpoint &point, bool wall = false);
-void genSrcValue(const cli::Parser &parser, const FMMpoint &point, FMMinput &inputs, bool neutral = false);
-void translatePoints(const cli::Parser &parser, FMMpoint &point);
-void dumpValue(const std::string &tag, const FMMpoint &point, const FMMinput &inputs, const FMMresult &results);
-void checkError(const FMMresult &A, const FMMresult &B, bool component = false);
+void genPoint(const Config &config, Point &point, int dim);
+void translatePoint(const Config &config, Point &point);
 
-void runSimpleKernel(const FMMpoint &point, FMMinput &inputs, FMMresult &results);
-void runFMM(const cli::Parser &parser, const int p, const FMMpoint &point, FMMinput &inputs, FMMresult &results,
-            bool wall = false);
+void genSrcValue(const Config &config, const Point &point, Input &input, bool neutral = false);
+
+void runSimpleKernel(const Point &point, Input &input, Result &result);
+
+void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result,
+            std::vector<Record> &history);
+
+void checkError(const int nPts, const int dim, std::vector<double> &A, std::vector<double> &B,
+                std::vector<ComponentError> &error);
+
+void dumpValue(const std::string &tag, const Point &point, const Input &input, const Result &result);
+
+// void recordJson(const Config &config, const std::vector<Record> &record);
+
+template <typename... Args>
+inline void printf_rank0(Args... args) {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (!rank) {
+        printf(args...);
+    }
+}
 
 #endif

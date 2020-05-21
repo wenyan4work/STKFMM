@@ -58,6 +58,15 @@ class Timer {
                 << " seconds." << std::endl;
         }
     }
+
+    std::vector<double> getTime() {
+        std::vector<double> time;
+        for (const auto &event : timing) {
+            time.push_back(
+                std::chrono::duration_cast<std::chrono::microseconds>(event.stopTime - event.startTime).count() / 1e6);
+        }
+        return time;
+    }
 };
 
 #endif

@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
     FMMpoint point;
     FMMinput inputs;
     FMMresult true_results;
+    FMMtiming timing;
 
     genPoint(3, parser, point);
     const int pbc = parser.get<int>("P");
@@ -30,7 +31,7 @@ int main(int argc, char **argv) {
     if (parser.get<int>("V")) {
         runSimpleKernel(point, inputs, true_results);
     } else {
-        runFMM(parser, maxP, point, inputs, true_results);
+        runFMM(parser, maxP, point, inputs, true_results, timing);
     }
 
     dumpValue("true", point, inputs, true_results);
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     for (int p = 6; p < maxP; p += 2) {
         FMMresult results;
         // check error vs trueValues
-        runFMM(parser, p, point, inputs, results);
+        runFMM(parser, p, point, inputs, results, timing);
         if (myRank == 0) {
             printf("*********Testing order p = %d*********\n", p);
             printf("---------Error vs \"True\" Value------\n");
@@ -52,7 +53,7 @@ int main(int argc, char **argv) {
             FMMpoint trans_point = point;
             FMMresult trans_results;
             translatePoints(parser, trans_point);
-            runFMM(parser, p, trans_point, inputs, trans_results);
+            runFMM(parser, p, trans_point, inputs, trans_results, timing);
             if (myRank == 0) {
                 printf("---------Error vs Translation------\n");
             }
