@@ -65,27 +65,31 @@ struct Record {
     double runTime = 0;
     std::vector<ComponentError> errorConvergence; // error for each trgValue component
     std::vector<ComponentError> errorVerify;      // error for each trgValue component
+    std::vector<ComponentError> errorTranslate;   // error for each trgValue component
 };
 
 using Input = std::unordered_map<KERNEL, Source>;
 using Result = std::unordered_map<KERNEL, std::vector<double>>;
+using Timing = std::unordered_map<KERNEL, std::pair<double, double>>;
 
 void genPoint(const Config &config, Point &point, int dim);
 void translatePoint(const Config &config, Point &point);
 
-void genSrcValue(const Config &config, const Point &point, Input &input, bool neutral = false);
+void genSrcValue(const Config &config, const Point &point, Input &input);
 
 void runSimpleKernel(const Point &point, Input &input, Result &result);
 
-void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result,
-            std::vector<Record> &history);
+void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result, Timing &timing);
 
-void checkError(const int nPts, const int dim, std::vector<double> &A, std::vector<double> &B,
+void checkError(const int dim, const std::vector<double> &A, const std::vector<double> &B,
                 std::vector<ComponentError> &error);
+
+void appendHistory(std::vector<Record> &history, const int p, const Timing &timing, const Result &result,
+                   const Result &verifyResult, const Result &convergeResult, const Result &translateResult);
 
 void dumpValue(const std::string &tag, const Point &point, const Input &input, const Result &result);
 
-// void recordJson(const Config &config, const std::vector<Record> &record);
+void recordJson(const Config &config, const std::vector<Record> &record);
 
 template <typename... Args>
 inline void printf_rank0(Args... args) {

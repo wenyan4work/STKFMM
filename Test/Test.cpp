@@ -254,7 +254,7 @@ void translatePoint(const Config &config, Point &point) {
 }
 
 // generate SrcValue, distributed with given points
-void genSrcValue(const Config &config, const Point &point, Input &input, bool neutral) {
+void genSrcValue(const Config &config, const Point &point, Input &input) {
     using namespace stkfmm;
     input.clear();
     const int nSL = point.srcLocalSL.size() / 3;
@@ -290,7 +290,8 @@ void genSrcValue(const Config &config, const Point &point, Input &input, bool ne
             }
         }
 
-        if (neutral) { // must be neutral for some periodic
+        if (config.pbc != 0 && config.wall == false) {
+            // must be neutral for some periodic without wall
             if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
                 int nSLGlobal = nSL;
                 MPI_Allreduce(MPI_IN_PLACE, &nSLGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -469,8 +470,7 @@ void runSimpleKernel(const Point &point, Input &input, Result &result) {
     }
 }
 
-void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result,
-            std::vector<Record> &history) {
+void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result, Timing &timing) {
     using namespace stkfmm;
     result.clear();
     const double box = config.box;
@@ -535,15 +535,11 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
             runTime = time[1];
         }
         result[kernel] = trgLocal;
-        record.kernel = kernel;
-        record.multOrder = p;
-        record.treeTime = treeTime;
-        record.runTime = runTime;
-        history.push_back(record);
+        timing[kernel] = std::make_pair(treeTime, runTime);
     }
 }
 
-void checkError(const int nPts, const int dim, std::vector<double> &A, std::vector<double> &B,
+void checkError(const int dim, const std::vector<double> &A, const std::vector<double> &B,
                 std::vector<ComponentError> &error) {
     error.clear();
     // collect to rank0
@@ -558,6 +554,7 @@ void checkError(const int nPts, const int dim, std::vector<double> &A, std::vect
         MPI_Barrier(MPI_COMM_WORLD);
     } else {
         // check error for each component on rank 0
+        const int nPts = value.size() / dim;
         if (nPts * dim != valueTrue.size()) {
             printf("error check size error\n");
             exit(1);
@@ -583,8 +580,36 @@ void checkError(const int nPts, const int dim, std::vector<double> &A, std::vect
     return;
 }
 
-// void recordJson(const cli::Parser &parser, const std::vector<Record> &record) {
-//     // write settings and record to a json file
-//     using json = nlohmann::json;
-//     json output;
-// }
+void appendHistory(std::vector<Record> &history, const int p, const Timing &timing, const Result &result,
+                   const Result &verifyResult, const Result &convergeResult, const Result &translateResult) {
+    for (auto &it : result) {
+        auto &kernel = it.first;
+        auto &trgValue = it.second;
+        Record record;
+        record.kernel = kernel;
+        record.multOrder = p;
+
+        // get time
+        {
+            auto it = timing.find(kernel);
+            if (it != timing.end()) {
+                record.treeTime = it->second.first;
+                record.runTime = it->second.second;
+            }
+        }
+        auto getError = [&](const Result &compare, std::vector<ComponentError> &error) {
+            auto it = compare.find(kernel);
+            if (it != compare.end()) {
+                auto &compareValue = it->second;
+                checkError(std::get<2>(stkfmm::getKernelDimension(kernel)), trgValue, compareValue, error);
+            }
+        };
+    }
+}
+
+void recordJson(const Config &config, const std::vector<Record> &record) {
+    std::string filename("TestLog.json");
+    // write settings and record to a json file
+    using json = nlohmann::json;
+    json output;
+}

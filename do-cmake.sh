@@ -12,6 +12,6 @@ cmake \
   -D BUILD_TEST=ON \
   -D BUILD_DOC=OFF \
   -D BUILD_M2L=OFF \
-  -D PyInterface=ON \
+  -D PyInterface=OFF \
 ../
 

@@ -163,7 +163,6 @@ void PointDistribution::dumpPoints(const std::string &filename, std::vector<doub
     fclose(fp);
 }
 
-
 void PointDistribution::distributePts(std::vector<double> &pts, int dimension) {
     // from rank 0 to all ranks
     int myRank;

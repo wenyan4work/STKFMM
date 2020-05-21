@@ -14,7 +14,7 @@ class PointDistribution {
     PointDistribution(int seed) : gen_(seed){};
 
     // non-static methods depending on rng seed
-    void randomPoints(int dim, int nPts, double box, double shift[3], std::vector<double> &ptsCoord);
+    void randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord);
 
     void randomUniformFill(std::vector<double> &vec, double low, double high);
 
@@ -23,7 +23,7 @@ class PointDistribution {
     // static methods
     static void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord);
 
-    static void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift, double scale);
+    static void shiftAndScalePoints(std::vector<double> &ptsCoord, double shift[3], double scale);
 
     static void meshPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord,
                            bool cheb = false);
