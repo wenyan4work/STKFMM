@@ -39,13 +39,13 @@ void Config::parse(int argc, char **argv) {
     app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
 
     // flags
-    auto directParse = app.add_flag("-d,--direct", direct, "run O(N^2) direct summation with S2T kernels");
-    app.add_flag("-v,--verify", verify, "verify results with O(N^2) direct summation");
-    app.add_flag("-c,--convergence", convergence, "calculate convergence error relative to FMM at p=16");
-    app.add_flag("-r,--random", random, "use random points, otherwise regular mesh");
+    auto directParse = app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
+    app.add_flag("--verify,!--no-verify", verify, "verify results with O(N^2) direct summation");
+    app.add_flag("--convergence,!--no-convergence", convergence, "calculate convergence error relative to FMM at p=16");
+    app.add_flag("--random,!--no-random", random, "use random points, otherwise regular mesh");
 
     // wall settings
-    auto wallParse = app.add_flag("--wall", wall, "test StkWallFMM, otherwise Stk3DFMM");
+    auto wallParse = app.add_flag("--wall,!--no-wall", wall, "test StkWallFMM, otherwise Stk3DFMM");
 
     // conflict settings
     wallParse->excludes(directParse);
