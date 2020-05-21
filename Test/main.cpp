@@ -47,6 +47,7 @@ int main(int argc, char **argv) {
             record.multOrder = maxP;
             record.treeTime = t.second.first;
             record.runTime = t.second.second;
+            history.push_back(record);
         }
     }
 

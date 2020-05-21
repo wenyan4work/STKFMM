@@ -27,7 +27,7 @@ struct Config {
     double epsilon = 1e-3;
     bool random = true;
     bool direct = false;
-    bool verify = false;
+    bool verify = true;
     bool convergence = true;
     bool wall = false;
 

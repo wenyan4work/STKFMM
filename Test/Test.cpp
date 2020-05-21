@@ -76,7 +76,7 @@ void Config::parse(int argc, char **argv) {
 
 void Config::print() const {
     printf_rank0("Testing settings:\n");
-    printf_rank0("nSL %d, nDL %d, nTrg %d\n");
+    printf_rank0("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
     printf_rank0("box %g\n", box);
     printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
     printf_rank0("Kernel %d\n", K);
@@ -377,7 +377,7 @@ void genSrcValue(const Config &config, const Point &point, Input &input) {
     }
 }
 
-void dumpValue(const std::string &tag, const Point &point, const Input &inputs, const Result &results) {
+void dumpValue(const std::string &tag, const Point &point, const Input &input, const Result &result) {
     auto writedata = [&](std::string name, const std::vector<double> &coord_, const std::vector<double> &value_,
                          const int kdim) {
         auto coord = coord_;
@@ -385,14 +385,14 @@ void dumpValue(const std::string &tag, const Point &point, const Input &inputs, 
         PointDistribution::dumpPoints(name + ".txt", coord, value, kdim);
     };
 
-    for (auto &data : inputs) {
+    for (auto &data : input) {
         auto &kernel = data.first;
         auto &value = data.second;
         std::vector<double> trgLocal;
         int kdimSL, kdimDL, kdimTrg;
         std::tie(kdimSL, kdimDL, kdimTrg) = getKernelDimension(kernel);
-        auto it = results.find(kernel);
-        if (it != results.end()) {
+        auto it = result.find(kernel);
+        if (it != result.end()) {
             trgLocal = it->second;
         } else {
             std::cout << "result not found for kernel " << getKernelName(kernel) << std::endl;
