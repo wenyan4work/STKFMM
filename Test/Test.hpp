@@ -8,6 +8,7 @@
 #include "Util/PointDistribution.hpp"
 #include "Util/Timer.hpp"
 
+#include <array>
 #include <unordered_map>
 #include <vector>
 
@@ -20,7 +21,7 @@ struct Config {
     int nSL = 1, nDL = 1, nTrg = 1;
     int rngseed = 0;
     double box = 1;
-    double origin[3] = {0, 0, 0};
+    std::array<double, 3> origin = {0, 0, 0};
     int K = 1;
     int pbc = 0;
     int maxPoints = 50;

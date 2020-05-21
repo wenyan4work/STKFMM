@@ -29,7 +29,7 @@ void Config::parse(int argc, char **argv) {
     app.add_option("-D,--ndl", nDL, "number of source DL points");
     app.add_option("-T,--ntrg", nTrg, "number of source TRG points");
     app.add_option("-B,--box", box, "testing cubic box edge length");
-    app.add_option("-O,--origin", origin[0], "testing cubic box origin point");
+    app.add_option("-O,--origin", origin, "testing cubic box origin point");
     app.add_option("-K,--kernel", K, "test which kernels");
     app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
 
