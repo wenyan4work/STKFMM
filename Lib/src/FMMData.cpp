@@ -139,12 +139,12 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
 
     // pt_coord is used to setup FMM octree
     if (treePtsPtr == nullptr || ntreePts == 0) {
-        // default case, use the largest set of SL,DL,trg
+        // default case, use the largest set among SL/DL/Trg
         if (nSL > nDL && nSL > nTrg)
             treeDataPtr->pt_coord = srcSLCoord;
-        if (nDL > nSL && nDL > nTrg)
+        else if (nDL > nSL && nDL > nTrg)
             treeDataPtr->pt_coord = srcDLCoord;
-        if (nTrg > nSL && nTrg > nDL)
+        else
             treeDataPtr->pt_coord = trgCoord;
     } else {
         // custom case, use custom set of points

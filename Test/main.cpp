@@ -21,9 +21,9 @@ int main(int argc, char **argv) {
     genPoint(config, point, 3);
 
     genSrcValue(config, point, input);
-    if(config.pbc){
-        trans_point=point;
-            translatePoint(config, trans_point);
+    if (config.pbc) {
+        trans_point = point;
+        translatePoint(config, trans_point);
     }
 
     printf_rank0("src value generated\n");
@@ -56,22 +56,32 @@ int main(int argc, char **argv) {
         }
     }
 
-    for (int p = 6; p < maxP; p += 2) {
-        printf_rank0("*********Testing order p = %d*********\n", p);
+    if (config.direct) {
+        printf_rank0("*********Testing direct sum***********\n");
         pResult.clear();
         transResult.clear();
         timing.clear();
+        runFMM(config, maxP, point, input, pResult, timing);
+        dumpValue("direct", point, input, pResult);
+        appendHistory(history, maxP, timing, pResult, verifyResult, convResult, transResult);
+    } else {
+        for (int p = 6; p < maxP; p += 2) {
+            printf_rank0("*********Testing order p = %d*********\n", p);
+            pResult.clear();
+            transResult.clear();
+            timing.clear();
 
-        runFMM(config, p, point, input, pResult, timing);
-        dumpValue("p" + std::to_string(p), point, input, pResult);
+            runFMM(config, p, point, input, pResult, timing);
+            dumpValue("p" + std::to_string(p), point, input, pResult);
 
-        if (config.pbc) {
-            Timing transTiming;
-            runFMM(config, p, trans_point, input, transResult, transTiming);
-            dumpValue("trans_p" + std::to_string(p), trans_point, input, transResult);
+            if (config.pbc) {
+                Timing transTiming;
+                runFMM(config, p, trans_point, input, transResult, transTiming);
+                dumpValue("trans_p" + std::to_string(p), trans_point, input, transResult);
+            }
+
+            appendHistory(history, p, timing, pResult, verifyResult, convResult, transResult);
         }
-
-        appendHistory(history, p, timing, pResult, verifyResult, convResult, transResult);
     }
 
     MPI_Finalize();
