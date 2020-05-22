@@ -145,30 +145,32 @@ void genPoint(const Config &config, Point &point, int dim) {
     PointDistribution pd(config.rngseed);
 
     if (myRank == 0) {
-        const int nTrg = config.nTrg;
         if (config.random) {
-            pd.randomPoints(dim, nTrg, box, 0, trgLocal);
+            pd.randomPoints(dim, config.nTrg, box, 0, trgLocal);
         } else {
-            PointDistribution::meshPoints(dim, nTrg, box, 0, trgLocal);
+            PointDistribution::meshPoints(dim, config.nTrg, box, 0, trgLocal);
         }
 
-        const int nSL = config.nSL;
-        if (nSL == 0) {
+        if (config.nSL == 0) {
             srcLocalSL.clear();
-        } else if (nSL == 1 || nSL == 2 || nSL == 4) {
-            PointDistribution::fixedPoints(nSL, box, 0, srcLocalSL);
+        } else if (config.nSL == 1 || config.nSL == 2 || config.nSL == 4) {
+            PointDistribution::fixedPoints(config.nSL, box, 0, srcLocalSL);
         } else {
             srcLocalSL = trgLocal;
         }
 
-        const int nDL = config.nDL;
-        if (nDL == 0) {
+        if (config.nDL == 0) {
             srcLocalDL.clear();
-        } else if (nDL == 1 || nDL == 2 || nDL == 4) {
-            PointDistribution::fixedPoints(nDL, box, 0, srcLocalDL);
+        } else if (config.nDL == 1 || config.nDL == 2 || config.nDL == 4) {
+            PointDistribution::fixedPoints(config.nDL, box, 0, srcLocalDL);
         } else {
             srcLocalDL = trgLocal;
         }
+
+        // config.nSL/nDL/nTrg are not the actual nSL/nDL/nTrg
+        const int nSL = srcLocalSL.size() / 3;
+        const int nDL = srcLocalDL.size() / 3;
+        const int nTrg = trgLocal.size() / 3;
 
         // shift points
         auto shift = [&](std::vector<double> &pts, int npts) {
