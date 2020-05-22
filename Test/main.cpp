@@ -44,12 +44,12 @@ int main(int argc, char **argv) {
     }
 
     if (config.convergence) {
-        runFMM(config, maxP, point, input, convResult, timing);
-        dumpValue("maxp" + std::to_string(maxP), point, input, verifyResult);
+        runFMM(config, config.maxOrder, point, input, convResult, timing);
+        dumpValue("maxp" + std::to_string(config.maxOrder), point, input, verifyResult);
         for (auto &t : timing) {
             Record record;
             record.kernel = t.first;
-            record.multOrder = maxP;
+            record.multOrder = config.maxOrder;
             record.treeTime = t.second.first;
             record.runTime = t.second.second;
             history.push_back(record);
@@ -61,11 +61,11 @@ int main(int argc, char **argv) {
         pResult.clear();
         transResult.clear();
         timing.clear();
-        runFMM(config, maxP, point, input, pResult, timing);
+        runFMM(config, config.maxOrder, point, input, pResult, timing);
         dumpValue("direct", point, input, pResult);
-        appendHistory(history, maxP, timing, pResult, verifyResult, convResult, transResult);
+        appendHistory(history, config.maxOrder, timing, pResult, verifyResult, convResult, transResult);
     } else {
-        for (int p = 6; p < maxP; p += 2) {
+        for (int p = 6; p < config.maxOrder; p += 2) {
             printf_rank0("*********Testing order p = %d*********\n", p);
             pResult.clear();
             transResult.clear();
@@ -83,6 +83,8 @@ int main(int argc, char **argv) {
             appendHistory(history, p, timing, pResult, verifyResult, convResult, transResult);
         }
     }
+
+    recordJson(config, history);
 
     MPI_Finalize();
     return 0;

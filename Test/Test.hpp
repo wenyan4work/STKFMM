@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <vector>
 
-constexpr int maxP = 16;
 using KERNEL = stkfmm::KERNEL;
 using Stk3DFMM = stkfmm::Stk3DFMM;
 using StkWallFMM = stkfmm::StkWallFMM;
@@ -23,6 +22,7 @@ struct Config {
     double box = 1;
     std::array<double, 3> origin = {0, 0, 0};
     int K = 1;
+    int maxOrder = 16;
     int pbc = 0;
     int maxPoints = 50;
     double epsilon = 1e-3;
@@ -90,7 +90,7 @@ void appendHistory(std::vector<Record> &history, const int p, const Timing &timi
 
 void dumpValue(const std::string &tag, const Point &point, const Input &input, const Result &result);
 
-void recordJson(const Config &config, const std::vector<Record> &record);
+void recordJson(const Config &config, const std::vector<Record> &history);
 
 template <typename... Args>
 inline void printf_rank0(Args... args) {

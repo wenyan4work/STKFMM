@@ -33,6 +33,7 @@ void Config::parse(int argc, char **argv) {
     app.add_option("-O,--origin", origin, "testing cubic box origin point");
     app.add_option("-K,--kernel", K, "test which kernels");
     app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
+    app.add_option("-M,--maxOrder", maxOrder, "max KIFMM order, must be even number. Default 16.");
 
     // tunnings
     app.add_option("--seed", rngseed, "seed for random number generator");
@@ -73,6 +74,11 @@ void Config::parse(int argc, char **argv) {
 
     if (pbc && verify) {
         printf_rank0("option verify doesn't work for periodic boundary conditions\n");
+        exit(1);
+    }
+
+    if (pbc && direct) {
+        printf_rank0("option direct doesn't work for periodic boundary conditions\n");
         exit(1);
     }
 }
@@ -581,7 +587,7 @@ void checkError(const int dim, const std::vector<double> &A, const std::vector<d
 
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (!rank) {
+    if (rank) {
         MPI_Barrier(MPI_COMM_WORLD);
     } else {
         // check error for each component on rank 0
@@ -635,12 +641,64 @@ void appendHistory(std::vector<Record> &history, const int p, const Timing &timi
                 checkError(std::get<2>(stkfmm::getKernelDimension(kernel)), trgValue, compareValue, error);
             }
         };
+        getError(verifyResult, record.errorVerify);
+        getError(convergeResult, record.errorConvergence);
+        getError(translateResult, record.errorTranslate);
+        history.push_back(record);
     }
 }
 
-void recordJson(const Config &config, const std::vector<Record> &record) {
+auto errorJson(const ComponentError &error) {
+    using json = nlohmann::json;
+    json output;
+    output["drift"] = error.drift;
+    output["driftL2"] = error.driftL2;
+    output["errorL2"] = error.errorL2;
+    output["errorRMS"] = error.errorRMS;
+    output["errorMaxRel"] = error.errorMaxRel;
+    return output;
+};
+
+void recordJson(const Config &config, const std::vector<Record> &history) {
     std::string filename("TestLog.json");
     // write settings and record to a json file
     using json = nlohmann::json;
     json output;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank) {
+        return;
+    }
+
+    auto getJsonFromRecord = [&](const Record &record) -> json {
+        json output;
+        output["kernel"] = stkfmm::getKernelName(record.kernel);
+        output["multOrder"] = record.multOrder;
+        output["treeTime"] = record.treeTime;
+        output["runTime"] = record.runTime;
+        // Convert vec of struct to json
+        auto eC = json::array(), eV = json::array(), eT = json::array();
+        for (auto &e : record.errorConvergence) {
+            eC.push_back(errorJson(e));
+        }
+        for (auto &e : record.errorVerify) {
+            eV.push_back(errorJson(e));
+        }
+        for (auto &e : record.errorTranslate) {
+            eT.push_back(errorJson(e));
+        }
+        output["errorConvergence"] = eC;
+        output["errorVerify"] = eV;
+        output["errorTranslate"] = eT;
+        return output;
+    };
+
+    auto jsonObjects = json::array();
+    for (auto &r : history) {
+        jsonObjects.push_back(getJsonFromRecord(r));
+    }
+
+    std::ofstream o(filename);
+    o << std::setw(4) << jsonObjects << std::endl;
 }
