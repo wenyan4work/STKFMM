@@ -135,24 +135,52 @@ If PVFMM is properly installed, you should be able to compile this project using
 
 To run the test driver, go to the build folder and type:
 ```bash
-./Test/Test3DFMM.X --help
-./Test/TestWallFMM.X --help
+./Test/TestFMM.X --help
+Test Driver for Stk3DFMM and StkWallFMM
+
+Usage: ./Test/TestFMM.X [OPTIONS]
+
+Options:
+  -h,--help                   Print this help message and exit
+  --config                    config file name
+  -S,--nsl INT                number of source SL points
+  -D,--ndl INT                number of source DL points
+  -T,--ntrg INT               number of source TRG points
+  -B,--box FLOAT              testing cubic box edge length
+  -O,--origin [FLOAT,FLOAT,FLOAT]
+                              testing cubic box origin point
+  -K,--kernel INT             test which kernels
+  -P,--pbc INT                periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ
+  -M,--maxOrder INT           max KIFMM order, must be even number. Default 16.
+  --seed INT                  seed for random number generator
+  --eps FLOAT                 epsilon or a for Regularized and RPY kernels
+  --max INT                   max number of points in an octree leaf box
+  --direct,--no-direct{false} run O(N^2) direct summation with S2T kernels
+  --verify,--no-verify{false} verify results with O(N^2) direct summation
+  --convergence,--no-convergence{false}
+                              calculate convergence error relative to FMM at p=16
+  --random,--no-random{false} use random points, otherwise regular mesh
+  --wall,--no-wall{false}     test StkWallFMM, otherwise Stk3DFMM
+
 ```
-For possible test options.
+For possible test options. Several test configuration files are included in the folder `Config`, and can be loaded by `TestFMM.X` as this:
+```
+./Test/TestFMM.X --config ../Config/Verify.toml
+```
 
 For large scale convergence tests of all possible BCs (roughly ~100GB of memory will be used and a lot of precomputed data will be generated for the first run):
 ```bash
-./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 0
-./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 1
-./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 2
-./Test/Test3DFMM.X -S 96 -D 96 -T 96 -B 50 -K 0 -m 2000 -V 0 -P 3
+build/ $ ./Test/TestFMM.X --config ../Config/BenchP0.toml 
 ```
-For `TestWallFMM.X`, since only two kernels are supported so you cannot specify `-K 0`. To test Stokes image kernel, use `-K 8` and to test RPY image kernel, use `-K 16`.
+The options in the config toml file can be overridden by extra flags, for example, use other boundary conditions:
 ```bash
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 0
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 1
-./Test/TestWallFMM.X -S 96 -D 0 -T 96 -B 50 -K 8 -m 2000 -V 1 -P 2
+build/ $ ./Test/TestFMM.X --config ../Config/BenchP0.toml -P 1
+build/ $ ./Test/TestFMM.X --config ../Config/BenchP0.toml -P 2
+build/ $ ./Test/TestFMM.X --config ../Config/BenchP0.toml -P 3
 ```
+
+`TestFMM.X` will write a `TestLog.json` file, which can be loaded into python for convenient performance/accuracy analysis and plotting.
+
 **Note** If your machine's memory is limited (<24GB), use smaller number of points and test one kernel at a time. 
 
 # Acknowledgement
