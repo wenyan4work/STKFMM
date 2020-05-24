@@ -59,7 +59,7 @@ void PointDistribution::meshPoints(int dim, int nPts, double box, double shift, 
         }
     }
     // prevent PVFMM crash when point located at the edge
-    pts.back() -= 1e-12;
+    pts.back() -= box * 1e-10;
 
     const int dimension = pts.size();
     const int n = pow(dimension, dim);
