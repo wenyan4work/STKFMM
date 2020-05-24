@@ -302,7 +302,7 @@ void genSrcValue(const Config &config, const Point &point, Input &input) {
 
         if (kernel == KERNEL::StokesRegVel || kernel == KERNEL::StokesRegVelOmega || kernel == KERNEL::RPY) {
             // sphere radius/regularization must be small
-            const double reg = config.rngseed;
+            const double reg = config.epsilon;
             auto setreg = [&](double &v) { v = std::abs(v) * reg; };
             for (int i = 0; i < nSL; i++) {
                 setreg(value.srcLocalSL[kdimSL * i + kdimSL - 1]);

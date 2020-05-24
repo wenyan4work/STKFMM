@@ -30,8 +30,8 @@ def plotRecord(ax, multOrder, treeTime, runTime, name, error):
         ax.semilogy(multOrder, error[:, 3, i], '--o')
 
     ax.set_title(name)
-    ax.legend(loc='upper left', ncol=2,
-              title=r'component x $\delta_{L2}$, o $\epsilon_{L2}$')
+    ax.legend(loc='upper left', ncol=3,
+              title=r'component error: x $\delta_{L2}$, o $\epsilon_{L2}$')
     ax.set_xlabel(r"$p$")
     ax.set_ylabel("Error")
     ax.set_ylim(1e-15, 1)
@@ -83,14 +83,14 @@ def plotData(data):
     nax = len(error.keys())
     fig = plt.figure(
         figsize=(6.0*nax, 5.0), dpi=150, constrained_layout=True)
-    axs = fig.subplots(nrows=1, ncols=nax)
+    axs = fig.subplots(nrows=1, ncols=nax, squeeze=False)
     index = 0
     for k in error.keys():
         error[k] = np.array(error[k])
         ax = axs.flat[index]
         plotRecord(ax, multOrder, treeTime, runTime, kernel+' '+k, error[k])
         index += 1
-    plt.savefig(kernel+'.png')
+    plt.savefig('Test_'+kernel+'.png')
 
 
 parser = argparse.ArgumentParser()
