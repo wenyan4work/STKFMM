@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
     if (config.convergence) {
         runFMM(config, config.maxOrder, point, input, convResult, timing);
-        dumpValue("maxp" + std::to_string(config.maxOrder), point, input, verifyResult);
+        dumpValue("maxp" + std::to_string(config.maxOrder), point, input, convResult);
     }
 
     if (config.direct) {
