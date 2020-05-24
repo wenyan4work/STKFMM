@@ -46,14 +46,6 @@ int main(int argc, char **argv) {
     if (config.convergence) {
         runFMM(config, config.maxOrder, point, input, convResult, timing);
         dumpValue("maxp" + std::to_string(config.maxOrder), point, input, verifyResult);
-        for (auto &t : timing) {
-            Record record;
-            record.kernel = t.first;
-            record.multOrder = config.maxOrder;
-            record.treeTime = t.second.first;
-            record.runTime = t.second.second;
-            history.push_back(record);
-        }
     }
 
     if (config.direct) {
