@@ -11,6 +11,6 @@ max = 500
 direct = false
 verify = true
 convergence = false
-random = true
+random = false
 wall = true
 
