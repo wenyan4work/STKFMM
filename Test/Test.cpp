@@ -122,14 +122,17 @@ ComponentError::ComponentError(const std::vector<double> &A, const std::vector<d
     }
 
     double L2 = 0;
+    errorL2 = 0;
+    errorMaxRel = 0;
     for (int i = 0; i < N; i++) {
         double e2 = pow(valueTrue[i] - value[i], 2);
+        // printf("%g,%g\n", valueTrue[i], value[i]);
         errorL2 += e2;
         L2 += pow(valueTrue[i], 2);
         errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
     }
-    errorRMS = sqrt(errorL2 / N);
-    errorL2 = sqrt(errorL2 / L2);
+    errorRMS = sqrt(errorL2) / sqrt(N);
+    errorL2 = sqrt(errorL2) / sqrt(L2);
     driftL2 = drift * N / sqrt(L2);
 }
 

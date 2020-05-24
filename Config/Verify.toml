@@ -10,7 +10,7 @@ eps = 1e-4
 max = 500
 direct = false
 verify = true
-convergence = false
+convergence = true
 random = true
 wall = false
 

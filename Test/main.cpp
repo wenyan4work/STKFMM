@@ -53,9 +53,10 @@ int main(int argc, char **argv) {
         pResult.clear();
         transResult.clear();
         timing.clear();
-        runFMM(config, config.maxOrder, point, input, pResult, timing);
+        int order = 2;
+        runFMM(config, 2, point, input, pResult, timing);
         dumpValue("direct", point, input, pResult);
-        appendHistory(history, config.maxOrder, timing, pResult, verifyResult, convResult, transResult);
+        appendHistory(history, 2, timing, pResult, verifyResult, convResult, transResult);
     } else {
         for (int p = 6; p < config.maxOrder; p += 2) {
             printf_rank0("*********Testing order p = %d*********\n", p);
