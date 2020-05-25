@@ -537,12 +537,14 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
             trgLocalValue.resize(kdimTrg * nTrg, 0);
 
             timer.tick();
-            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T,                //
-                                   nSL, srcSLCoord.data(), srcSLValue.data(), //
-                                   nTrg, trgLocalCoord.data(), trgLocalValue.data());
-            fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::DLS2T,                //
-                                   nDL, srcDLCoord.data(), srcDLValue.data(), //
-                                   nTrg, trgLocalCoord.data(), trgLocalValue.data());
+            if (nSL)
+                fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::SLS2T,                //
+                                       nSL, srcSLCoord.data(), srcSLValue.data(), //
+                                       nTrg, trgLocalCoord.data(), trgLocalValue.data());
+            if (nDL)
+                fmmPtr->evaluateKernel(kernel, 0, PPKERNEL::DLS2T,                //
+                                       nDL, srcDLCoord.data(), srcDLValue.data(), //
+                                       nTrg, trgLocalCoord.data(), trgLocalValue.data());
             timer.tock("evaluateKernel");
 
             const auto &time = timer.getTime();

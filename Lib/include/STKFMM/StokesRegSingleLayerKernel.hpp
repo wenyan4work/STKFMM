@@ -8,10 +8,6 @@
 #include "stkfmm_helpers.hpp"
 
 namespace pvfmm {
-// TODO: vectorize these kernels
-// Stokes Reg Force Torque Vel kernel, 7 -> 3
-// Stokes Reg Force Torque Vel Omega kernel, 7 -> 6
-// Stokes Force Vel Omega kernel, 3 -> 6
 
 /*********************************************************
  *                                                        *
@@ -39,18 +35,18 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
         if (src_cnt > SRC_BLK)
             src_cnt = SRC_BLK;
         for (size_t t = 0; t < trg_cnt_; t += VecLen) {
-            const Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
-            const Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
-            const Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
+            const Vec_t trgx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t trgy = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t trgz = load_intrin<Vec_t>(&trg_coord[2][t]);
 
             Vec_t vx = zero_intrin<Vec_t>(); // vx
             Vec_t vy = zero_intrin<Vec_t>(); // vy
             Vec_t vz = zero_intrin<Vec_t>(); // vz
 
             for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                const Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                const Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                const Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+                const Vec_t dx = sub_intrin(trgx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                const Vec_t dy = sub_intrin(trgy, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                const Vec_t dz = sub_intrin(trgz, bcast_intrin<Vec_t>(&src_coord[2][s]));
 
                 const Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
                 const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
@@ -88,67 +84,99 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 #undef SRC_BLK
 }
 
-GEN_KERNEL(stokes_regvel, stokes_regvel_uKernel, 4, 3)
-
 /**********************************************************
  *                                                        *
  * Stokes Reg Force Torque Vel kernel,source: 7, target: 3*
  *       fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz                *
  **********************************************************/
-template <class T, int newton_iter = 0>
-void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
-                     mem::MemoryManager *mem_mgr) {
-    constexpr T pi8 = (8 * 3.14159265358979323846);
-    for (int i = 0; i < trg_cnt; i++) {
-        T vx = 0, vy = 0, vz = 0;
-        const T trgx = r_trg[3 * i];
-        const T trgy = r_trg[3 * i + 1];
-        const T trgz = r_trg[3 * i + 2];
-        for (int j = 0; j < src_cnt; j++) {
-            const T fx = v_src[7 * j + 0];
-            const T fy = v_src[7 * j + 1];
-            const T fz = v_src[7 * j + 2];
-            const T tx = v_src[7 * j + 3];
-            const T ty = v_src[7 * j + 4];
-            const T tz = v_src[7 * j + 5];
-            const T eps = v_src[7 * j + 6];
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
+void stokes_regftvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
+                             Matrix<Real_t> &trg_value) {
+#define SRC_BLK 500
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
-            const T sx = r_src[3 * j];
-            const T sy = r_src[3 * j + 1];
-            const T sz = r_src[3 * j + 2];
-            const T dx = trgx - sx;
-            const T dy = trgy - sy;
-            const T dz = trgz - sz;
-            // length squared of r
-            T r2 = dx * dx + dy * dy + dz * dz;
-
-            // regularization parameter squared
-            T eps2 = eps * eps;
-
-            T denom_arg = eps2 + r2;
-            T stokeslet_denom = pi8 * denom_arg * std::sqrt(denom_arg);
-            T rotlet_denom = 2 * stokeslet_denom * denom_arg;
-            T rotlet_coef = (2 * r2 + 5.0 * eps2) / rotlet_denom;
-            // T D1 = (10 * eps4 - 7 * eps2 * r2 - 2 * r4) / dipole_denom;
-            // T D2 = (21 * eps2 + 6 * r2) / dipole_denom;
-            T H2 = 1.0 / stokeslet_denom;
-            T H1 = (r2 + 2.0 * eps2) * H2;
-
-            T tcurlrx = ty * dz - tz * dy;
-            T tcurlry = tz * dx - tx * dz;
-            T tcurlrz = tx * dy - ty * dx;
-
-            T fdotr = fx * dx + fy * dy + fz * dz;
-            // T tdotr = tx * dx + ty * dy + tz * dz;
-
-            vx += H1 * fx + H2 * fdotr * dx + rotlet_coef * tcurlrx;
-            vy += H1 * fy + H2 * fdotr * dy + rotlet_coef * tcurlry;
-            vz += H1 * fz + H2 * fdotr * dz + rotlet_coef * tcurlrz;
-        }
-        v_trg[3 * i] += vx;
-        v_trg[3 * i + 1] += vy;
-        v_trg[3 * i + 2] += vz;
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
     }
+    const Real_t FACV = 1.0 / (8 * const_pi<Real_t>());
+    const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);
+    const Vec_t facnwtn = set_intrin<Vec_t, Real_t>(1 / (nwtn_scal));
+
+    const Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
+    const Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
+    const Vec_t five = set_intrin<Vec_t, Real_t>(5.0);
+    const Vec_t seven = set_intrin<Vec_t, Real_t>(7.0);
+
+    size_t src_cnt_ = src_coord.Dim(1);
+    size_t trg_cnt_ = trg_coord.Dim(1);
+
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            const Vec_t trgx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t trgy = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t trgz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t vx = zero_intrin<Vec_t>(); // vx
+            Vec_t vy = zero_intrin<Vec_t>(); // vy
+            Vec_t vz = zero_intrin<Vec_t>(); // vz
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                const Vec_t dx = sub_intrin(trgx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                const Vec_t dy = sub_intrin(trgy, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                const Vec_t dz = sub_intrin(trgz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+                const Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
+                const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
+                const Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
+                const Vec_t tx = bcast_intrin<Vec_t>(&src_value[3][s]);
+                const Vec_t ty = bcast_intrin<Vec_t>(&src_value[4][s]);
+                const Vec_t tz = bcast_intrin<Vec_t>(&src_value[5][s]);
+                const Vec_t eps = bcast_intrin<Vec_t>(&src_value[6][s]); // reg parameter
+
+                // length squared of r
+                Vec_t r2 = dx * dx + dy * dy + dz * dz;
+                Vec_t r4 = r2 * r2;
+
+                // regularization parameter squared
+                Vec_t eps2 = eps * eps;
+                Vec_t eps4 = eps2 * eps2;
+
+                Vec_t denom_arg = eps2 + r2;
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(denom_arg);
+                rinv = rinv * facnwtn;
+
+                Vec_t stokeslet_denom_inv = rinv * rinv * rinv;
+                Vec_t rotlet_denom_inv = set_intrin<Vec_t, Real_t>(0.5) * stokeslet_denom_inv * rinv * rinv;
+                Vec_t rotlet_coef = (two * r2 + five * eps2) * rotlet_denom_inv;
+                Vec_t H2 = stokeslet_denom_inv;
+                Vec_t H1 = (r2 + two * eps2) * H2;
+
+                Vec_t tcurlrx = ty * dz - tz * dy;
+                Vec_t tcurlry = tz * dx - tx * dz;
+                Vec_t tcurlrz = tx * dy - ty * dx;
+
+                Vec_t fdotr = fx * dx + fy * dy + fz * dz;
+                Vec_t tdotr = tx * dx + ty * dy + tz * dz;
+
+                vx += H1 * fx + H2 * fdotr * dx + rotlet_coef * tcurlrx;
+                vy += H1 * fy + H2 * fdotr * dy + rotlet_coef * tcurlry;
+                vz += H1 * fz + H2 * fdotr * dz + rotlet_coef * tcurlrz;
+            }
+
+            vx = add_intrin(mul_intrin(vx, facv), load_intrin<Vec_t>(&trg_value[0][t]));
+            vy = add_intrin(mul_intrin(vy, facv), load_intrin<Vec_t>(&trg_value[1][t]));
+            vz = add_intrin(mul_intrin(vz, facv), load_intrin<Vec_t>(&trg_value[2][t]));
+
+            store_intrin(&trg_value[0][t], vx);
+            store_intrin(&trg_value[1][t], vy);
+            store_intrin(&trg_value[2][t], vz);
+        }
+    }
+#undef SRC_BLK
 }
 
 /**********************************************************
@@ -156,74 +184,122 @@ void stokes_regftvel(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg
  *Stokes Reg Force Torque Vel Omega kernel, source: 7, target: 6*
  *    fx,fy,fz,tx,ty,tz,eps -> ux,uy,uz,wx,wy,wz         *
  **********************************************************/
-template <class T, int newton_iter = 0>
-void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
-                          mem::MemoryManager *mem_mgr) {
-    constexpr T pi8 = (8 * 3.14159265358979323846);
-    for (int i = 0; i < trg_cnt; i++) {
-        T vx = 0, vy = 0, vz = 0, wx = 0, wy = 0, wz = 0;
-        const T trgx = r_trg[3 * i];
-        const T trgy = r_trg[3 * i + 1];
-        const T trgz = r_trg[3 * i + 2];
-        for (int j = 0; j < src_cnt; j++) {
-            const T fx = v_src[7 * j + 0];
-            const T fy = v_src[7 * j + 1];
-            const T fz = v_src[7 * j + 2];
-            const T tx = v_src[7 * j + 3];
-            const T ty = v_src[7 * j + 4];
-            const T tz = v_src[7 * j + 5];
-            const T eps = v_src[7 * j + 6];
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
+void stokes_regftvelomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
+                                  Matrix<Real_t> &trg_value) {
+#define SRC_BLK 500
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
-            const T sx = r_src[3 * j];
-            const T sy = r_src[3 * j + 1];
-            const T sz = r_src[3 * j + 2];
-            const T dx = trgx - sx;
-            const T dy = trgy - sy;
-            const T dz = trgz - sz;
-            // length squared of r
-            T r2 = dx * dx + dy * dy + dz * dz;
-            T r4 = r2 * r2;
-
-            // regularization parameter squared
-            T eps2 = eps * eps;
-            T eps4 = eps2 * eps2;
-
-            T denom_arg = eps2 + r2;
-            T stokeslet_denom = pi8 * denom_arg * std::sqrt(denom_arg);
-            T rotlet_denom = 2 * stokeslet_denom * denom_arg;
-            T dipole_denom = 2 * rotlet_denom * denom_arg;
-            T rotlet_coef = (2 * r2 + 5.0 * eps2) / rotlet_denom;
-            T D1 = (10 * eps4 - 7 * eps2 * r2 - 2 * r4) / dipole_denom;
-            T D2 = (21 * eps2 + 6 * r2) / dipole_denom;
-            T H2 = 1.0 / stokeslet_denom;
-            T H1 = (r2 + 2.0 * eps2) * H2;
-
-            T fcurlrx = fy * dz - fz * dy;
-            T fcurlry = fz * dx - fx * dz;
-            T fcurlrz = fx * dy - fy * dx;
-
-            T tcurlrx = ty * dz - tz * dy;
-            T tcurlry = tz * dx - tx * dz;
-            T tcurlrz = tx * dy - ty * dx;
-
-            T fdotr = fx * dx + fy * dy + fz * dz;
-            T tdotr = tx * dx + ty * dy + tz * dz;
-
-            vx += H1 * fx + H2 * fdotr * dx + rotlet_coef * tcurlrx;
-            vy += H1 * fy + H2 * fdotr * dy + rotlet_coef * tcurlry;
-            vz += H1 * fz + H2 * fdotr * dz + rotlet_coef * tcurlrz;
-
-            wx += D1 * tx + D2 * tdotr * dx + rotlet_coef * fcurlrx;
-            wy += D1 * ty + D2 * tdotr * dy + rotlet_coef * fcurlry;
-            wz += D1 * tz + D2 * tdotr * dz + rotlet_coef * fcurlrz;
-        }
-        v_trg[6 * i] += vx;
-        v_trg[6 * i + 1] += vy;
-        v_trg[6 * i + 2] += vz;
-        v_trg[6 * i + 3] += wx;
-        v_trg[6 * i + 4] += wy;
-        v_trg[6 * i + 5] += wz;
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
     }
+    const Real_t FACV = 1.0 / (8 * const_pi<Real_t>());
+    const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);
+    const Vec_t facnwtn = set_intrin<Vec_t, Real_t>(1 / (nwtn_scal));
+
+    const Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
+    const Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
+    const Vec_t five = set_intrin<Vec_t, Real_t>(5.0);
+    const Vec_t seven = set_intrin<Vec_t, Real_t>(7.0);
+
+    size_t src_cnt_ = src_coord.Dim(1);
+    size_t trg_cnt_ = trg_coord.Dim(1);
+
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            const Vec_t trgx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t trgy = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t trgz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t vx = zero_intrin<Vec_t>(); // vx
+            Vec_t vy = zero_intrin<Vec_t>(); // vy
+            Vec_t vz = zero_intrin<Vec_t>(); // vz
+            Vec_t wx = zero_intrin<Vec_t>(); // wx
+            Vec_t wy = zero_intrin<Vec_t>(); // wy
+            Vec_t wz = zero_intrin<Vec_t>(); // wz
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                const Vec_t dx = sub_intrin(trgx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                const Vec_t dy = sub_intrin(trgy, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                const Vec_t dz = sub_intrin(trgz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+                const Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
+                const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
+                const Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
+                const Vec_t tx = bcast_intrin<Vec_t>(&src_value[3][s]);
+                const Vec_t ty = bcast_intrin<Vec_t>(&src_value[4][s]);
+                const Vec_t tz = bcast_intrin<Vec_t>(&src_value[5][s]);
+                const Vec_t eps = bcast_intrin<Vec_t>(&src_value[6][s]); // reg parameter
+
+                // length squared of r
+                Vec_t r2 = dx * dx + dy * dy + dz * dz;
+                Vec_t r4 = r2 * r2;
+
+                // regularization parameter squared
+                Vec_t eps2 = eps * eps;
+                Vec_t eps4 = eps2 * eps2;
+
+                Vec_t denom_arg = eps2 + r2;
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(denom_arg);
+                rinv = rinv * facnwtn;
+
+                // Vec_t stokeslet_denom = pi8 * denom_arg * std::sqrt(denom_arg);
+                // Vec_t rotlet_denom = 2 * stokeslet_denom * denom_arg;
+                // Vec_t dipole_denom = 2 * rotlet_denom * denom_arg;
+                // Vec_t rotlet_coef = (2 * r2 + 5.0 * eps2) / rotlet_denom;
+                // Vec_t D1 = (10 * eps4 - 7 * eps2 * r2 - 2 * r4) / dipole_denom;
+                // Vec_t D2 = (21 * eps2 + 6 * r2) / dipole_denom;
+                // Vec_t H2 = 1.0 / stokeslet_denom;
+                // Vec_t H1 = (r2 + 2.0 * eps2) * H2;
+                Vec_t stokeslet_denom_inv = rinv * rinv * rinv;
+                Vec_t rotlet_denom_inv = set_intrin<Vec_t, Real_t>(0.5) * stokeslet_denom_inv * rinv * rinv;
+                Vec_t dipole_denom_inv = set_intrin<Vec_t, Real_t>(0.5) * rotlet_denom_inv * rinv * rinv;
+                Vec_t rotlet_coef = (two * r2 + five * eps2) * rotlet_denom_inv;
+                Vec_t D1 = (two * five * eps4 - seven * eps2 * r2 - two * r4) * dipole_denom_inv;
+                Vec_t D2 = (seven * three * eps2 + two * three * r2) * dipole_denom_inv;
+                Vec_t H2 = stokeslet_denom_inv;
+                Vec_t H1 = (r2 + two * eps2) * H2;
+
+                Vec_t fcurlrx = fy * dz - fz * dy;
+                Vec_t fcurlry = fz * dx - fx * dz;
+                Vec_t fcurlrz = fx * dy - fy * dx;
+
+                Vec_t tcurlrx = ty * dz - tz * dy;
+                Vec_t tcurlry = tz * dx - tx * dz;
+                Vec_t tcurlrz = tx * dy - ty * dx;
+
+                Vec_t fdotr = fx * dx + fy * dy + fz * dz;
+                Vec_t tdotr = tx * dx + ty * dy + tz * dz;
+
+                vx += H1 * fx + H2 * fdotr * dx + rotlet_coef * tcurlrx;
+                vy += H1 * fy + H2 * fdotr * dy + rotlet_coef * tcurlry;
+                vz += H1 * fz + H2 * fdotr * dz + rotlet_coef * tcurlrz;
+
+                wx += D1 * tx + D2 * tdotr * dx + rotlet_coef * fcurlrx;
+                wy += D1 * ty + D2 * tdotr * dy + rotlet_coef * fcurlry;
+                wz += D1 * tz + D2 * tdotr * dz + rotlet_coef * fcurlrz;
+            }
+
+            vx = add_intrin(mul_intrin(vx, facv), load_intrin<Vec_t>(&trg_value[0][t]));
+            vy = add_intrin(mul_intrin(vy, facv), load_intrin<Vec_t>(&trg_value[1][t]));
+            vz = add_intrin(mul_intrin(vz, facv), load_intrin<Vec_t>(&trg_value[2][t]));
+            wx = add_intrin(mul_intrin(wx, facv), load_intrin<Vec_t>(&trg_value[3][t]));
+            wy = add_intrin(mul_intrin(wy, facv), load_intrin<Vec_t>(&trg_value[4][t]));
+            wz = add_intrin(mul_intrin(wz, facv), load_intrin<Vec_t>(&trg_value[5][t]));
+
+            store_intrin(&trg_value[0][t], vx);
+            store_intrin(&trg_value[1][t], vy);
+            store_intrin(&trg_value[2][t], vz);
+            store_intrin(&trg_value[3][t], wx);
+            store_intrin(&trg_value[4][t], wy);
+            store_intrin(&trg_value[5][t], wz);
+        }
+    }
+#undef SRC_BLK
 }
 
 /**********************************************************
@@ -231,73 +307,104 @@ void stokes_regftvelomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, in
  *   Stokes Force Vel Omega kernel, source: 3, target: 6   *
  *           fx,fy,fz -> ux,uy,uz, wx,wy,wz                *
  **********************************************************/
-template <class T, int newton_iter = 0>
-void stokes_velomega(T *r_src, int src_cnt, T *v_src, int dof, T *r_trg, int trg_cnt, T *v_trg,
-                     mem::MemoryManager *mem_mgr) {
-    constexpr T pi8 = (8 * 3.14159265358979323846);
-    for (int i = 0; i < trg_cnt; i++) {
-        T vx = 0, vy = 0, vz = 0, wx = 0, wy = 0, wz = 0;
-        const T trgx = r_trg[3 * i];
-        const T trgy = r_trg[3 * i + 1];
-        const T trgz = r_trg[3 * i + 2];
-        for (int j = 0; j < src_cnt; j++) {
-            const T fx = v_src[3 * j + 0];
-            const T fy = v_src[3 * j + 1];
-            const T fz = v_src[3 * j + 2];
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
+void stokes_velomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
+                             Matrix<Real_t> &trg_value) {
+#define SRC_BLK 500
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
-            const T sx = r_src[3 * j];
-            const T sy = r_src[3 * j + 1];
-            const T sz = r_src[3 * j + 2];
-            const T dx = trgx - sx;
-            const T dy = trgy - sy;
-            const T dz = trgz - sz;
-            // length squared of r
-            T r2 = dx * dx + dy * dy + dz * dz;
-            T r4 = r2 * r2;
-
-            constexpr T eps2 = 0; // will be optimized out
-            constexpr T tx = 0;
-            constexpr T ty = 0;
-            constexpr T tz = 0;
-            T eps4 = eps2 * eps2;
-
-            T denom_arg = eps2 + r2;
-            T stokeslet_denom = pi8 * denom_arg * std::sqrt(denom_arg);
-            T rotlet_denom = 2 * stokeslet_denom * denom_arg;
-            T dipole_denom = 2 * rotlet_denom * denom_arg;
-            T rotlet_coef = (2 * r2 + 5.0 * eps2) / rotlet_denom;
-            T D1 = (10 * eps4 - 7 * eps2 * r2 - 2 * r4) / dipole_denom;
-            T D2 = (21 * eps2 + 6 * r2) / dipole_denom;
-            T H2 = 1.0 / stokeslet_denom;
-            T H1 = (r2 + 2.0 * eps2) * H2;
-
-            T fcurlrx = fy * dz - fz * dy;
-            T fcurlry = fz * dx - fx * dz;
-            T fcurlrz = fx * dy - fy * dx;
-
-            T tcurlrx = ty * dz - tz * dy;
-            T tcurlry = tz * dx - tx * dz;
-            T tcurlrz = tx * dy - ty * dx;
-
-            T fdotr = fx * dx + fy * dy + fz * dz;
-            T tdotr = tx * dx + ty * dy + tz * dz;
-
-            vx += H1 * fx + H2 * fdotr * dx + rotlet_coef * tcurlrx;
-            vy += H1 * fy + H2 * fdotr * dy + rotlet_coef * tcurlry;
-            vz += H1 * fz + H2 * fdotr * dz + rotlet_coef * tcurlrz;
-
-            wx += D1 * tx + D2 * tdotr * dx + rotlet_coef * fcurlrx;
-            wy += D1 * ty + D2 * tdotr * dy + rotlet_coef * fcurlry;
-            wz += D1 * tz + D2 * tdotr * dz + rotlet_coef * fcurlrz;
-        }
-        v_trg[6 * i + 0] += vx;
-        v_trg[6 * i + 1] += vy;
-        v_trg[6 * i + 2] += vz;
-        v_trg[6 * i + 3] += wx;
-        v_trg[6 * i + 4] += wy;
-        v_trg[6 * i + 5] += wz;
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
     }
+    const Real_t FACV = 1.0 / (8 * const_pi<Real_t>());
+    const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);
+    const Vec_t facnwtn = set_intrin<Vec_t, Real_t>(1 / (nwtn_scal));
+
+    const Vec_t two = set_intrin<Vec_t, Real_t>(2.0);
+    const Vec_t three = set_intrin<Vec_t, Real_t>(3.0);
+    const Vec_t five = set_intrin<Vec_t, Real_t>(5.0);
+    const Vec_t seven = set_intrin<Vec_t, Real_t>(7.0);
+
+    size_t src_cnt_ = src_coord.Dim(1);
+    size_t trg_cnt_ = trg_coord.Dim(1);
+
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            const Vec_t trgx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            const Vec_t trgy = load_intrin<Vec_t>(&trg_coord[1][t]);
+            const Vec_t trgz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t vx = zero_intrin<Vec_t>(); // vx
+            Vec_t vy = zero_intrin<Vec_t>(); // vy
+            Vec_t vz = zero_intrin<Vec_t>(); // vz
+            Vec_t wx = zero_intrin<Vec_t>(); // wx
+            Vec_t wy = zero_intrin<Vec_t>(); // wy
+            Vec_t wz = zero_intrin<Vec_t>(); // wz
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                const Vec_t dx = sub_intrin(trgx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                const Vec_t dy = sub_intrin(trgy, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                const Vec_t dz = sub_intrin(trgz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+                const Vec_t fx = bcast_intrin<Vec_t>(&src_value[0][s]);
+                const Vec_t fy = bcast_intrin<Vec_t>(&src_value[1][s]);
+                const Vec_t fz = bcast_intrin<Vec_t>(&src_value[2][s]);
+
+                // length squared of r
+                Vec_t r2 = dx * dx + dy * dy + dz * dz;
+                Vec_t r4 = r2 * r2;
+
+                Vec_t denom_arg = r2;
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(denom_arg);
+                rinv = rinv * facnwtn;
+
+                Vec_t stokeslet_denom_inv = rinv * rinv * rinv;
+                Vec_t rotlet_denom_inv = set_intrin<Vec_t, Real_t>(0.5) * stokeslet_denom_inv * rinv * rinv;
+                Vec_t rotlet_coef = (two * r2) * rotlet_denom_inv;
+                Vec_t H2 = stokeslet_denom_inv;
+                Vec_t H1 = (r2)*H2;
+
+                Vec_t fcurlrx = fy * dz - fz * dy;
+                Vec_t fcurlry = fz * dx - fx * dz;
+                Vec_t fcurlrz = fx * dy - fy * dx;
+
+                Vec_t fdotr = fx * dx + fy * dy + fz * dz;
+
+                vx += H1 * fx + H2 * fdotr * dx;
+                vy += H1 * fy + H2 * fdotr * dy;
+                vz += H1 * fz + H2 * fdotr * dz;
+
+                wx += rotlet_coef * fcurlrx;
+                wy += rotlet_coef * fcurlry;
+                wz += rotlet_coef * fcurlrz;
+            }
+
+            vx = add_intrin(mul_intrin(vx, facv), load_intrin<Vec_t>(&trg_value[0][t]));
+            vy = add_intrin(mul_intrin(vy, facv), load_intrin<Vec_t>(&trg_value[1][t]));
+            vz = add_intrin(mul_intrin(vz, facv), load_intrin<Vec_t>(&trg_value[2][t]));
+            wx = add_intrin(mul_intrin(wx, facv), load_intrin<Vec_t>(&trg_value[3][t]));
+            wy = add_intrin(mul_intrin(wy, facv), load_intrin<Vec_t>(&trg_value[4][t]));
+            wz = add_intrin(mul_intrin(wz, facv), load_intrin<Vec_t>(&trg_value[5][t]));
+
+            store_intrin(&trg_value[0][t], vx);
+            store_intrin(&trg_value[1][t], vy);
+            store_intrin(&trg_value[2][t], vz);
+            store_intrin(&trg_value[3][t], wx);
+            store_intrin(&trg_value[4][t], wy);
+            store_intrin(&trg_value[5][t], wz);
+        }
+    }
+#undef SRC_BLK
 }
+
+GEN_KERNEL(stokes_regvel, stokes_regvel_uKernel, 4, 3)
+GEN_KERNEL(stokes_velomega, stokes_velomega_uKernel, 3, 6)
+GEN_KERNEL(stokes_regftvel, stokes_regftvel_uKernel, 7, 3)
+GEN_KERNEL(stokes_regftvelomega, stokes_regftvelomega_uKernel, 7, 6)
 
 template <class T>
 struct StokesRegKernel {
