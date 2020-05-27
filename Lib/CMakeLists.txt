@@ -11,8 +11,7 @@ target_include_directories(
 target_link_libraries(STKFMM_SHARED PUBLIC ${PVFMM_LIB_DIR}/${PVFMM_SHARED_LIB}
                                            ${PVFMM_DEP_LIB})
 
-target_compile_options(STKFMM_SHARED PUBLIC ${OpenMP_CXX_FLAGS}
-                                            ${MPI_CXX_INCLUDE_DIRS})
+target_compile_options(STKFMM_SHARED PUBLIC ${OpenMP_CXX_FLAGS})
 # static lib
 add_library(STKFMM_STATIC STATIC src/FMMData.cpp src/STKFMM.cpp
                                  src/Stk3DFMM.cpp src/StkWallFMM.cpp)
@@ -24,8 +23,7 @@ target_include_directories(
 target_link_libraries(STKFMM_STATIC PUBLIC ${PVFMM_LIB_DIR}/${PVFMM_STATIC_LIB}
                                            ${PVFMM_DEP_LIB})
 
-target_compile_options(STKFMM_STATIC PUBLIC ${OpenMP_CXX_FLAGS}
-                                            ${MPI_CXX_INCLUDE_DIRS})
+target_compile_options(STKFMM_STATIC PUBLIC ${OpenMP_CXX_FLAGS})
 
 # install core library and headers
 include(GNUInstallDirs)
