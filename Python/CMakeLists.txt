@@ -1,6 +1,10 @@
 if(PyInterface)
-  find_package(pybind11 REQUIRED)
+  execute_process(COMMAND python -c
+    "import pybind11_cmake; print(pybind11_cmake.__path__[0])"
+    OUTPUT_VARIABLE pybind11_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+  find_package(pybind11 REQUIRED)
+  message("pybind11 Includes: " ${pybind11_INCLUDE_DIR})
   message("Python Includes: " ${PYTHON_INCLUDE_DIRS})
   message("Python Libs: " ${PYTHON_LIBRARIES})
 
@@ -12,9 +16,8 @@ if(PyInterface)
     PUBLIC $<INSTALL_INTERFACE:include>
            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
            ${PVFMM_INCLUDE_DIR} ${PVFMM_DEP_INCLUDE_DIR}
-    PRIVATE ${PYTHON_INCLUDE_DIRS})
-  target_compile_options(PySTKFMM PUBLIC ${OpenMP_CXX_FLAGS}
-                                         ${MPI_CXX_INCLUDE_DIRS})
+    PRIVATE ${PYTHON_INCLUDE_DIRS} ${pybind11_INCLUDE_DIR})
+  target_compile_options(PySTKFMM PUBLIC ${OpenMP_CXX_FLAGS})
   target_link_libraries(
     PySTKFMM PUBLIC STKFMM_SHARED ${pybind11_LIBRARIES} ${PVFMM_SHARED_LIBRARY}
                     OpenMP::OpenMP_CXX ${PVFMM_DEP_LIB} MPI::MPI_CXX)
