@@ -7,6 +7,21 @@ import argparse
 import json
 
 
+component = {
+    'laplace_PGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$'],
+    'laplace_PGradGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$', r'$\phi_{,xx}$', r'$\phi_{,xy}$', r'$\phi_{,xz}$', r'$\phi_{,yy}$', r'$\phi_{,yz}$', r'$\phi_{,zz}$'],
+    'laplace_QPGradGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$', r'$\phi_{,xx}$', r'$\phi_{,xy}$', r'$\phi_{,xz}$', r'$\phi_{,yy}$', r'$\phi_{,yz}$', r'$\phi_{,zz}$'],
+    'stokes_vel': [r'$u_x$', r'$u_y$', r'$u_z$'],
+    'stokes_regvel': [r'$u_x$', r'$u_y$', r'$u_z$'],
+    'stokes_regftvelomega': [r'$u_x$', r'$u_y$', r'$u_z$', r'$\omega_x$', r'$\omega_y$', r'$\omega_z$'],
+    'rpy_ulapu': [r'$u_x$', r'$u_y$', r'$u_z$', r'$\nabla^2 u_x$', r'$\nabla^2 u_y$', r'$\nabla^2 u_z$'],
+    'stokes_PVel': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$'],
+    'stokes_PVelGrad': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$', r'$p_{,x}$', r'$p_{,y}$', r'$p_{,z}$', r'$ux_{,x}$', r'$ux_{,y}$', r'$ux_{,z}$', r'$uy_{,x}$', r'$uy_{,y}$', r'$uy_{,z}$', r'$uz_{,x}$', r'$uz_{,y}$', r'$uz_{,z}$'],
+    'stokes_PVelLaplacian': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$', r'$\nabla^2 u_x$', r'$\nabla^2 u_y$', r'$\nabla^2 u_z$'],
+    'stokes_Traction': [r'$\sigma_{xx}$', r'$\sigma_{xy}$', r'$\sigma_{xz}$', r'$\sigma_{yx}$', r'$\sigma_{yy}$', r'$\sigma_{yz}$', r'$\sigma_{zx}$', r'$\sigma_{zy}$', r'$\sigma_{zz}$']
+}
+
+
 def parseError(error):
     '''
     convert error from a list of dict to numpy 2D array
@@ -21,16 +36,16 @@ def parseError(error):
     return np.transpose(np.array(result))
 
 
-def plotRecord(ax, multOrder, treeTime, runTime, name, error):
+def plotRecord(ax, multOrder, treeTime, runTime, name, error, compname):
     dim = error.shape[2]
     for i in range(dim):
-        ax.semilogy(multOrder, error[:, 1, i], 'x', label=str(i))
+        ax.semilogy(multOrder, error[:, 1, i], 'x', label=compname[i])
     ax.set_prop_cycle(None)  # reset color cycle
     for i in range(dim):
         ax.semilogy(multOrder, error[:, 3, i], '--o')
 
     ax.set_title(name)
-    ax.legend(loc='upper left', ncol=3,
+    ax.legend(loc='upper left', ncol=4,
               title=r'component error: x $\delta_{L2}$, o $\epsilon_{L2}$')
     ax.set_xlabel(r"$p$")
     ax.set_ylabel("Error")
@@ -88,7 +103,8 @@ def plotData(data):
     for k in error.keys():
         error[k] = np.array(error[k])
         ax = axs.flat[index]
-        plotRecord(ax, multOrder, treeTime, runTime, kernel+' '+k, error[k])
+        plotRecord(ax, multOrder, treeTime, runTime,
+                   kernel+' '+k, error[k], component[kernel])
         index += 1
     plt.savefig('Test_'+kernel+'.png')
 
