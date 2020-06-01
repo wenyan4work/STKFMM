@@ -295,49 +295,80 @@ int main(int argc, char **argv) {
     const double pCenterLEquiv[3] = {-(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2, -(scaleLEquiv - 1) / 2};
     const double pCenterLCheck[3] = {-(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2, -(scaleLCheck - 1) / 2};
 
-    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv, 0);
+    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck, 0);
+    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLCheck[0]), scaleLCheck, 0);
+    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
+    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
     // calculate the operator M2L with least square
     const int equivN = pointMEquiv.size() / 3;
     const int checkN = pointLCheck.size() / 3;
     Eigen::MatrixXd M2L(equivN, equivN); // Laplace, 1->1
 
-    Eigen::MatrixXd A(checkN, 1 * equivN);
+    // Aup for solving MEquiv
+    Eigen::MatrixXd Aup(checkN, equivN);
+    Eigen::MatrixXd AuppinvU(Aup.cols(), Aup.rows());
+    Eigen::MatrixXd AuppinvVT(Aup.cols(), Aup.rows());
+    for (int k = 0; k < checkN; k++) {
+        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+        for (int l = 0; l < equivN; l++) {
+            const Eigen::Vector3d Lpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
+            Aup(k, l) = pot(Cpoint, Lpoint);
+        }
+    }
+    pinv(Aup, AuppinvU, AuppinvVT);
+
+    // Adown for solving LEquiv
+    Eigen::MatrixXd Adown(checkN, equivN);
+    Eigen::MatrixXd AdownpinvU(Adown.cols(), Adown.rows());
+    Eigen::MatrixXd AdownpinvVT(Adown.cols(), Adown.rows());
     for (int k = 0; k < checkN; k++) {
         Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
             const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
-            // A.block<4, 1>(4 * k, l) = gKernel(Cpoint, Lpoint);
-            A(k, l) = pot(Cpoint, Lpoint);
+            Adown(k, l) = pot(Cpoint, Lpoint);
         }
     }
-    Eigen::MatrixXd ApinvU(A.cols(), A.rows());
-    Eigen::MatrixXd ApinvVT(A.cols(), A.rows());
-    pinv(A, ApinvU, ApinvVT);
+    pinv(Adown, AdownpinvU, AdownpinvVT);
 
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
         const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         const EVec3 Npoint(0.5, 0.5, 0.5);
-        // assemble linear system
-        Eigen::VectorXd f(checkN * 4);
+        Eigen::VectorXd f(checkN);
+        //         Eigen::VectorXd M(equivN);
+        //         // solve MEquiv
+        //         f.setZero();
+        //         for (int k = 0; k < checkN; k++) {
+        //             EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+        //             f[k] = pot(Cpoint, Mpoint) - pot(Cpoint, Npoint);
+        //         }
+        //         M = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
+        //         std::cout << M << std::endl;
+
+        //         // solve potFF on LCheck
+        //         f.setZero();
+        // #pragma omp parallel for
+        //         for (int k = 0; k < checkN; k++) {
+        //             EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
+        //             for (int l = 0; l < equivN; l++) {
+        //                 EVec3 Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
+        //                 f[k] += potFF(Cpoint, Mpoint) * M[l];
+        //             }
+        //         }
+
+        f.setZero();
         for (int k = 0; k < checkN; k++) {
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
-            // sum the images
-            // f.block<4, 1>(4 * k, 0) =
-            //     gKernelFF(Cpoint, Mpoint) - gKernelFF(Cpoint, Npoint);
+            EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             f[k] = potFF(Cpoint, Mpoint) - potFF(Cpoint, Npoint);
         }
 
-        M2L.col(i) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
+        M2L.col(i) = (AdownpinvU.transpose() * (AdownpinvVT.transpose() * f));
 
         // std::cout << "debug f: \n" << f << std::endl;
         // std::cout << "debug M: \n" << M2L.col(i) << std::endl;
@@ -354,26 +385,13 @@ int main(int argc, char **argv) {
 
     std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
-    // operator A
-    A.resize(checkN, equivN);
-    ApinvU.resize(A.cols(), A.rows());
-    ApinvVT.resize(A.cols(), A.rows());
-    for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
-        for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
-            A(k, l) = pot(Cpoint, Mpoint);
-        }
-    }
-    pinv(A, ApinvU, ApinvVT);
-
     // Test
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(2);
     std::vector<double> chargeValue(2);
-    chargePoint[0] = Eigen::Vector3d(0.6, 0.6, 0.6);
-    chargeValue[0] = -1;
-    chargePoint[1] = Eigen::Vector3d(0.1, 0.1, 0.1);
-    chargeValue[1] = 1;
+    chargePoint[0] = Eigen::Vector3d(-0.025, -0.025, -0.025);
+    chargeValue[0] = 1;
+    chargePoint[1] = Eigen::Vector3d(0.5, 0.5, 0.5);
+    chargeValue[1] = -1;
 
     // solve M
     Eigen::VectorXd f(checkN);
@@ -385,9 +403,26 @@ int main(int argc, char **argv) {
         }
         f[k] = temp;
     }
-    Eigen::VectorXd Msource = (ApinvU.transpose() * (ApinvVT.transpose() * f));
+    Eigen::VectorXd Msource = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
 
     std::cout << "Msource: " << Msource << std::endl;
+
+    // check dipole moment
+    {
+        EVec3 dipole = EVec3::Zero();
+        for (int i = 0; i < chargePoint.size(); i++) {
+            dipole += chargeValue[i] * chargePoint[i];
+        }
+        std::cout << "charge dipole" << dipole.transpose() << std::endl;
+    }
+    {
+        EVec3 dipole = EVec3::Zero();
+        for (int i = 0; i < equivN; i++) {
+            Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
+            dipole += Mpoint * Msource[i];
+        }
+        std::cout << "Mequiv dipole" << dipole.transpose() << std::endl;
+    }
 
     Eigen::VectorXd M2Lsource = M2L * (Msource);
 
