@@ -15,3 +15,8 @@ add_executable(
 target_link_libraries(M2LStokesPVel Eigen3::Eigen OpenMP::OpenMP_CXX
                       MPI::MPI_CXX)
 target_include_directories(M2LStokesPVel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(SVD svd_test.cpp)
+target_link_libraries(SVD Eigen3::Eigen OpenMP::OpenMP_CXX MPI::MPI_CXX)
+# target_include_directories(SVD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+

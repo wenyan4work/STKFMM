@@ -323,6 +323,12 @@ int main(int argc, char **argv) {
     }
     pinv(Aup, AuppinvU, AuppinvVT);
 
+    // condition number
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Aup);
+    double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
+    std::cout << cond << std::endl;
+    std::cout << "s:" << svd.singularValues() << std::endl;
+
     // Adown for solving LEquiv
     Eigen::MatrixXd Adown(checkN, equivN);
     Eigen::MatrixXd AdownpinvU(Adown.cols(), Adown.rows());
@@ -341,27 +347,6 @@ int main(int argc, char **argv) {
         const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         const EVec3 Npoint(0.5, 0.5, 0.5);
         Eigen::VectorXd f(checkN);
-        //         Eigen::VectorXd M(equivN);
-        //         // solve MEquiv
-        //         f.setZero();
-        //         for (int k = 0; k < checkN; k++) {
-        //             EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
-        //             f[k] = pot(Cpoint, Mpoint) - pot(Cpoint, Npoint);
-        //         }
-        //         M = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
-        //         std::cout << M << std::endl;
-
-        //         // solve potFF on LCheck
-        //         f.setZero();
-        // #pragma omp parallel for
-        //         for (int k = 0; k < checkN; k++) {
-        //             EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
-        //             for (int l = 0; l < equivN; l++) {
-        //                 EVec3 Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
-        //                 f[k] += potFF(Cpoint, Mpoint) * M[l];
-        //             }
-        //         }
-
         f.setZero();
         for (int k = 0; k < checkN; k++) {
             EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
@@ -369,12 +354,176 @@ int main(int argc, char **argv) {
         }
 
         M2L.col(i) = (AdownpinvU.transpose() * (AdownpinvVT.transpose() * f));
-
-        // std::cout << "debug f: \n" << f << std::endl;
-        // std::cout << "debug M: \n" << M2L.col(i) << std::endl;
     }
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+
+    // post correction
+    // const int nfix = 2 * checkN;
+    // Eigen::VectorXd ones(checkN);
+    // ones.setOnes();
+
+    // Eigen::VectorXd mone(equivN);
+    // mone = (AdownpinvU.transpose() * (AdownpinvVT.transpose() * ones));
+    // std::cout << "mone: " << mone.transpose() << std::endl;
+
+    // Eigen::MatrixXd coeff(nfix, equivN);
+    // Eigen::VectorXd drift(nfix);
+
+    // for (int ifix = 0; ifix < nfix; ifix++) {
+    //     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(2);
+    //     std::vector<double> chargeValue(2);
+    //     chargePoint[0].setRandom();
+    //     chargePoint[0] *= 0.5;
+    //     chargePoint[0] += EVec3(0.5, 0.5, 0.5);
+    //     chargePoint[1].setRandom();
+    //     chargePoint[1] *= 0.5;
+    //     chargePoint[1] += EVec3(0.5, 0.5, 0.5);
+    //     chargeValue[0] = 1;
+    //     chargeValue[1] = -1;
+
+    //     // solve M
+    //     Eigen::VectorXd f(checkN);
+    //     for (int k = 0; k < checkN; k++) {
+    //         double temp = 0;
+    //         Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+    //         for (size_t p = 0; p < chargePoint.size(); p++) {
+    //             temp = temp + pot(Cpoint, chargePoint[p]) * (chargeValue[p]);
+    //         }
+    //         f[k] = temp;
+    //     }
+    //     Eigen::VectorXd Msource = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
+    //     Eigen::VectorXd M2Lsource = M2L * (Msource);
+
+    //     Eigen::Vector3d samplePoint = EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
+    //     double UsampleSP = 0;
+    //     double UFF = 0;
+
+    //     for (int p = 0; p < chargePoint.size(); p++) {
+    //         UFF += potFF(samplePoint, chargePoint[p]) * chargeValue[p];
+    //     }
+
+    //     for (int p = 0; p < equivN; p++) {
+    //         Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
+    //         UsampleSP += pot(samplePoint, Lpoint) * M2Lsource[p];
+    //     }
+
+    //     std::cout << "drift : " << (UsampleSP - UFF) << std::endl;
+
+    //     drift[ifix] = -(UsampleSP - UFF);
+    //     coeff.row(ifix) = Msource;
+    // }
+
+    // // condition number
+    // // Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeff);
+    // // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
+    // // std::cout << cond << std::endl;
+
+    // // solve coeff * x = drift
+    // Eigen::MatrixXd coeffpinvU(coeff.cols(), coeff.rows());
+    // Eigen::MatrixXd coeffpinvVT(coeff.cols(), coeff.rows());
+    // pinv(coeff, coeffpinvU, coeffpinvVT);
+    // std::cout << coeff.rows() << " " << coeff.cols() << std::endl;
+    // std::cout << coeffpinvU.rows() << " " << coeffpinvU.cols() << std::endl;
+    // std::cout << coeffpinvVT.rows() << " " << coeffpinvVT.cols() << std::endl;
+    // // int maxrow, maxcol;
+    // // Eigen::MatrixXd absU = coeffpinvU.cwiseAbs();
+    // // absU.maxCoeff(&maxrow, &maxcol);
+    // // coeffpinvU.row(maxrow).setZero();
+    // // coeffpinvU.maxCoeff(&maxrow, &maxcol);
+    // // coeffpinvU.row(maxrow).setZero();
+    // // coeffpinvU.maxCoeff(&maxrow, &maxcol);
+    // // coeffpinvU.row(maxrow).setZero();
+    // // std::cout << coeffpinvU << std::endl;
+    // Eigen::VectorXd y = (coeffpinvVT.transpose() * drift);
+    // Eigen::VectorXd x = coeffpinvU.transpose() * y;
+    // // std::cout << y.transpose() << std::endl;
+    // // std::cout << x.transpose() << std::endl;
+    // M2L += mone * x.transpose();
+
+    //     // post correction
+    //     const int nfix = 3 * checkN;
+
+    //     Eigen::MatrixXd coeff(nfix, equivN);
+    //     Eigen::VectorXd drift(nfix);
+
+    // #pragma omp parallel for
+    //     for (int ifix = 0; ifix < nfix; ifix++) {
+    //         std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(3);
+    //         std::vector<double> chargeValue(3);
+    //         chargePoint[0].setRandom();
+    //         chargePoint[0] *= 0.5;
+    //         chargePoint[0] += EVec3(0.5, 0.5, 0.5);
+    //         chargePoint[1].setRandom();
+    //         chargePoint[1] *= 0.5;
+    //         chargePoint[1] += EVec3(0.5, 0.5, 0.5);
+    //         chargePoint[2].setRandom();
+    //         chargePoint[2] *= 0.5;
+    //         chargePoint[2] += EVec3(0.5, 0.5, 0.5);
+    //         chargeValue[0] = 2;
+    //         chargeValue[1] = -1;
+    //         chargeValue[2] = -1;
+
+    //         // solve M
+    //         Eigen::VectorXd f(checkN);
+    //         for (int k = 0; k < checkN; k++) {
+    //             double temp = 0;
+    //             Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+    //             for (size_t p = 0; p < chargePoint.size(); p++) {
+    //                 temp = temp + pot(Cpoint, chargePoint[p]) * (chargeValue[p]);
+    //             }
+    //             f[k] = temp;
+    //         }
+    //         Eigen::VectorXd Msource = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
+
+    //         // std::cout << "backward error: " << f - Aup * Msource << std::endl;
+
+    //         Eigen::Vector3d samplePoint = EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
+    //         EVec4 UFFS2T, UFFM2T;
+    //         UFFS2T.setZero();
+    //         UFFM2T.setZero();
+
+    //         for (int p = 0; p < chargePoint.size(); p++) {
+    //             UFFS2T += gKernelFF(samplePoint, chargePoint[p]) * chargeValue[p];
+    //         }
+
+    //         for (int p = 0; p < equivN; p++) {
+    //             Eigen::Vector3d Mpoint(pointMEquiv[3 * p], pointMEquiv[3 * p + 1], pointMEquiv[3 * p + 2]);
+    //             UFFM2T += gKernelFF(samplePoint, Mpoint) * Msource[p];
+    //         }
+    //         // std::cout << UFFS2T.transpose() << std::endl;
+    //         // std::cout << UFFM2T.transpose() << std::endl;
+
+    //         drift[ifix] = -UFFS2T[0] + UFFM2T[0];
+    //         coeff.row(ifix) = Msource;
+    //     }
+
+    //     // condition number
+    //     Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeff);
+    //     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
+    //     std::cout << cond << std::endl;
+    //     std::cout << "drift\n" << drift << std::endl;
+
+    //     // solve coeff * x = drift
+    //     Eigen::MatrixXd coeffpinvU(coeff.cols(), coeff.rows());
+    //     Eigen::MatrixXd coeffpinvVT(coeff.cols(), coeff.rows());
+    //     pinv(coeff, coeffpinvU, coeffpinvVT);
+    //     std::cout << coeff.rows() << " " << coeff.cols() << std::endl;
+    //     std::cout << coeffpinvU.rows() << " " << coeffpinvU.cols() << std::endl;
+    //     std::cout << coeffpinvVT.rows() << " " << coeffpinvVT.cols() << std::endl;
+    //     // int maxrow, maxcol;
+    //     // Eigen::MatrixXd absU = coeffpinvU.cwiseAbs();
+    //     // absU.maxCoeff(&maxrow, &maxcol);
+    //     // coeffpinvU.row(maxrow).setZero();
+    //     // coeffpinvU.maxCoeff(&maxrow, &maxcol);
+    //     // coeffpinvU.row(maxrow).setZero();
+    //     // coeffpinvU.maxCoeff(&maxrow, &maxcol);
+    //     // coeffpinvU.row(maxrow).setZero();
+    //     // std::cout << coeffpinvU << std::endl;
+    //     Eigen::VectorXd y = (coeffpinvVT.transpose() * drift);
+    //     Eigen::VectorXd x = coeffpinvU.transpose() * y;
+    //     std::cout << y.transpose() << std::endl;
+    //     std::cout << x.transpose() << std::endl;
 
     // dump M2L
     for (int i = 0; i < equivN; i++) {
@@ -386,12 +535,15 @@ int main(int argc, char **argv) {
     std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
     // Test
+    EVec3 center(0.6, 0.5, 0.5);
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> chargePoint(2);
     std::vector<double> chargeValue(2);
-    chargePoint[0] = Eigen::Vector3d(-0.025, -0.025, -0.025);
+    chargePoint[0] = center + EVec3(0.1, 0, 0);
     chargeValue[0] = 1;
-    chargePoint[1] = Eigen::Vector3d(0.5, 0.5, 0.5);
+    chargePoint[1] = center + EVec3(-0.1, 0., 0.);
     chargeValue[1] = -1;
+    // chargePoint[2] = center + EVec3(-0.2, 0., 0.);
+    // chargeValue[2] = 1;
 
     // solve M
     Eigen::VectorXd f(checkN);
@@ -405,7 +557,9 @@ int main(int argc, char **argv) {
     }
     Eigen::VectorXd Msource = (AuppinvU.transpose() * (AuppinvVT.transpose() * f));
 
-    std::cout << "Msource: " << Msource << std::endl;
+    std::cout << "Msource " << Msource << std::endl;
+
+    std::cout << "backward error: " << f - Aup * Msource << std::endl;
 
     // check dipole moment
     {
@@ -413,7 +567,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < chargePoint.size(); i++) {
             dipole += chargeValue[i] * chargePoint[i];
         }
-        std::cout << "charge dipole" << dipole.transpose() << std::endl;
+        std::cout << "charge dipole " << dipole.transpose() << std::endl;
     }
     {
         EVec3 dipole = EVec3::Zero();
@@ -421,7 +575,7 @@ int main(int argc, char **argv) {
             Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
             dipole += Mpoint * Msource[i];
         }
-        std::cout << "Mequiv dipole" << dipole.transpose() << std::endl;
+        std::cout << "Mequiv dipole " << dipole.transpose() << std::endl;
     }
 
     Eigen::VectorXd M2Lsource = M2L * (Msource);
@@ -429,34 +583,38 @@ int main(int argc, char **argv) {
     for (int is = 0; is < 5; is++) {
 
         Eigen::Vector3d samplePoint = EVec3::Random() * 0.2 + EVec3(0.5, 0.5, 0.5);
-        EVec4 Usample = EVec4::Zero();
-        EVec4 UsampleSP = EVec4::Zero();
-        EVec4 UFF = EVec4::Zero();
 
-        for (int i = -DIRECTLAYER; i < 1 + DIRECTLAYER; i++) {
-            for (int j = -DIRECTLAYER; j < 1 + DIRECTLAYER; j++) {
-                for (int k = -DIRECTLAYER; k < 1 + DIRECTLAYER; k++) {
-                    for (size_t p = 0; p < chargePoint.size(); p++) {
-                        Usample += gKernel(samplePoint, chargePoint[p] + EVec3(i, j, k)) * chargeValue[p];
-                    }
-                }
+        EVec4 UFFL2T = EVec4::Zero();
+        EVec4 UFFS2T = EVec4::Zero();
+        EVec4 UFFM2T = EVec4::Zero();
+
+#pragma omp sections
+        {
+#pragma omp section
+            for (int p = 0; p < chargePoint.size(); p++) {
+                UFFS2T += gKernelFF(samplePoint, chargePoint[p]) * chargeValue[p];
+            }
+
+#pragma omp section
+            for (int p = 0; p < equivN; p++) {
+                Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
+                UFFL2T += gKernel(samplePoint, Lpoint) * M2Lsource[p];
+            }
+
+#pragma omp section
+            for (int p = 0; p < equivN; p++) {
+                Eigen::Vector3d Mpoint(pointMEquiv[3 * p], pointMEquiv[3 * p + 1], pointMEquiv[3 * p + 2]);
+                UFFM2T += gKernelFF(samplePoint, Mpoint) * Msource[p];
             }
         }
-
-        for (int p = 0; p < chargePoint.size(); p++) {
-            UFF += gKernelFF(samplePoint, chargePoint[p]) * chargeValue[p];
-        }
-
-        for (int p = 0; p < equivN; p++) {
-            Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
-            UsampleSP += gKernel(samplePoint, Lpoint) * M2Lsource[p];
-        }
-
-        std::cout << "samplePoint:" << samplePoint << std::endl;
-        std::cout << "Usample NF:" << Usample << std::endl;
-        std::cout << "Usample FF:" << UsampleSP << std::endl;
-        std::cout << "Usample FF+NF total:" << UsampleSP + Usample << std::endl;
-        std::cout << "Error : " << UsampleSP - UFF << std::endl;
+        std::cout << std::scientific << std::setprecision(10);
+        std::cout << "-----------------------------------------------" << std::endl;
+        std::cout << "samplePoint:" << samplePoint.transpose() << std::endl;
+        std::cout << "UFF S2T: " << UFFS2T.transpose() << std::endl;
+        std::cout << "UFF M2T: " << UFFM2T.transpose() << std::endl;
+        std::cout << "UFF L2T: " << UFFL2T.transpose() << std::endl;
+        std::cout << "Error M2T: " << (UFFM2T - UFFS2T).transpose() << std::endl;
+        std::cout << "Error L2T: " << (UFFL2T - UFFS2T).transpose() << std::endl;
     }
 
     return 0;
