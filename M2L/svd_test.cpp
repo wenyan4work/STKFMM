@@ -99,6 +99,7 @@ inline double pot(const EVec3 &target, const EVec3 &source) {
 }
 
 int main(int argc, char **argv) {
+    Eigen::initParallel();
 
     const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
     const int pCheck = 2 * atoi(argv[1]);
