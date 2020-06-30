@@ -103,16 +103,18 @@ inline void GkernelEwald(const Eigen::Vector3d &rvec_, Eigen::Matrix3d &Gsum) {
     rvec[2] = rvec[2] - floor(rvec[2]);
     const double r = rvec.norm();
     Eigen::Matrix3d real = Eigen::Matrix3d::Zero();
-    EMat3 Gself = -4 * xi / sqrt(M_PI) * Eigen::Matrix3d::Identity(); // the self term
     const int N = 5;
     for (int i = -N; i < N + 1; i++) {
         for (int j = -N; j < N + 1; j++) {
             for (int k = -N; k < N + 1; k++) {
+                if (r < eps && i == 0 && j == 0 && k == 0)
+                    continue;
                 real = real + AEW(xi, rvec + Eigen::Vector3d(i, j, k));
             }
         }
     }
 
+    EMat3 Gself = -4 * xi / sqrt(M_PI) * Eigen::Matrix3d::Identity(); // the self term
     if (r < eps) {
         real += Gself;
     }
@@ -481,7 +483,7 @@ int main(int argc, char **argv) {
 
     std::cout << std::scientific << std::setprecision(18);
 
-    testEwald();
+    // testEwald();
 
     const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
     const int pCheck = atoi(argv[1]);
@@ -511,7 +513,6 @@ int main(int argc, char **argv) {
             const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Lpoint, W);
-            W.row(0).setZero();
             A.block<4, 4>(4 * k, 4 * l) = W;
         }
     }
@@ -520,7 +521,7 @@ int main(int argc, char **argv) {
     pinv(A, ApinvU, ApinvVT);
 
     Eigen::MatrixXd M2L(4 * equivN, 4 * equivN);
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
         const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
         const EVec3 npoint(0.5, 0.5, 0.5);
@@ -531,13 +532,16 @@ int main(int argc, char **argv) {
             EMat4 neu = EMat4::Zero();
             WkernelFF(Cpoint, Mpoint, val);
             WkernelFF(Cpoint, npoint, neu);
-            EMat4 temp = val - neu;
+            EMat4 temp = val;
+            // EMat4 temp = val - neu;
+            // std::cout << temp << std::endl;
             // temp.row(0).setZero();
-            // temp.col(3) = val.col(3) - neu.col(3);
+            temp.col(3) = val.col(3) - neu.col(3);
             // temp.row(0) = val.row(0) - neu.row(0);
             // std::cout << temp << std::endl;
             f.block<4, 4>(4 * k, 0) = temp;
         }
+        // std::cout << f.col(0) << std::endl;
         M2L.block(0, 4 * i, 4 * equivN, 4) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
         // std::cout << "M2L\n" << M2L.block(0, 4 * i, 4 * equivN, 4) << std::endl;
     }
