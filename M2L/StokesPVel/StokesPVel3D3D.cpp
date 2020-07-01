@@ -682,8 +682,8 @@ int main(int argc, char **argv) {
     std::cout << "Dipole LS Error: " << dnetError.transpose() << std::endl;
 
     for (int i = 0; i < 6; i++) {
-        EVec3 samplePoint = EVec3(0.2, 0.2, 0.2) * i + EVec3(0., 0., 0.);
-        // EVec3 samplePoint = EVec3::Random() * 0.5 + EVec3(0.5, 0.5, 0.5);
+        // EVec3 samplePoint = EVec3(0.2, 0.2, 0.2) * i + EVec3(0., 0., 0.);
+        EVec3 samplePoint = EVec3::Random() * 0.5 + EVec3(0.5, 0.5, 0.5);
 
         // Compute: WFF from L, WFF from WkernelFF
         EVec4 WFFL = EVec4::Zero();
