@@ -211,16 +211,22 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     // post correction of net flux for stokes_PVel kernels
     if (periodicity == PAXIS::PXYZ &&
         (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad || kernelChoice == KERNEL::PVelLaplacian)) {
+        double scaleMEquiv = PVFMM_RAD0;
+        double pCenterMEquiv[3];
+        pCenterMEquiv[0] = -(scaleMEquiv - 1) / 2;
+        pCenterMEquiv[1] = -(scaleMEquiv - 1) / 2;
+        pCenterMEquiv[2] = -(scaleMEquiv - 1) / 2;
+
+        auto equivMCoord = surface(multOrder, (double *)&(pCenterMEquiv[0]), scaleMEquiv, 0);
+
         double dipoleM[3] = {0, 0, 0};
         double dipoleMP[3] = {0, 0, 0};
         for (int i = 0; i < equivN; i++) {
             double mloc[3];
             double mploc[3];
             for (int j = 0; j < 3; j++) {
-                mloc[j] = equivCoord[3 * i + j];
+                mloc[j] = equivMCoord[3 * i + j];
                 mploc[j] = mloc[j] - floor(mloc[j]);
-            }
-            for (int j = 0; j < 3; j++) {
                 dipoleM[j] += mloc[j] * v[4 * i + 3];
                 dipoleMP[j] += mploc[j] * v[4 * i + 3];
             }
