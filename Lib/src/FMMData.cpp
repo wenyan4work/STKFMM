@@ -43,40 +43,10 @@ void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vecto
 void FMMData::setupM2Ldata() {
     int pbc = static_cast<int>(periodicity);
     std::string M2Lname = kernelFunctionPtr->k_m2l->ker_name;
-    if (!M2Lname.compare(std::string("stokes_PVel"))) {
-        // compose M2L data from Laplace and stokes
-        std::vector<double> M2L_laplace;
-        std::vector<double> M2L_stokes;
-        {
-            std::string dataName = "M2L_laplace_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
-            readM2LMat(1, dataName, M2L_laplace);
-        }
-        {
-
-            std::string dataName = "M2L_stokes_vel_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
-            readM2LMat(3, dataName, M2L_stokes);
-        }
-        int nequiv = this->equivCoord.size() / 3;
-        M2Ldata.resize(4 * nequiv * 4 * nequiv);
-        for (int i = 0; i < nequiv; i++) {
-            for (int j = 0; j < nequiv; j++) {
-                // each 4x4 block consists of 3x3 of stokes and 1x1 of laplace
-                // top-left 4*i, 4*j, size 4x4
-                M2Ldata[(4 * i + 3) * (4 * nequiv) + 4 * j + 3] = M2L_laplace[i * nequiv + j];
-                for (int k = 0; k < 3; k++) {
-                    for (int l = 0; l < 3; l++) {
-                        M2Ldata[(4 * i + k) * (4 * nequiv) + 4 * j + l] =
-                            M2L_stokes[(3 * i + k) * (3 * nequiv) + 3 * j + l];
-                    }
-                }
-            }
-        }
-    } else {
-        // read M2L data directly
-        std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
-        int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
-        readM2LMat(kdim, dataName, this->M2Ldata);
-    }
+    // read M2L data
+    std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
+    int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
+    readM2LMat(kdim, dataName, this->M2Ldata);
 }
 
 // constructor
@@ -237,6 +207,36 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     // L2T evaluation with openmp
     evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
                    trgValue.data());
+
+    // post correction of net flux for stokes_PVel kernels
+    if (periodicity == PAXIS::PXYZ &&
+        (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad || kernelChoice == KERNEL::PVelLaplacian)) {
+        double dipoleM[3] = {0, 0, 0};
+        double dipoleMP[3] = {0, 0, 0};
+        for (int i = 0; i < equivN; i++) {
+            double mloc[3];
+            double mploc[3];
+            for (int j = 0; j < 3; j++) {
+                mloc[j] = equivCoord[3 * i + j];
+                mploc[j] = mloc[j] - floor(mloc[j]);
+            }
+            for (int j = 0; j < 3; j++) {
+                dipoleM[j] += mloc[j] * v[4 * i + 3];
+                dipoleMP[j] += mploc[j] * v[4 * i + 3];
+            }
+        }
+        double vel[3];
+        for (int j = 0; j < 3; j++) {
+            vel[j] = (dipoleM[j] - dipoleMP[j]) * 0.5;
+        }
+        const int kdimTrg = this->kdimTrg;
+#pragma omp parallel for
+        for (int t = 0; t < nTrg; t++) {
+            trgValue[t * kdimTrg + 1] += vel[0];
+            trgValue[t * kdimTrg + 2] += vel[1];
+            trgValue[t * kdimTrg + 3] += vel[2];
+        }
+    }
 }
 
 void FMMData::evaluateKernel(int nThreads, PPKERNEL p2p, const int nSrc, double *srcCoordPtr, double *srcValuePtr,
