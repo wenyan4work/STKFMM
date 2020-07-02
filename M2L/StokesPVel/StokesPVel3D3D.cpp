@@ -423,6 +423,48 @@ void testEwald() {
     std::exit(0);
 }
 
+/***
+ * Explain: this kernel WEwald does not satisfy translational invariance.
+ *
+ * **/
+void testTranslation() {
+    const int nPts = 2;
+    std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forcePoint(nPts);
+    std::vector<EVec4, Eigen::aligned_allocator<EVec4>> forceValue(nPts);
+    forcePoint[0] = EVec3(0.3, 0.1, 0.1);
+    forcePoint[1] = EVec3(0.7, 0.1, 0.1);
+    forceValue[0] = EVec4(0, 0, 0, 1);
+    forceValue[1] = EVec4(0, 0, 0, -1);
+
+    for (int i = 0; i < nPts; i++) {
+        std::cout << "src loc " << forcePoint[i].transpose() << " val " << forceValue[i].transpose() << std::endl;
+    }
+
+    EVec3 samplePoint(0.1, 0.2, 0.3);
+
+    for (int i = 0; i < 5; i++) {
+        EVec3 shift(i * 0.2, 0, 0);
+        auto shiftPoint = forcePoint;
+        shiftPoint[0] += shift;
+        shiftPoint[1] += shift;
+        EVec3 shiftSample = samplePoint + shift;
+        // reset to [0,1]
+        for (int j = 0; j < 3; j++) {
+            shiftPoint[0][j] = shiftPoint[0][j] - floor(shiftPoint[0][j]);
+            shiftPoint[1][j] = shiftPoint[1][j] - floor(shiftPoint[1][j]);
+            shiftSample[j] = shiftSample[j] - floor(shiftSample[j]);
+        }
+        EVec4 pvel = EVec4::Zero();
+        for (int j = 0; j < nPts; j++) {
+            EMat4 W;
+            WkernelEwald(shiftSample, shiftPoint[j], W);
+            pvel += W * forceValue[j];
+        }
+        std::cout << "pvel " << pvel.transpose() << std::endl;
+        calcFlux(forceValue, shiftPoint);
+    }
+}
+
 int main(int argc, char **argv) {
     Eigen::initParallel();
     Eigen::setNbThreads(1);
