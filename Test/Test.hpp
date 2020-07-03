@@ -31,6 +31,7 @@ struct Config {
     bool verify = true;
     bool convergence = true;
     bool wall = false;
+    bool dump = true;
 
     Config() = default;
     void parse(int argc, char **argv);

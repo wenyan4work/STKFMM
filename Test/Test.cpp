@@ -43,8 +43,10 @@ void Config::parse(int argc, char **argv) {
     // flags
     app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
     app.add_flag("--verify,!--no-verify", verify, "verify results with O(N^2) direct summation");
-    app.add_flag("--convergence,!--no-convergence", convergence, "calculate convergence error relative to FMM at p=16");
+    app.add_flag("--convergence,!--no-convergence", convergence,
+                 "calculate convergence error relative to FMM at maxOrder");
     app.add_flag("--random,!--no-random", random, "use random points, otherwise regular mesh");
+    app.add_flag("--dump,!--no-dump", dump, "write src/trg coord and values to files");
 
     // wall settings
     app.add_flag("--wall,!--no-wall", wall, "test StkWallFMM, otherwise Stk3DFMM");

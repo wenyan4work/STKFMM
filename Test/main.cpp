@@ -40,12 +40,14 @@ int main(int argc, char **argv) {
         } else {
             runSimpleKernel(point, input, verifyResult);
         }
-        dumpValue("verify", point, input, verifyResult);
+        if (config.dump)
+            dumpValue("verify", point, input, verifyResult);
     }
 
     if (config.convergence) {
         runFMM(config, config.maxOrder, point, input, convResult, timing);
-        dumpValue("maxp" + std::to_string(config.maxOrder), point, input, convResult);
+        if (config.dump)
+            dumpValue("maxp" + std::to_string(config.maxOrder), point, input, convResult);
     }
 
     if (config.direct) {
@@ -55,7 +57,8 @@ int main(int argc, char **argv) {
         timing.clear();
         int order = 2;
         runFMM(config, 2, point, input, pResult, timing);
-        dumpValue("direct", point, input, pResult);
+        if (config.dump)
+            dumpValue("direct", point, input, pResult);
         appendHistory(history, 2, timing, pResult, verifyResult, convResult, transResult);
     } else {
         for (int p = 6; p < config.maxOrder; p += 2) {
@@ -65,12 +68,14 @@ int main(int argc, char **argv) {
             timing.clear();
 
             runFMM(config, p, point, input, pResult, timing);
-            dumpValue("p" + std::to_string(p), point, input, pResult);
+            if (config.dump)
+                dumpValue("p" + std::to_string(p), point, input, pResult);
 
             if (config.pbc) {
                 Timing transTiming;
                 runFMM(config, p, trans_point, input, transResult, transTiming);
-                dumpValue("trans_p" + std::to_string(p), trans_point, input, transResult);
+                if (config.dump)
+                    dumpValue("trans_p" + std::to_string(p), trans_point, input, transResult);
             }
 
             appendHistory(history, p, timing, pResult, verifyResult, convResult, transResult);
