@@ -1,0 +1,3 @@
+[submodule "SlurmSub"]
+	path = SlurmSub
+	url = https://github.com/wenyan4work/SlurmSub.git
