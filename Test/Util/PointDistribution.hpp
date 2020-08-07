@@ -14,7 +14,8 @@ class PointDistribution {
     PointDistribution(int seed) : gen_(seed){};
 
     // non-static methods depending on rng seed
-    void randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord);
+    void randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord, double m = 1.0,
+                      double s = 1.0);
 
     void randomUniformFill(std::vector<double> &vec, double low, double high);
 

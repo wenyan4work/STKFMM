@@ -31,6 +31,7 @@ void Config::parse(int argc, char **argv) {
     app.add_option("-T,--ntrg", nTrg, "number of source TRG points");
     app.add_option("-B,--box", box, "testing cubic box edge length");
     app.add_option("-O,--origin", origin, "testing cubic box origin point");
+    app.add_option("-L,--lognormal", lognormal, "parameters for the random lognormal distribution");
     app.add_option("-K,--kernel", K, "test which kernels");
     app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
     app.add_option("-M,--maxOrder", maxOrder, "max KIFMM order, must be even number. Default 16.");
@@ -90,6 +91,7 @@ void Config::print() const {
     printf_rank0("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
     printf_rank0("box %g\n", box);
     printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
+    printf_rank0("lognormal %g,%g\n", lognormal[0], lognormal[1]);
     printf_rank0("Kernel %d\n", K);
     printf_rank0("PBC %d\n", pbc);
 
@@ -157,7 +159,7 @@ void genPoint(const Config &config, Point &point, int dim) {
 
     if (myRank == 0) {
         if (config.random) {
-            pd.randomPoints(dim, config.nTrg, box, 0, trgLocal);
+            pd.randomPoints(dim, config.nTrg, box, 0, trgLocal, config.lognormal[0], config.lognormal[1]);
         } else {
             PointDistribution::meshPoints(dim, config.nTrg, box, 0, trgLocal);
         }

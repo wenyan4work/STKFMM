@@ -96,12 +96,13 @@ void PointDistribution::meshPoints(int dim, int nPts, double box, double shift, 
     }
 }
 
-void PointDistribution::randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord) {
+void PointDistribution::randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord,
+                                     double m, double s) {
     const int n = pow(nPts + 1, dim);
     ptsCoord.resize(n * 3);
-    randomLogNormalFill(ptsCoord, 1.0, 1.0);
+    randomLogNormalFill(ptsCoord, m, s);
     for (auto &v : ptsCoord) {
-        v = fmod(v, 1.0); // put to [0,1)
+        v = v - floor(v); // put to [0,1)
         v = v * box + shift;
     }
     for (int i = 0; i < n; i++) {
@@ -130,9 +131,9 @@ void PointDistribution::randomUniformFill(std::vector<double> &vec, double low, 
     }
 }
 
-void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double a, double b) {
+void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double m, double s) {
     // random fill according to log normal
-    std::lognormal_distribution<double> dist(log(a), b);
+    std::lognormal_distribution<double> dist(m, s);
     for (auto &v : vec) {
         v = dist(gen_);
     }

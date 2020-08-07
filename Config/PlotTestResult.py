@@ -47,7 +47,7 @@ def plotRecord(ax, multOrder, treeTime, runTime, name, error, compname):
     ax.set_title(name)
     ax.legend(loc='upper left', ncol=4,
               title=r'component error: x $\delta_{L2}$, o $\epsilon_{L2}$')
-    ax.set_xlabel(r"$p$")
+    ax.set_xlabel(r"$m$")
     ax.set_ylabel("Error")
     ax.set_ylim(1e-15, 1)
     axt = ax.twinx()

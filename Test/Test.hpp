@@ -21,6 +21,7 @@ struct Config {
     int rngseed = 0;
     double box = 1;
     std::array<double, 3> origin = {0, 0, 0};
+    std::array<double, 2> lognormal = {-1.0, 0.5};
     int K = 1;
     int maxOrder = 16;
     int pbc = 0;
