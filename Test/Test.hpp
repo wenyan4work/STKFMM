@@ -51,11 +51,15 @@ struct Source {
 };
 
 struct ComponentError {
-    double drift = 0;       // mean drift
-    double driftL2 = 0;     // drift * n / L2norm(vec)
+    // error without drift correction
     double errorL2 = 0;     // L2 error
     double errorRMS = 0;    // RMS error
     double errorMaxRel = 0; // max relative error
+
+    // error with drift correction
+    double drift = 0;            // mean drift
+    double driftL2 = 0;          // drift * n / L2norm(vec)
+    double errorL2WithoutDrift = 0; // L2 error after the average drift is subtracted off
 
     ComponentError() = default;
     ComponentError(const std::vector<double> &A, const std::vector<double> &B);

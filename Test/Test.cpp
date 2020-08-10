@@ -113,31 +113,48 @@ ComponentError::ComponentError(const std::vector<double> &A, const std::vector<d
         exit(1);
     }
     const int N = A.size();
+    const auto &value = A;
+    const auto &valueTrue = B;
+
+    // L2Norm of True value
+    double L2True = 0;
+    for (auto &v : valueTrue) {
+        L2True += v * v;
+    }
+
+    // error without drift correction
+    {
+        errorMaxRel = 0;
+        double e2sum = 0;
+        for (int i = 0; i < N; i++) {
+            double e2 = pow(valueTrue[i] - value[i], 2);
+            e2sum += e2;
+            errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
+        }
+        errorRMS = sqrt(e2sum) / sqrt(N);
+        errorL2 = sqrt(e2sum) / sqrt(L2True);
+    }
+
+    // drift and error after drift correction
     drift = 0;
     for (int i = 0; i < N; i++) {
         drift += A[i] - B[i];
     }
     drift /= N;
+    driftL2 = drift * N / sqrt(L2True);
 
-    std::vector<double> value = A;
-    const auto &valueTrue = B;
-    for (auto &v : value) {
+    auto valueWithoutDrift = value;
+    for (auto &v : valueWithoutDrift) {
         v -= drift;
     }
-
-    double L2 = 0;
-    errorL2 = 0;
-    errorMaxRel = 0;
-    for (int i = 0; i < N; i++) {
-        double e2 = pow(valueTrue[i] - value[i], 2);
-        // printf("%g,%g\n", valueTrue[i], value[i]);
-        errorL2 += e2;
-        L2 += pow(valueTrue[i], 2);
-        errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
+    {
+        double e2sum = 0;
+        for (int i = 0; i < N; i++) {
+            double e2 = pow(valueTrue[i] - valueWithoutDrift[i], 2);
+            e2sum += e2;
+        }
+        errorL2WithoutDrift = sqrt(e2sum) / sqrt(L2True);
     }
-    errorRMS = sqrt(errorL2) / sqrt(N);
-    errorL2 = sqrt(errorL2) / sqrt(L2);
-    driftL2 = drift * N / sqrt(L2);
 }
 
 // generate (distributed) FMM points
@@ -660,11 +677,12 @@ void appendHistory(std::vector<Record> &history, const int p, const Timing &timi
 auto errorJson(const ComponentError &error) {
     using json = nlohmann::json;
     json output;
-    output["drift"] = error.drift;
-    output["driftL2"] = error.driftL2;
     output["errorL2"] = error.errorL2;
     output["errorRMS"] = error.errorRMS;
     output["errorMaxRel"] = error.errorMaxRel;
+    output["drift"] = error.drift;
+    output["driftL2"] = error.driftL2;
+    output["errorL2WithoutDrift"] = error.errorL2WithoutDrift;
     return output;
 };
 
