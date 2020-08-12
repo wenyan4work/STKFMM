@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 import argparse
 import json
-import re
 
 # define rc params
 params = {

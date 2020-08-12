@@ -56,11 +56,11 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
 
     comm = MPI_COMM_WORLD;
     matrixPtr = new pvfmm::PtFMM<double>();
+    treeDataPtr = new pvfmm::PtFMM_Data<double>();
 
     // choose a kernel
     kernelFunctionPtr = getKernelFunction(kernelChoice);
     setKernel();
-    treeDataPtr = new pvfmm::PtFMM_Data<double>;
 
     // load periodicity M2L data
     if (periodicity != PAXIS::NONE) {
