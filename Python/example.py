@@ -1,12 +1,13 @@
 import numpy as np
 import sys
-try:
-    from mpi4py import MPI
-except ImportError:
-    print('It didn\'t find mpi4py!')
 import PySTKFMM
 import kernels as kr
 import timer
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    print("Couldn't find mpi4py!")
 
 
 def printer(*args, **kwargs):
@@ -54,8 +55,7 @@ class DArray():
 
         self.split_sizes = comm.bcast(self.split_sizes, root=0)
         self.displacements = comm.bcast(self.displacements, root=0)
-        self.num = comm.bcast(self.num, root=0)
-        self.dim = comm.bcast(self.dim, root=0)
+        self.num, self.dim = comm.bcast((self.num, self.dim), root=0)
 
         self.chunk = np.empty((self.split_sizes[self.rank] // self.dim, self.dim), dtype='float64')
 
