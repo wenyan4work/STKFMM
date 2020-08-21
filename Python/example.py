@@ -149,7 +149,8 @@ if __name__ == '__main__':
         myFMM.setupTree(kernel)
         timer.timer('setup_tree')
 
-        # Evaluate FMM timer.timer('evaluate_fmm')
+        # Evaluate FMM
+        timer.timer('evaluate_fmm')
         myFMM.evaluateFMM(kernel, src_SL_value.chunk.shape[0], src_SL_value.chunk,
                           trg_value.chunk.shape[0], trg_value.chunk,
                           src_DL_value.chunk.shape[0], src_DL_value.chunk)
