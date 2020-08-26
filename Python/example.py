@@ -1,8 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 import timer
-# FIXME: Rename to PySTKFMM when no collision with .so
-from STKFMM import Stk3DFMM, DArray, KERNEL
+from PySTKFMM import Stk3DFMM, DArray, KERNEL
 import kernels as kr
 
 # Get MPI parameters
