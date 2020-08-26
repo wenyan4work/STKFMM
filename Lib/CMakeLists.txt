@@ -2,14 +2,15 @@
 
 # shared lib
 add_library(STKFMM_SHARED SHARED src/FMMData.cpp src/STKFMM.cpp
-                                 src/Stk3DFMM.cpp src/StkWallFMM.cpp)
+                                 src/Stk3DFMM.cpp src/StkWallFMM.cpp
+                                 src/Stk3DFMM-c.cpp)
 target_include_directories(
   STKFMM_SHARED
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
          ${PVFMM_INCLUDE_DIR}/pvfmm ${PVFMM_DEP_INCLUDE_DIR})
 target_link_libraries(STKFMM_SHARED PUBLIC ${PVFMM_LIB_DIR}/${PVFMM_SHARED_LIB}
-                                           ${PVFMM_DEP_LIB})
+                                           ${PVFMM_DEP_LIB} OpenMP::OpenMP_CXX MPI::MPI_CXX)
 
 target_compile_options(STKFMM_SHARED PUBLIC ${OpenMP_CXX_FLAGS})
 # static lib
