@@ -7,6 +7,13 @@ lib = cdll.LoadLibrary("libSTKFMM_SHARED.so")
 lib.Stk3DFMM_create.restype = c_void_p
 
 
+class PAXIS(enum.IntEnum):
+    NONE = 0  # non-periodic, free-space
+    PX = 1  # periodic along x axis
+    PXY = 2  # periodic along XY axis
+    PXYZ = 3  # periodic along XYZ axis
+
+
 class KERNEL(enum.IntFlag):
     LapPGrad = 1  # Laplace
     LapPGradGrad = 2  # Laplace
