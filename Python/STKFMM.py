@@ -32,6 +32,9 @@ class Stk3DFMM():
 
         self.fmm = c_void_p(lib.Stk3DFMM_create(self.mult_order, self.max_pts, self.pbc, self.kernels))
 
+    def __del__(self):
+        lib.Stk3DFMM_destroy(self.fmm)
+
     def set_box(self, origin, length):
         lib.Stk3DFMM_set_box(self.fmm, origin.ctypes.data_as(POINTER(c_double)), c_double(length))
 

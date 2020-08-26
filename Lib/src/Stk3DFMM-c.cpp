@@ -6,6 +6,10 @@ extern "C" {
         return new Stk3DFMM(mult_order, max_pts, static_cast<PAXIS>(pbc), kernelComb);
     }
 
+    void Stk3DFMM_destroy(Stk3DFMM *fmm) {
+        delete fmm;
+    }
+
     void Stk3DFMM_set_points(Stk3DFMM *fmm, const int nSL, double *src_SL_coord, const int nTrg, double *trg_coord,
                              const int nDL, double *src_DL_coord) {
         fmm->setPoints(nSL, src_SL_coord, nTrg, trg_coord, nDL, src_DL_coord);

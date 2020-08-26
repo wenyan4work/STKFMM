@@ -3,6 +3,8 @@ typedef struct Stk3DFMM Stk3DFMM;
 
 Stk3DFMM *Stk3DFMM_create(int mult_order, int max_pts, int pbc, unsigned kernelComb);
 
+void Stk3DFMM_destroy(Stk3DFMM *fmm);
+
 void Stk3DFMM_set_points(Stk3DFMM *fmm, const int nSL, double *src_SL_coord, const int nTrg, double *trg_coord,
                          const int nDL, double *src_DL_coord);
 
