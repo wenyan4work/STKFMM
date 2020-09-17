@@ -33,4 +33,36 @@ extern "C" {
     void Stk3DFMM_show_active_kernels(Stk3DFMM *fmm) {
         fmm->showActiveKernels();
     }
+
+    StkWallFMM *StkWallFMM_create(int mult_order, int max_pts, int pbc, unsigned kernelComb) {
+        return new StkWallFMM(mult_order, max_pts, static_cast<PAXIS>(pbc), kernelComb);
+    }
+
+    void StkWallFMM_destroy(StkWallFMM *fmm) {
+        delete fmm;
+    }
+
+    void StkWallFMM_set_points(StkWallFMM *fmm, const int nSL, double *src_SL_coord, const int nTrg, double *trg_coord,
+                             const int nDL, double *src_DL_coord) {
+        fmm->setPoints(nSL, src_SL_coord, nTrg, trg_coord, nDL, src_DL_coord);
+    }
+
+    void StkWallFMM_get_kernel_dimension(unsigned kernel, int *dims) {
+        std::tie(dims[0], dims[1], dims[2]) = getKernelDimension(static_cast<KERNEL>(kernel));
+    }
+
+    void StkWallFMM_set_box(StkWallFMM *fmm, double *origin, double len) { fmm->setBox(origin, len); }
+
+    void StkWallFMM_setup_tree(StkWallFMM *fmm, unsigned kernel) { fmm->setupTree(static_cast<KERNEL>(kernel)); }
+
+    void StkWallFMM_clear_fmm(StkWallFMM *fmm, unsigned kernel) { fmm->clearFMM(static_cast<KERNEL>(kernel)); }
+
+    void StkWallFMM_evaluate_fmm(StkWallFMM *fmm, unsigned kernel, const int nSL, double *src_SL_value, const int nTrg,
+                               double *trg_value, const int nDL, double *src_DL_value) {
+        fmm->evaluateFMM(static_cast<KERNEL>(kernel), nSL, src_SL_value, nTrg, trg_value, nDL, src_DL_value);
+    }
+
+    void StkWallFMM_show_active_kernels(StkWallFMM *fmm) {
+        fmm->showActiveKernels();
+    }
 }

@@ -78,6 +78,54 @@ class Stk3DFMM():
         lib.Stk3DFMM_show_active_kernels(self.fmm)
 
 
+class StkWallFMM():
+    def __init__(self, mult_order, max_pts, pbc, kernels):
+        self.mult_order = c_int(mult_order)
+        self.max_pts = c_int(max_pts)
+        self.pbc = c_int(pbc)
+        self.kernels = c_int(kernels)
+
+        self.fmm = c_void_p(lib.StkWallFMM_create(self.mult_order, self.max_pts, self.pbc, self.kernels))
+
+    def __del__(self):
+        lib.StkWallFMM_destroy(self.fmm)
+
+    def set_box(self, origin, length):
+        lib.StkWallFMM_set_box(self.fmm, origin.ctypes.data_as(POINTER(c_double)), c_double(length))
+
+    def get_kernel_dimension(self, kernel):
+        dims = np.zeros(3, dtype='int32')
+        lib.StkWallFMM_get_kernel_dimension(c_int(kernel), dims.ctypes.data_as(POINTER(c_int)))
+        return dims
+
+    def set_points(self, src_SL_coord, trg_coord, src_DL_coord):
+        lib.StkWallFMM_set_points(self.fmm,
+                                  c_int(src_SL_coord.shape[0]),
+                                  src_SL_coord.ctypes.data_as(POINTER(c_double)),
+                                  c_int(trg_coord.shape[0]),
+                                  trg_coord.ctypes.data_as(POINTER(c_double)),
+                                  c_int(src_DL_coord.shape[0]),
+                                  src_DL_coord.ctypes.data_as(POINTER(c_double)))
+
+    def evaluate_fmm(self, kernel, src_SL_value, trg_value, src_DL_value):
+        lib.StkWallFMM_evaluate_fmm(self.fmm, c_int(kernel),
+                                    c_int(src_SL_value.shape[0]),
+                                    src_SL_value.ctypes.data_as(POINTER(c_double)),
+                                    c_int(trg_value.shape[0]),
+                                    trg_value.ctypes.data_as(POINTER(c_double)),
+                                    c_int(src_DL_value.shape[0]),
+                                    src_DL_value.ctypes.data_as(POINTER(c_double)))
+
+    def setup_tree(self, kernel):
+        lib.StkWallFMM_setup_tree(self.fmm, c_int(kernel))
+
+    def clear_fmm(self, kernel):
+        lib.StkWallFMM_clear_fmm(self.fmm, c_int(kernel))
+
+    def show_active_kernels(self):
+        lib.StkWallFMM_show_active_kernels(self.fmm)
+
+
 class DArray():
     def __init__(self, array):
         self.data = array
