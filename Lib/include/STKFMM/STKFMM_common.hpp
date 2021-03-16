@@ -12,6 +12,13 @@
 
 namespace stkfmm {
 /**
+ * @brief Allow printing various FMM information during execution
+ *
+ * Set environment variable STKFMM_VERBOSE=1 to enable
+ */
+extern bool verbose;
+
+/**
  * @brief choose the periodic boundary condition
  *
  */

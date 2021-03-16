@@ -125,7 +125,8 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     int rank;
     MPI_Comm_rank(comm, &rank);
 
-    printf("Rank %d, nSL %d, nDL %d, nTrg %d\n", rank, nSL, nDL, nTrg);
+    if (stkfmm::verbose)
+        printf("Rank %d, nSL %d, nDL %d, nTrg %d\n", rank, nSL, nDL, nTrg);
 
     // space allocate
     treeDataPtr->src_value.Resize(nSL * kdimSL);

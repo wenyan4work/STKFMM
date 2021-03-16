@@ -83,7 +83,7 @@ void STKFMM::setBox(double origin_[3], double len_) {
     scaleFactor = 1 / len;
     // new coordinate = (pos-origin)*scaleFactor, in [0,1)
 
-    if (rank == 0) {
+    if (stkfmm::verbose && rank == 0) {
         std::cout << "scale factor " << scaleFactor << std::endl;
     }
 };

@@ -1,6 +1,18 @@
 #include "STKFMM/STKFMM.hpp"
+#include <stdlib.h>
 
 namespace stkfmm {
+
+bool get_verbosity() {
+    char *verbose_env;
+    verbose_env = getenv("STKFMM_VERBOSE");
+    if (verbose_env == nullptr || verbose_env[0] == '0')
+        return false;
+
+    return true;
+}
+
+bool verbose = get_verbosity();
 
 Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
@@ -37,7 +49,7 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
             //     printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
-        if (rank == 0)
+        if (stkfmm::verbose && rank == 0)
             printf("ALL FMM Tree Cleared\n");
     }
 
@@ -62,7 +74,7 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
         { setCoord(nTrg, trgCoordPtr, trgCoordInternal); }
     }
 
-    if (rank == 0)
+    if (stkfmm::verbose && rank == 0)
         printf("points set\n");
 }
 
