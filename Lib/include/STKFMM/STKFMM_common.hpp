@@ -16,7 +16,7 @@ namespace stkfmm {
  *
  * Set environment variable STKFMM_VERBOSE=1 to enable
  */
-extern bool verbose;
+extern const bool verbose;
 
 /**
  * @brief choose the periodic boundary condition

@@ -20,6 +20,10 @@
  *
  */
 namespace stkfmm {
+/**
+ * @brief get STKFMM_VERBOSE environment variable
+ */
+bool get_verbosity();
 
 /**
  * @brief a virtual interface for STKFMM cases

@@ -3,17 +3,6 @@
 
 namespace stkfmm {
 
-bool get_verbosity() {
-    char *verbose_env;
-    verbose_env = getenv("STKFMM_VERBOSE");
-    if (verbose_env == nullptr || verbose_env[0] == '0')
-        return false;
-
-    return true;
-}
-
-bool verbose = get_verbosity();
-
 Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
     using namespace impl;
@@ -29,7 +18,7 @@ Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelC
     }
 
     if (poolFMM.empty()) {
-        printf("Error: no kernel activated\n");
+        std::cout << "Error: no kernel activated\n";
     }
 }
 
@@ -50,7 +39,7 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
             fmm.second->deleteTree();
         }
         if (stkfmm::verbose && rank == 0)
-            printf("ALL FMM Tree Cleared\n");
+            std::cout << "ALL FMM Tree Cleared\n";
     }
 
     // setup point coordinates
@@ -75,7 +64,7 @@ void Stk3DFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int n
     }
 
     if (stkfmm::verbose && rank == 0)
-        printf("points set\n");
+        std::cout << "points set\n";
 }
 
 void Stk3DFMM::setupTree(KERNEL kernel) {
@@ -127,7 +116,7 @@ void Stk3DFMM::clearFMM(KERNEL kernel) {
     if (it != poolFMM.end())
         it->second->clear();
     else {
-        printf("kernel not found\n");
+        std::cout << "kernel not found\n";
         std::exit(1);
     }
 }
