@@ -26,7 +26,7 @@ StkWallFMM::StkWallFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int ker
     }
 
     if (poolFMM.empty()) {
-        printf("Error: no kernel activated\n");
+        std::cout << "Error: no kernel activated\n";
     }
 }
 
@@ -45,8 +45,8 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
             //     printf("kernel %u \n", asInteger(fmm.second->kernelChoice));
             fmm.second->deleteTree();
         }
-        if (rank == 0)
-            printf("ALL FMM Tree Cleared\n");
+        if (verbose && rank == 0)
+            std::cout << "ALL FMM Tree Cleared\n";
     }
 
     // setup point coordinates
@@ -82,8 +82,8 @@ void StkWallFMM::setPoints(const int nSL, const double *srcSLCoordPtr, const int
     srcSLOriginCoordInternal.resize(3 * nSL);
     std::copy(srcSLCoordInternal.begin(), srcSLCoordInternal.begin() + 3 * nSL, srcSLOriginCoordInternal.begin());
 
-    if (rank == 0)
-        printf("points set\n");
+    if (verbose && rank == 0)
+        std::cout << "points set\n";
 }
 
 void StkWallFMM::setupTree(KERNEL kernel) {
@@ -101,7 +101,7 @@ void StkWallFMM::setupTree(KERNEL kernel) {
         poolFMM[KERNEL::LapQPGradGrad]->setupTree(srcSLImageCoordInternal, std::vector<double>(), trgCoordInternal,
                                                   srcSLCoordInternal.size() / 3, srcSLCoordInternal.data());
     } else {
-        printf("Kernel not supported\n");
+        std::cout << "Kernel not supported\n";
         std::exit(1);
     }
 }
@@ -132,7 +132,7 @@ void StkWallFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *s
             trgValuePtr[i] += trgValueInternal[i];
         }
     } else {
-        printf("Kernel not supported\n");
+        std::cout << "Kernel not supported\n";
         std::exit(1);
     }
 }
@@ -148,7 +148,7 @@ void StkWallFMM::clearFMM(KERNEL kernel) {
         poolFMM[KERNEL::LapPGradGrad]->clear();
         poolFMM[KERNEL::LapQPGradGrad]->clear();
     } else {
-        printf("Kernel not supported\n");
+        std::cout << "Kernel not supported\n";
         std::exit(1);
     }
 }

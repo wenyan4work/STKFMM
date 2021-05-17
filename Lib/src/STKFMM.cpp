@@ -4,6 +4,17 @@ extern pvfmm::PeriodicType pvfmm::periodicType;
 
 namespace stkfmm {
 
+bool get_verbosity() {
+    char *verbose_env;
+    verbose_env = getenv("STKFMM_VERBOSE");
+    if (verbose_env == nullptr || verbose_env[0] == '0')
+        return false;
+
+    return true;
+}
+
+const bool verbose = get_verbosity();
+
 const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
     {KERNEL::LapPGrad, &pvfmm::LaplaceLayerKernel<double>::PGrad()},
     {KERNEL::LapPGradGrad, &pvfmm::LaplaceLayerKernel<double>::PGradGrad()},

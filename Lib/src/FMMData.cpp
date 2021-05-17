@@ -126,7 +126,7 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     MPI_Comm_rank(comm, &rank);
 
     if (stkfmm::verbose)
-        printf("Rank %d, nSL %d, nDL %d, nTrg %d\n", rank, nSL, nDL, nTrg);
+        std::cout << "Rank " << rank << ", nSL " << nSL << ", nDL " << nDL << ", nTrg " << nTrg << std::endl;
 
     // space allocate
     treeDataPtr->src_value.Resize(nSL * kdimSL);
@@ -161,15 +161,15 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &
     MPI_Comm_rank(comm, &rank);
 
     if (nTrg * kdimTrg != trgValue.size()) {
-        printf("trg value size error from rank %d\n", rank);
+        std::cout << "trg value size error from rank " << rank << std::endl;
         exit(1);
     }
     if (nSrc * kdimSL != srcSLValue.size()) {
-        printf("src SL value size error from rank %d\n", rank);
+        std::cout << "src SL value size error from rank " << rank << std::endl;
         exit(1);
     }
     if (nSurf * kdimDL != srcDLValue.size()) {
-        printf("src DL value size error from rank %d\n", rank);
+        std::cout << "src DL value size error from rank " << rank << std::endl;
         exit(1);
     }
     scaleSrc(srcSLValue, srcDLValue, scale);
