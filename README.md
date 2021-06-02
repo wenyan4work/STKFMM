@@ -1,6 +1,7 @@
-# STKFMM
+<img src="./STKFMM_Logo_RGB.svg">
 
-A C++ library implementing mix-tree KIFMM based on pvfmm, with optional python interface.
+###
+A C++ library implements the [Kernel Aggregated Fast Multipole Method](https://arxiv.org/abs/2010.15155) based on the library PVFMM.
 
 # What does it compute
 
