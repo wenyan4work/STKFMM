@@ -154,9 +154,9 @@ void PointDistribution::dumpPoints(const std::string &filename, std::vector<doub
         exit(1);
     }
     for (int i = 0; i < npts; i++) {
-        fprintf(fp, "%18g, %18g, %18g", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
+        fprintf(fp, "%18.16e, %18.16e, %18.16e", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
         for (int j = 0; j < valueDimension; j++) {
-            fprintf(fp, ", %18g", value[valueDimension * i + j]);
+            fprintf(fp, ", %18.16e", value[valueDimension * i + j]);
         }
         fprintf(fp, " \n");
     }

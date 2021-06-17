@@ -397,12 +397,6 @@ void stokes_traction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[8][t], tv8);
         }
     }
-
-    { // Add FLOPS
-#ifndef __MIC__
-        Profile::Add_FLOP((long long)trg_cnt_ * (long long)src_cnt_ * (29 + 4 * (NWTN_ITER)));
-#endif
-    }
 #undef SRC_BLK
 }
 
