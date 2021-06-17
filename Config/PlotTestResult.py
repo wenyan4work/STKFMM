@@ -5,33 +5,44 @@ import matplotlib.pyplot as plt
 
 import argparse
 import json
+import re
+
+import os
 
 # define rc params
 params = {
-    'backend': 'Agg',
+    # 'backend': 'Agg',
     'font.family': 'serif',
     'font.size': 9,
     'axes.labelsize': 9,
-    'legend.fontsize': 7,
+    'legend.fontsize': 6,
     'xtick.labelsize': 7,
     'ytick.labelsize': 7,
     'text.usetex': True,
-    'text.latex.preamble': [r'\usepackage{amsmath}',
-                            r'\usepackage[notextcomp]{stix}',
-                            r'\usepackage[T1]{fontenc}',
-                            r'\usepackage{bm}']}
+    'text.latex.preamble': r'\usepackage{amsmath}' +
+    r'\usepackage[notextcomp]{stix}' +
+    r'\usepackage[T1]{fontenc}' +
+    r'\usepackage{bm}'
+}
 plt.rcParams.update(params)
 
 component = {
-    'laplace_PGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$'],
-    'laplace_PGradGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$', r'$\phi_{,xx}$', r'$\phi_{,xy}$', r'$\phi_{,xz}$', r'$\phi_{,yy}$', r'$\phi_{,yz}$', r'$\phi_{,zz}$'],
-    'laplace_QPGradGrad': [r'$\phi$', r'$\phi_{,x}$', r'$\phi_{,y}$', r'$\phi_{,z}$', r'$\phi_{,xx}$', r'$\phi_{,xy}$', r'$\phi_{,xz}$', r'$\phi_{,yy}$', r'$\phi_{,yz}$', r'$\phi_{,zz}$'],
+    'laplace_PGrad': [r'$\phi$', r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$'],
+    'laplace_PGradGrad': [r'$\phi$', r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$',
+                          r'$\partial^2\phi/\partial x^2$', r'$\partial^2\phi/\partial x\partial y$', r'$\partial^2\phi/\partial x \partial z$',
+                          r'$\partial^2\phi/\partial y^2$', r'$\partial^2\phi/\partial y \partial z$', r'$\partial^2\phi/\partial z^2$'],
+    'laplace_QPGradGrad': [r'$\phi$', r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$',
+                           r'$\partial^2\phi/\partial x^2$', r'$\partial^2\phi/\partial x\partial y$', r'$\partial^2\phi/\partial x \partial z$',
+                           r'$\partial^2\phi/\partial y^2$', r'$\partial^2\phi/\partial y \partial z$', r'$\partial^2\phi/\partial z^2$'],
     'stokes_vel': [r'$u_x$', r'$u_y$', r'$u_z$'],
     'stokes_regvel': [r'$u_x$', r'$u_y$', r'$u_z$'],
     'stokes_regftvelomega': [r'$u_x$', r'$u_y$', r'$u_z$', r'$\omega_x$', r'$\omega_y$', r'$\omega_z$'],
     'rpy_ulapu': [r'$u_x$', r'$u_y$', r'$u_z$', r'$\nabla^2 u_x$', r'$\nabla^2 u_y$', r'$\nabla^2 u_z$'],
     'stokes_PVel': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$'],
-    'stokes_PVelGrad': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$', r'$p_{,x}$', r'$p_{,y}$', r'$p_{,z}$', r'$u_{x,x}$', r'$u_{x,y}$', r'$u_{x,z}$', r'$u_{y,x}$', r'$u_{y,y}$', r'$u_{y,z}$', r'$u_{z,x}$', r'$u_{z,y}$', r'$u_{z,z}$'],
+    'stokes_PVelGrad': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$', r'$\partial p/\partial x$', r'$\partial p/\partial y$', r'$\partial p/\partial z$',
+                        r'$\partial u_x/\partial x$', r'$\partial u_x/\partial y$', r'$\partial u_x/\partial z$',
+                        r'$\partial u_y/\partial x$', r'$\partial u_y/\partial y$', r'$\partial u_y/\partial z$',
+                        r'$\partial u_z/\partial x$', r'$\partial u_z/\partial y$', r'$\partial u_z/\partial z$'],
     'stokes_PVelLaplacian': [r'$p$', r'$u_x$', r'$u_y$', r'$u_z$', r'$\nabla^2 u_x$', r'$\nabla^2 u_y$', r'$\nabla^2 u_z$'],
     'stokes_Traction': [r'$\sigma_{xx}$', r'$\sigma_{xy}$', r'$\sigma_{xz}$', r'$\sigma_{yx}$', r'$\sigma_{yy}$', r'$\sigma_{yz}$', r'$\sigma_{zx}$', r'$\sigma_{zy}$', r'$\sigma_{zz}$']
 }
@@ -61,8 +72,10 @@ def parseError(error):
     result = []
     for item in error:
         result.append([
-            item["errorRMS"], item["errorL2"], item["errorMaxRel"],   # error before drift correction
-            item["drift"], item["driftL2"], item["errorL2WithoutDrift"]  # error after drift correction
+            # error before drift correction
+            item["errorRMS"], item["errorL2"], item["errorMaxRel"],
+            # error after drift correction
+            item["drift"], item["driftL2"], item["errorL2WithoutDrift"]
         ]
         )
     return np.transpose(np.array(result))
@@ -77,16 +90,17 @@ def plotRecord(ax, multOrder, treeTime, runTime, name, errorname, error, compnam
                     fillstyle='none', label=compname[i])
 
     ax.set_title(name)
-    ax.legend(loc='upper left', ncol=4,
+    ax.legend(loc='upper left', ncol=3,
               title=r'$\epsilon_{L2}$ for each component')
     ax.set_xlabel(r"$m$")
     ax.set_ylabel(errorname)
     ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(5))
-    ax.set_ylim(np.amin(error[:, plotComponent, :])/100, np.amax(error[:, plotComponent, :])*100)
+    ax.set_ylim(np.amin(error[:, plotComponent, :]) /
+                100, np.amax(error[:, plotComponent, :])*100)
     axt = ax.twinx()
     axt.plot(multOrder, runTime, 'x-r', label=r'$t_{run}$')
     axt.plot(multOrder, treeTime, 'x-k', label=r'$t_{tree}$')
-    axt.set_ylabel("time (second)")
+    axt.set_ylabel("time (seconds)")
     axt.set_ylim(0, max(runTime)*1.5)
     axt.legend(title='time')
 
@@ -130,7 +144,7 @@ def plotData(data):
 
     nax = len(error.keys())
     fig = plt.figure(
-        figsize=(4.0*nax, 3.0), dpi=150, constrained_layout=True)
+        figsize=(4.0*nax, 3.0), dpi=600, constrained_layout=True)
     # fig.suptitle(kernelTitle[kernel])
     axs = fig.subplots(nrows=1, ncols=nax, squeeze=False)
     index = 0
@@ -141,7 +155,8 @@ def plotData(data):
         plotRecord(ax, multOrder, treeTime, runTime,
                    kernelTitle[kernel], k, error[k], component[kernel])
         index += 1
-    plt.savefig('Test_'+kernel+'.png')
+    foldername = os.path.basename(os.getcwd())
+    plt.savefig('Test_'+foldername+'_'+kernel+'.png')
 
 
 parser = argparse.ArgumentParser()
