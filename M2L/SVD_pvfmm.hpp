@@ -11,9 +11,32 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include <Eigen/Dense>
+
+using EVec2 = Eigen::Vector2d;
+using EVec3 = Eigen::Vector3d;
+using EVec4 = Eigen::Vector4d;
+using EMat2 = Eigen::Matrix2d;
+using EMat3 = Eigen::Matrix3d;
+using EMat4 = Eigen::Matrix4d;
+
+using EVec = Eigen::VectorXd;
+using EMat = Eigen::MatrixXd;
+
+void saveEMat(const EMat &mat, const std::string &fname) {
+    FILE *fptr = fopen(fname.c_str(), "r");
+    const int M = mat.rows();
+    const int N = mat.cols();
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            fprintf(fptr, "%d %d %18.16e\n", i, j, mat(i, j));
+        }
+    }
+    fclose(fptr);
+}
 
 template <class T>
 inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A, int lda, T *B, int ldb, T beta, T *C,
