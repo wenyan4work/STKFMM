@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
         }
         f[k] = temp;
     }
-    Eigen::VectorXd Msource = (AMpinvU.transpose() * (AMpinvVT.transpose() * f));
+    EVec Msource = (AMpinvU.transpose() * (AMpinvVT.transpose() * f));
     EVec M2Lsource = M2L * (Msource);
 
     std::cout << "Msource: " << Msource.transpose() << std::endl;

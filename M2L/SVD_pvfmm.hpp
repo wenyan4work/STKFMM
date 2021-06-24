@@ -32,6 +32,7 @@ using EMat = Eigen::MatrixXd;
 
 constexpr double eps = std::numeric_limits<double>::epsilon() * 10;
 constexpr int DIRECTLAYER = 2;
+constexpr int SUM1D = 500000;
 
 constexpr double scaleIn = 1.05;
 constexpr double scaleOut = 2.95;
@@ -507,10 +508,10 @@ inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA, T *S, T
         const size_t ldu = *LDU;
         const size_t ldv = *LDVT;
 
-        Eigen::MatrixXd A1(*M, *N);
-        Eigen::MatrixXd S1(dim[1], dim[1]);
-        Eigen::MatrixXd U1(*M, dim[1]);
-        Eigen::MatrixXd V1(dim[1], *N);
+        EMat A1(*M, *N);
+        EMat S1(dim[1], dim[1]);
+        EMat U1(*M, dim[1]);
+        EMat V1(dim[1], *N);
         for (size_t i = 0; i < *N; i++)
             for (size_t j = 0; j < *M; j++) {
                 //				A1[j][i] = A[j + i * lda];
@@ -595,7 +596,7 @@ void pinv_pvfmm(T *M, int n1, int n2, T eps, T *M_) {
     //	mem::aligned_delete < T > (tVT);
 }
 
-inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinv) {
+inline void pinv(const EMat &Mat, EMat &MatPinv) {
     double eps = 1;
     while (eps + 1.0 > 1.0) {
         eps *= 0.5;
@@ -623,7 +624,7 @@ inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinv) {
     }
 }
 
-inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinvU, Eigen::MatrixXd &MatPinvVT) {
+inline void pinv(const EMat &Mat, EMat &MatPinvU, EMat &MatPinvVT) {
     // this is the really backward stable SVD used by pvfmm
 
     double eps = 1;

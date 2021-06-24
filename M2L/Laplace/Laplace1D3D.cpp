@@ -15,7 +15,7 @@ inline double gKernel(const EVec3 &target, const EVec3 &source) {
     return rnorm < eps ? 0 : 1 / (4 * M_PI * rnorm);
 }
 
-double gKernelFF(const EVec3 &target, const EVec3 &source, const int directTerm = 50000) {
+double gKernelFF(const EVec3 &target, const EVec3 &source, const int directTerm = SUM1D) {
     // use asymptotic
     const double L3 = 1.0;
     double potentialDirect = 0;
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < equivN; i++) {
         const EVec3 Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
 
-        Eigen::VectorXd f(checkN);
+        EVec f(checkN);
         for (int k = 0; k < checkN; k++) {
             EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
             f(k) = gKernelFF(Cpoint, Mpoint); // sum the images
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
     chargeValue[3] = -1;
 
     // solve M
-    Eigen::VectorXd f(checkN);
+    EVec f(checkN);
     for (int k = 0; k < checkN; k++) {
         double temp = 0;
         EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
@@ -118,9 +118,9 @@ int main(int argc, char **argv) {
         }
         f(k) = temp;
     }
-    Eigen::VectorXd Msource = (AMpinvU.transpose() * (AMpinvVT.transpose() * f));
+    EVec Msource = (AMpinvU.transpose() * (AMpinvVT.transpose() * f));
 
-    Eigen::VectorXd M2Lsource = M2L * Msource;
+    EVec M2Lsource = M2L * Msource;
 
     std::cout << "Msource: " << Msource.transpose() << std::endl;
     std::cout << "M2Lsource: " << M2Lsource.transpose() << std::endl;

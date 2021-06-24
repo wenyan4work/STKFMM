@@ -7,265 +7,181 @@
 
 #include "SVD_pvfmm.hpp"
 
-#include <Eigen/Dense>
-
-#include <iomanip>
-#include <iostream>
-
-#define DIRECTLAYER 2
-
 namespace Stokes1D3D {
 
-/**
- * \brief Returns the coordinates of points on the surface of a cube.
- * \param[in] p Number of points on an edge of the cube is (n+1)
- * \param[in] c Coordinates to the centre of the cube (3D array).
- * \param[in] alpha Scaling factor for the size of the cube.
- * \param[in] depth Depth of the cube in the octree.
- * \return Vector with coordinates of points on the surface of the cube in the
- * format [x0 y0 z0 x1 y1 z1 .... ].
- */
-template <class Real_t>
-std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
-    size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
-
-    std::vector<Real_t> coord(n_ * 3);
-    coord[0] = coord[1] = coord[2] = -1.0;
-    size_t cnt = 1;
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = -1.0;
-            coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = -1.0;
-            coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = -1.0;
-            cnt++;
-        }
-    for (size_t i = 0; i < (n_ / 2) * 3; i++)
-        coord[cnt * 3 + i] = -coord[i];
-
-    Real_t r = 0.5 * pow(0.5, depth);
-    Real_t b = alpha * r;
-    for (size_t i = 0; i < n_; i++) {
-        coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
-        coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
-        coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
-    }
-    return coord;
-}
-
-inline void Gkernel(const Eigen::Vector3d &target, const Eigen::Vector3d &source, Eigen::Matrix3d &answer) {
-    auto rst = target - source;
+inline void Gkernel(const EVec3 &target, const EVec3 &source, EMat3 &answer) {
+    EVec3 rst = target - source;
     double rnorm = rst.norm();
-    if (rnorm < 1e-13) {
-        answer.setZero();
+    if (rnorm < eps) {
+        answer = EMat3::Zero();
         return;
     }
+    EMat3 part2 = rst * rst.transpose() / (rnorm * rnorm * rnorm);
+    EMat3 part1 = EMat3::Identity() / rnorm;
+    answer = (part1 + part2) / (8 * M_PI);
+}
 
-    auto part2 = rst * rst.transpose() / (rnorm * rnorm * rnorm);
-    auto part1 = Eigen::Matrix3d::Identity() / rnorm;
-    answer = part1 + part2;
+inline void GkernelNF(const EVec3 &rvec, EMat3 &GNF) {
+    GNF.setZero();
+    const int N = DIRECTLAYER;
+    for (int i = -N; i < N + 1; i++) {
+        EMat3 G = EMat3::Zero();
+        Gkernel(rvec, EVec3(i, 0, 0), G);
+        GNF += G;
+    }
+}
+
+inline void GkernelFF(const EVec3 &rvec, EMat3 &GFF) {
+    GFF.setZero();
+    const int N = DIRECTLAYER;
+    for (int i = N + 1; i < SUM1D; i++) {
+        EMat3 G1 = EMat3::Zero();
+        EMat3 G2 = EMat3::Zero();
+        Gkernel(rvec, EVec3(i, 0, 0), G1);
+        Gkernel(rvec, EVec3(-i, 0, 0), G2);
+        GFF += G1 + G2;
+    }
 }
 
 // calculate the M2L matrix of images from 2 to 1000
 int main(int argc, char **argv) {
     Eigen::initParallel();
     Eigen::setNbThreads(1);
+    constexpr int kdim[2] = {3, 3}; // target, source dimension
 
-    const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    const int pEquiv = atoi(argv[1]);
     const int pCheck = atoi(argv[1]);
-    const double scaleEquiv = 1.05;
-    const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
-    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterCheck[0]), scaleCheck,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv,
-                               0); // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    const double pCenterMEquiv[3] = {-(scaleIn - 1) / 2, -(scaleIn - 1) / 2, -(scaleIn - 1) / 2};
+    const double pCenterMCheck[3] = {-(scaleOut - 1) / 2, -(scaleOut - 1) / 2, -(scaleOut - 1) / 2};
 
-    //	for (int i = 0; i < pointLEquiv.size() / 3; i++) {
-    //		std::cout << pointLEquiv[3 * i] << " " << pointLEquiv[3 * i + 1]
-    //<< " " << pointLEquiv[3 * i + 2] << " "
-    //				<< std::endl;
-    //	}
-    //
-    //	for (int i = 0; i < pointLCheck.size() / 3; i++) {
-    //		std::cout << pointLCheck[3 * i] << " " << pointLCheck[3 * i + 1]
-    //<< " " << pointLCheck[3 * i + 2] << " "
-    //				<< std::endl;
-    //	}
+    const double pCenterLEquiv[3] = {-(scaleOut - 1) / 2, -(scaleOut - 1) / 2, -(scaleOut - 1) / 2};
+    const double pCenterLCheck[3] = {-(scaleIn - 1) / 2, -(scaleIn - 1) / 2, -(scaleIn - 1) / 2};
 
-    const int imageN = 500000; // images to sum
-    // calculate the operator M2L with least square
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterMEquiv[0]), scaleIn, 0);
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterMCheck[0]), scaleOut, 0);
+
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterLCheck[0]), scaleIn, 0);
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLEquiv[0]), scaleOut, 0);
+
     const int equivN = pointMEquiv.size() / 3;
-    const int checkN = pointLCheck.size() / 3;
-    Eigen::MatrixXd A(3 * checkN, 3 * equivN);
-#pragma omp parallel for
+    const int checkN = pointMCheck.size() / 3;
+    EMat M2L(kdim[1] * equivN, kdim[1] * equivN); // M2L density
+    EMat M2C(kdim[0] * checkN, kdim[1] * equivN); // M2C check surface
+
+    EMat AL(kdim[0] * checkN, kdim[1] * equivN); // L den to L check
+    EMat ALpinvU(AL.cols(), AL.rows());
+    EMat ALpinvVT(AL.cols(), AL.rows());
     for (int k = 0; k < checkN; k++) {
-        Eigen::Matrix3d G = Eigen::Matrix3d::Zero();
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
+        EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
+            const EVec3 Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
+            EMat3 G = EMat3::Zero();
             Gkernel(Cpoint, Lpoint, G);
-            A.block<3, 3>(3 * k, 3 * l) = G;
+            AL.block<kdim[0], kdim[1]>(kdim[0] * k, kdim[1] * l) = G;
         }
     }
-    Eigen::MatrixXd ApinvU(A.cols(), A.rows());
-    Eigen::MatrixXd ApinvVT(A.cols(), A.rows());
-    pinv(A, ApinvU, ApinvVT);
+    pinv(AL, ALpinvU, ALpinvVT);
 
-    Eigen::MatrixXd M2L(3 * equivN, 3 * equivN);
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
-        Eigen::MatrixXd f(3 * checkN, 3);
-        //		std::cout<<"debug:"<<Mpoint<<std::endl;
+        const EVec3 Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
+
+        EMat f(3 * checkN, 3);
         for (int k = 0; k < checkN; k++) {
-            Eigen::Matrix3d temp = Eigen::Matrix3d::Zero();
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
-            //			std::cout<<"debug:"<<k<<std::endl;
-            // sum the images
-            for (int per = DIRECTLAYER + 1; per < imageN; per++) {
-                Eigen::Vector3d perVec(1.0 * per, 0, 0);
-                Eigen::Matrix3d G1 = Eigen::Matrix3d::Zero();
-                Eigen::Matrix3d G2 = Eigen::Matrix3d::Zero();
-                Gkernel(Cpoint, Mpoint + perVec, G1);
-                Gkernel(Cpoint, Mpoint - perVec, G2);
-                temp = temp + (G1 + G2);
-            }
-            //			std::cout << temp << std::endl;
-            f.block<3, 3>(3 * k, 0) = temp;
+            EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
+            EMat3 G = EMat3::Zero();
+            GkernelFF(Cpoint - Mpoint, G);
+            f.block<kdim[0], kdim[1]>(3 * k, 0) = G;
         }
-        M2L.block(0, 3 * i, 3 * equivN, 3) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
+        M2C.block(0, 3 * i, 3 * checkN, 3) = f;
+        M2L.block(0, 3 * i, 3 * checkN, 3) = (ALpinvU.transpose() * (ALpinvVT.transpose() * f));
     }
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
 
-    // dump M2L
-    for (int i = 0; i < 3 * equivN; i++) {
-        for (int j = 0; j < 3 * equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
+    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
+
+    saveEMat(M2L, "M2L_stokes_2D3D_p" + std::to_string(pEquiv));
+    saveEMat(M2C, "M2C_stokes_2D3D_p" + std::to_string(pEquiv));
+
+    EMat AM(kdim[0] * checkN, kdim[1] * equivN); // M den to M check
+    EMat AMpinvU(AM.cols(), AM.rows());
+    EMat AMpinvVT(AM.cols(), AM.rows());
+    for (int k = 0; k < checkN; k++) {
+        EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+        for (int l = 0; l < equivN; l++) {
+            const EVec3 Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
+            EMat3 G = EMat3::Zero();
+            Gkernel(Cpoint, Mpoint, G);
+            AM.block<kdim[0], kdim[1]>(kdim[0] * k, kdim[1] * l) = G;
         }
     }
+    pinv(AM, AMpinvU, AMpinvVT);
 
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forcePoint(3);
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forceValue(3);
-    forcePoint[0] = Eigen::Vector3d(0.5, 0.55, 0.2);
-    forceValue[0] = Eigen::Vector3d(-0.2, 0, 0);
-    forcePoint[1] = Eigen::Vector3d(0.5, 0.5, 0.5);
-    forceValue[1] = Eigen::Vector3d(1, 0, 0);
-    forcePoint[2] = Eigen::Vector3d(0.7, 0.7, 0.7);
-    forceValue[2] = Eigen::Vector3d(-0.8, 0, 0);
+    // test
+    std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forcePoint(3);
+    std::vector<EVec3, Eigen::aligned_allocator<EVec3>> forceValue(3);
+    forcePoint[0] = EVec3(0.1, 0.5, 0.5);
+    forceValue[0] = EVec3(1, 1, -1);
+    forcePoint[1] = EVec3(0.9, 0.5, 0.5);
+    forceValue[1] = EVec3(-2, 2, 2);
+    forcePoint[2] = EVec3(0.2, 0.2, 0.2);
+    forceValue[2] = EVec3(1, -3, -1);
 
     // solve M
-    A.resize(3 * checkN, 3 * equivN);
-    ApinvU.resize(A.cols(), A.rows());
-    ApinvVT.resize(A.cols(), A.rows());
-    Eigen::VectorXd f(3 * checkN);
-#pragma omp parallel for
+    EVec f(3 * checkN);
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d temp = Eigen::Vector3d::Zero();
-        Eigen::Matrix3d G = Eigen::Matrix3d::Zero();
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
-        for (int p = 0; p < 3; p++) {
+        EVec3 temp = EVec3::Zero();
+        EMat3 G = EMat3::Zero();
+        EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+        for (size_t p = 0; p < forcePoint.size(); p++) {
             Gkernel(Cpoint, forcePoint[p], G);
             temp = temp + G * (forceValue[p]);
         }
         f.block<3, 1>(3 * k, 0) = temp;
-        for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
-            Gkernel(Cpoint, Mpoint, G);
-            A.block<3, 3>(3 * k, 3 * l) = G;
-        }
     }
-    pinv(A, ApinvU, ApinvVT);
-    Eigen::VectorXd Msource = (ApinvU.transpose() * (ApinvVT.transpose() * f));
-    // impose zero sum
-    double fx = 0, fy = 0, fz = 0;
-    for (int i = 0; i < equivN; i++) {
-        fx += Msource[3 * i];
-        fy += Msource[3 * i + 1];
-        fz += Msource[3 * i + 2];
-    }
-    std::cout << "fx svd before correction: " << fx << std::endl;
-    std::cout << "fy svd before correction: " << fy << std::endl;
-    std::cout << "fz svd before correction: " << fz << std::endl;
+    EVec Msource = AMpinvU.transpose() * (AMpinvVT.transpose() * f);
+    EVec M2Lsource = M2L * Msource;
 
-    fx /= equivN;
-    fy /= equivN;
-    fz /= equivN;
-    for (int i = 0; i < equivN; i++) {
-        Msource[3 * i] -= fx;
-        Msource[3 * i + 1] -= fy;
-        Msource[3 * i + 2] -= fz;
-    }
+    std::cout << "Msource: " << Msource.transpose() << std::endl;
+    std::cout << "M2Lsource: " << M2Lsource.transpose() << std::endl;
 
-    std::cout << "Msource: " << Msource << std::endl;
+    EVec3 samplePoint(0.5, 0.5, 0.5);
+    EVec3 UNF(0, 0, 0);
+    EVec3 UFFL2T(0, 0, 0);
+    EVec3 UEwald(0, 0, 0);
+    EMat3 G = EMat3::Zero();
 
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forcePointExt(0);
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> forceValueExt(0);
     for (size_t p = 0; p < forcePoint.size(); p++) {
-        for (int k = -DIRECTLAYER; k < DIRECTLAYER + 1; k++) {
-            forcePointExt.push_back(Eigen::Vector3d(k, 0, 0) + forcePoint[p]);
-            forceValueExt.push_back(forceValue[p]);
-        }
+        G.setZero();
+        GkernelNF(samplePoint - forcePoint[p], G);
+        UNF += G * forceValue[p];
     }
-
-    Eigen::VectorXd M2Lsource = M2L * (Msource);
-    Eigen::Vector3d samplePoint(0.6, 0.5, 0.5);
-    Eigen::Vector3d Usample(0, 0, 0);
-    Eigen::Vector3d UsampleSP(0, 0, 0);
-    Eigen::Matrix3d G;
-    for (size_t p = 0; p < forcePointExt.size(); p++) {
-        Gkernel(samplePoint, forcePointExt[p], G);
-        Usample += G * (forceValueExt[p]);
-    }
-    std::cout << "Usample Direct:" << Usample << std::endl;
 
     for (int p = 0; p < equivN; p++) {
-        Eigen::Vector3d Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
-        Eigen::Vector3d Fpoint(M2Lsource[3 * p], M2Lsource[3 * p + 1], M2Lsource[3 * p + 2]);
+        EVec3 Lpoint(pointLEquiv[3 * p], pointLEquiv[3 * p + 1], pointLEquiv[3 * p + 2]);
+        EVec3 Fpoint(M2Lsource[3 * p], M2Lsource[3 * p + 1], M2Lsource[3 * p + 2]);
         Gkernel(samplePoint, Lpoint, G);
-        UsampleSP = UsampleSP + G * (Fpoint);
+        UFFL2T += G * Fpoint;
     }
 
-    std::cout << "Usample M2L:" << UsampleSP << std::endl;
-    std::cout << "Usample M2L total:" << UsampleSP + Usample << std::endl;
-
-    Eigen::Vector3d UsampleN(0, 0, 0);
     for (size_t p = 0; p < forcePoint.size(); p++) {
-        Eigen::Matrix3d G1 = Eigen::Matrix3d::Zero();
-        Eigen::Matrix3d G2 = Eigen::Matrix3d::Zero();
-        for (int per = DIRECTLAYER + 1; per < imageN; per++) {
-            Eigen::Vector3d perVec(1.0 * per, 0, 0);
-            Gkernel(samplePoint, forcePoint[p] + perVec, G1);
-            Gkernel(samplePoint, forcePoint[p] - perVec, G2);
-            UsampleN += (G1 + G2) * (forceValue[p]);
-        }
-        Gkernel(samplePoint, forcePoint[p], G2);
+        EMat3 GNF, GFF;
+        GkernelNF(samplePoint - forcePoint[p], GNF);
+        GkernelFF(samplePoint - forcePoint[p], GFF);
+        UEwald += (GNF + GFF) * forceValue[p];
     }
 
-    std::cout << "Usample N Images:" << UsampleN + Usample << std::endl;
-    std::cout << "error" << UsampleSP - UsampleN << std::endl;
+    std::cout << "UNF:" << UNF.transpose() << std::endl;
+    std::cout << "UFFL2T:" << UFFL2T.transpose() << std::endl;
+    std::cout << "USum:" << (UNF + UFFL2T).transpose() << std::endl;
+    std::cout << "UEwald:" << UEwald.transpose() << std::endl;
+
+    std::cout << "error: " << (UNF + UFFL2T - UEwald).transpose() << std::endl;
 
     return 0;
 }
 
 } // namespace Stokes1D3D
-
-#undef DIRECTLAYER
