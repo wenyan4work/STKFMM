@@ -9,8 +9,12 @@
 #define SVD_PVFMM_HPP_
 
 #include <cassert>
+#include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -26,8 +30,15 @@ using EMat4 = Eigen::Matrix4d;
 using EVec = Eigen::VectorXd;
 using EMat = Eigen::MatrixXd;
 
-void saveEMat(const EMat &mat, const std::string &fname) {
-    FILE *fptr = fopen(fname.c_str(), "r");
+constexpr double eps = std::numeric_limits<double>::epsilon() * 10;
+constexpr int DIRECTLAYER = 2;
+
+constexpr double scaleIn = 1.05;
+constexpr double scaleOut = 2.95;
+
+template <class Matrix>
+void saveEMat(const Matrix &mat, const std::string &fname) {
+    FILE *fptr = fopen(fname.c_str(), "w");
     const int M = mat.rows();
     const int N = mat.cols();
     for (int i = 0; i < M; i++) {
@@ -36,6 +47,57 @@ void saveEMat(const EMat &mat, const std::string &fname) {
         }
     }
     fclose(fptr);
+}
+
+/**
+ * \brief Returns the coordinates of points on the surface of a cube.
+ * \param[in] p Number of points on an edge of the cube is (n+1)
+ * \param[in] c Coordinates to the centre of the cube (3D array).
+ * \param[in] alpha Scaling factor for the size of the cube.
+ * \param[in] depth Depth of the cube in the octree.
+ * \return Vector with coordinates of points on the surface of the cube in the
+ * format [x0 y0 z0 x1 y1 z1 .... ].
+ */
+
+template <class Real_t>
+std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
+    size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
+
+    std::vector<Real_t> coord(n_ * 3);
+    coord[0] = coord[1] = coord[2] = -1.0;
+    size_t cnt = 1;
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = -1.0;
+            coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
+            coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
+            cnt++;
+        }
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
+            coord[cnt * 3 + 1] = -1.0;
+            coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
+            cnt++;
+        }
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
+            coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
+            coord[cnt * 3 + 2] = -1.0;
+            cnt++;
+        }
+    for (size_t i = 0; i < (n_ / 2) * 3; i++)
+        coord[cnt * 3 + i] = -coord[i];
+
+    Real_t r = 0.5 * pow(0.5, depth);
+    Real_t b = alpha * r;
+    for (size_t i = 0; i < n_; i++) {
+        coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
+        coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
+        coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
+    }
+    return coord;
 }
 
 template <class T>
