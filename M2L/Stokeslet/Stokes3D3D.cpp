@@ -131,6 +131,7 @@ int main(int argc, char **argv) {
     EMat AL(kdim[0] * checkN, kdim[1] * equivN); // L den to L check
     EMat ALpinvU(AL.cols(), AL.rows());
     EMat ALpinvVT(AL.cols(), AL.rows());
+#pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
         EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
@@ -167,6 +168,7 @@ int main(int argc, char **argv) {
     EMat AM(kdim[0] * checkN, kdim[1] * equivN); // M den to M check
     EMat AMpinvU(AM.cols(), AM.rows());
     EMat AMpinvVT(AM.cols(), AM.rows());
+#pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
         EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
