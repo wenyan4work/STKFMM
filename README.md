@@ -151,7 +151,7 @@ In these tables
 
 ## Prerequisite:
 
-- Install the `new_BC` branch of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
+- Install the `develop` branch of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
 
 If PVFMM is properly installed, you should be able to compile this project using the `CMakeLists.txt`. The script `do-cmake.sh` is an example of how to invoke `cmake` command with optional features (python interface and doxygen documentation).
 
@@ -172,6 +172,8 @@ Options:
   -B,--box FLOAT              testing cubic box edge length
   -O,--origin [FLOAT,FLOAT,FLOAT]
                               testing cubic box origin point
+  -L,--lognormal [FLOAT,FLOAT]
+                              parameters for the random lognormal distribution
   -K,--kernel INT             test which kernels
   -P,--pbc INT                periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ
   -M,--maxOrder INT           max KIFMM order, must be even number. Default 16.
@@ -181,10 +183,10 @@ Options:
   --direct,--no-direct{false} run O(N^2) direct summation with S2T kernels
   --verify,--no-verify{false} verify results with O(N^2) direct summation
   --convergence,--no-convergence{false}
-                              calculate convergence error relative to FMM at p=16
+                              calculate convergence error relative to FMM at maxOrder
   --random,--no-random{false} use random points, otherwise regular mesh
+  --dump,--no-dump{false}     write src/trg coord and values to files
   --wall,--no-wall{false}     test StkWallFMM, otherwise Stk3DFMM
-
 ```
 
 For possible test options. Several test configuration files are included in the folder `Config`, and can be loaded by `TestFMM.X` as this:
@@ -226,7 +228,7 @@ By default, only the `BUILD_TEST` is turned on.
 
 - If you need doxygen document, set `BUILD_DOC=ON`.
 - If you want to generate periodicity precomputed `M2L` data yourself, set `BUILD_M2L=ON`. In this case you will have to install the linear algebra library `Eigen`. If you do not want to generate periodicity precomputed data yourself, you can download them from `https://users.flatironinstitute.org/~wyan/pdata.7z` and unzip all data files to folder `$PVFMM_DIR/pdata`
-- If you want to call this library from python, set `PyInterface=ON`. In this case you need `pybind11` and some basic python facilities. Here is a basic example for `requirements.txt` used for python virtualenv:
+- If you want to call this library from python, set `PyInterface=ON`. In this case you need some basic python facilities. Here is a basic example for `requirements.txt` used for python virtualenv:
 
 ```
 argh==0.26.2
@@ -235,13 +237,9 @@ llvmlite==0.32.1
 mpi4py==3.0.2
 numba==0.49.1
 numpy==1.18.4
-pybind11==2.5.0
-pybind11-cmake==1.0.0
 scipy==1.4.1
 six==1.15.0
 ```
-
-For python, this library will be compiled into a dynamic library `PySTKFMM.so`. You can add this to your python installation manually to call this library.
 
 # Acknowledgement
 
