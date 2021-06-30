@@ -33,7 +33,7 @@ void FMMData::readMat(const int kDim, const std::string &dataName, std::vector<d
                 printf("read ij error %d %d\n", i, j);
                 exit(1);
             }
-            data[i * size + j] = fread;
+            data[j * size + i] = fread; // convert to col major
         }
     }
 
