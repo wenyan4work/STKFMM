@@ -10,7 +10,7 @@ void FMMData::setKernel() {
     kdimDL = kernelFunctionPtr->surf_dim;
 }
 
-void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data) {
+void FMMData::readMat(const int kDim, const std::string &dataName, std::vector<double> &data) {
     // int size = kDim * (6 * (multOrder - 1) * (multOrder - 1) + 2);
     int size = kDim * equivCoord.size() / 3;
     data.resize(size * size);
@@ -21,7 +21,7 @@ void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vecto
     std::cout << dataName << " " << size << std::endl;
     FILE *fin = fopen(file.c_str(), "r");
     if (fin == nullptr) {
-        std::cout << "M2L data " << dataName << " not found" << std::endl;
+        std::cout << "data " << dataName << " not found" << std::endl;
         exit(1);
     }
     for (int i = 0; i < size; i++) {
@@ -40,13 +40,16 @@ void FMMData::readM2LMat(const int kDim, const std::string &dataName, std::vecto
     fclose(fin);
 }
 
-void FMMData::setupM2Ldata() {
+void FMMData::setupPeriodicData() {
     int pbc = static_cast<int>(periodicity);
-    std::string M2Lname = kernelFunctionPtr->k_m2l->ker_name;
-    // read M2L data
-    std::string dataName = "M2L_" + M2Lname + "_" + std::to_string(pbc) + "D3Dp" + std::to_string(multOrder);
+    std::string kname = kernelFunctionPtr->k_m2l->ker_name;
     int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
-    readM2LMat(kdim, dataName, this->M2Ldata);
+    // // read M2L data
+    // std::string dataName = "M2L_" + kname + "_" + std::to_string(pbc) + "D3D_p" + std::to_string(multOrder);
+    // readMat(kdim, dataName, this->M2Ldata);
+    // read M2C data
+    std::string dataName = "M2C_" + kname + "_" + std::to_string(pbc) + "D3D_p" + std::to_string(multOrder);
+    readMat(kdim, dataName, this->M2Cdata);
 }
 
 // constructor
@@ -74,7 +77,8 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
 
         equivCoord = surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
 
-        setupM2Ldata();
+        setupPeriodicData();
+        matrixPtr->SetM2C(M2Cdata.data());
     }
 }
 
@@ -138,7 +142,16 @@ void FMMData::setupTree(const std::vector<double> &srcSLCoord, const std::vector
     // printf("tree alloc\n");
     treePtr->Initialize(treeDataPtr);
     // printf("tree init\n");
-    treePtr->InitFMM_Tree(true, pvfmm::periodicType == pvfmm::PeriodicType::NONE ? pvfmm::FreeSpace : pvfmm::Periodic);
+
+    pvfmm::BoundaryType bc = pvfmm::BoundaryType::FreeSpace;
+    if (periodicity == stkfmm::PAXIS::PX)
+        bc = pvfmm::BoundaryType::PX;
+    else if (periodicity == stkfmm::PAXIS::PXY)
+        bc = pvfmm::BoundaryType::PXY;
+    else if (periodicity == stkfmm::PAXIS::PXYZ)
+        bc = pvfmm::BoundaryType::PXYZ;
+
+    treePtr->InitFMM_Tree(true, bc);
     // printf("tree build\n");
     treePtr->SetupFMM(matrixPtr);
     // printf("tree fmm matrix setup\n");
@@ -194,24 +207,24 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
     int M = kDim * equivN;
     int N = kDim * equivN; // checkN = equivN in this code.
-    std::vector<double> M2Lsource(v.Dim());
+                           //     std::vector<double> M2Lsource(v.Dim());
+                           // #pragma omp parallel for
+                           //     for (int i = 0; i < M; i++) {
+                           //         double temp = 0;
+                           //         for (int j = 0; j < N; j++) {
+                           //             temp += M2Ldata[i * N + j] * v[j];
+                           //         }
+                           //         M2Lsource[i] = temp;
+                           //     }
 
-#pragma omp parallel for
-    for (int i = 0; i < M; i++) {
-        double temp = 0;
-        for (int j = 0; j < N; j++) {
-            temp += M2Ldata[i * N + j] * v[j];
-        }
-        M2Lsource[i] = temp;
-    }
-
-    // L2T evaluation with openmp
-    evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
-                   trgValue.data());
+    // // L2T evaluation with openmp
+    // evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
+    //                trgValue.data());
 
     // post correction of net flux for stokes_PVel kernels
     if (periodicity == PAXIS::PXYZ &&
         (kernelChoice == KERNEL::PVel || kernelChoice == KERNEL::PVelGrad || kernelChoice == KERNEL::PVelLaplacian)) {
+
         double scaleMEquiv = PVFMM_RAD0;
         double pCenterMEquiv[3];
         pCenterMEquiv[0] = -(scaleMEquiv - 1) / 2;
