@@ -60,21 +60,6 @@ const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) {
 STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_), kernelComb(kernelComb_) {
     using namespace impl;
-    // // set periodic boundary condition
-    // switch (pbc) {
-    // case PAXIS::NONE:
-    //     pvfmm::periodicType = pvfmm::PeriodicType::NONE;
-    //     break;
-    // case PAXIS::PX:
-    //     pvfmm::periodicType = pvfmm::PeriodicType::PX;
-    //     break;
-    // case PAXIS::PXY:
-    //     pvfmm::periodicType = pvfmm::PeriodicType::PXY;
-    //     break;
-    // case PAXIS::PXYZ:
-    //     pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
-    //     break;
-    // }
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 

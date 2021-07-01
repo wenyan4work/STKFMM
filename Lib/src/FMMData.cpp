@@ -44,9 +44,7 @@ void FMMData::setupPeriodicData() {
     int pbc = static_cast<int>(periodicity);
     std::string kname = kernelFunctionPtr->k_m2l->ker_name;
     int kdim = kernelFunctionPtr->k_m2l->ker_dim[0];
-    // // read M2L data
-    // std::string dataName = "M2L_" + kname + "_" + std::to_string(pbc) + "D3D_p" + std::to_string(multOrder);
-    // readMat(kdim, dataName, this->M2Ldata);
+
     // read M2C data
     std::string dataName = "M2C_" + kname + "_" + std::to_string(pbc) + "D3D_p" + std::to_string(multOrder);
     readMat(kdim, dataName, this->M2Cdata);
@@ -207,19 +205,6 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
     int M = kDim * equivN;
     int N = kDim * equivN; // checkN = equivN in this code.
-                           //     std::vector<double> M2Lsource(v.Dim());
-                           // #pragma omp parallel for
-                           //     for (int i = 0; i < M; i++) {
-                           //         double temp = 0;
-                           //         for (int j = 0; j < N; j++) {
-                           //             temp += M2Ldata[i * N + j] * v[j];
-                           //         }
-                           //         M2Lsource[i] = temp;
-                           //     }
-
-    // // L2T evaluation with openmp
-    // evaluateKernel(-1, PPKERNEL::L2T, equivN, equivCoord.data(), M2Lsource.data(), nTrg, trgCoord.Begin(),
-    //                trgValue.data());
 
     // post correction of net flux for stokes_PVel kernels
     if (periodicity == PAXIS::PXYZ &&

@@ -57,8 +57,8 @@ struct ComponentError {
     double errorMaxRel = 0; // max relative error
 
     // error with drift correction
-    double drift = 0;            // mean drift
-    double driftL2 = 0;          // drift * n / L2norm(vec)
+    double drift = 0;               // mean drift
+    double driftL2 = 0;             // drift * n / L2norm(vec)
     double errorL2WithoutDrift = 0; // L2 error after the average drift is subtracted off
 
     ComponentError() = default;
