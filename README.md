@@ -172,14 +172,14 @@ Options:
   -B,--box FLOAT              testing cubic box edge length
   -O,--origin [FLOAT,FLOAT,FLOAT]
                               testing cubic box origin point
-  -L,--lognormal [FLOAT,FLOAT]
-                              parameters for the random lognormal distribution
   -K,--kernel INT             test which kernels
   -P,--pbc INT                periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ
   -M,--maxOrder INT           max KIFMM order, must be even number. Default 16.
-  --seed INT                  seed for random number generator
   --eps FLOAT                 epsilon or a for Regularized and RPY kernels
   --max INT                   max number of points in an octree leaf box
+  --seed INT                  seed for random number generator
+  --dist [FLOAT,FLOAT]        parameters for the random distribution
+  --type INT                  type of random distribution, Uniform = 1, LogNormal = 2, Gaussian = 3, Ellipse = 4
   --direct,--no-direct{false} run O(N^2) direct summation with S2T kernels
   --verify,--no-verify{false} verify results with O(N^2) direct summation
   --convergence,--no-convergence{false}
