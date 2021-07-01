@@ -7,6 +7,13 @@
 #include <unordered_map>
 #include <vector>
 
+enum DistType {
+    Uniform = 1,
+    LogNormal = 2,
+    Gaussian = 3,
+    Ellipse = 4,
+};
+
 class PointDistribution {
     std::mt19937 gen_;
 
@@ -14,12 +21,14 @@ class PointDistribution {
     PointDistribution(int seed) : gen_(seed){};
 
     // non-static methods depending on rng seed
-    void randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord, double m = 1.0,
-                      double s = 1.0);
+    void randomPoints(int dim, int nPts, double box, double shift, DistType type, std::vector<double> &ptsCoord,
+                      double m = 1.0, double s = 1.0);
 
     void randomUniformFill(std::vector<double> &vec, double low, double high);
 
     void randomLogNormalFill(std::vector<double> &vec, double a, double b);
+
+    void randomNormalFill(std::vector<double> &vec, double a, double b);
 
     // static methods
     static void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord);

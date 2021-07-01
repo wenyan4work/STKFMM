@@ -31,15 +31,17 @@ void Config::parse(int argc, char **argv) {
     app.add_option("-T,--ntrg", nTrg, "number of source TRG points");
     app.add_option("-B,--box", box, "testing cubic box edge length");
     app.add_option("-O,--origin", origin, "testing cubic box origin point");
-    app.add_option("-L,--lognormal", lognormal, "parameters for the random lognormal distribution");
     app.add_option("-K,--kernel", K, "test which kernels");
     app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
     app.add_option("-M,--maxOrder", maxOrder, "max KIFMM order, must be even number. Default 16.");
 
     // tunnings
-    app.add_option("--seed", rngseed, "seed for random number generator");
     app.add_option("--eps", epsilon, "epsilon or a for Regularized and RPY kernels");
     app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
+    app.add_option("--seed", rngseed, "seed for random number generator");
+    app.add_option("--dist", dist, "parameters for the random distribution");
+    app.add_option("--type", type,
+                   "type of random distribution, Uniform = 1, LogNormal = 2, Gaussian = 3, Ellipse = 4");
 
     // flags
     app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
@@ -91,7 +93,8 @@ void Config::print() const {
     printf_rank0("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
     printf_rank0("box %g\n", box);
     printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
-    printf_rank0("lognormal %g,%g\n", lognormal[0], lognormal[1]);
+    printf_rank0("dist %g,%g\n", dist[0], dist[1]);
+    printf_rank0("type %d\n", type);
     printf_rank0("Kernel %d\n", K);
     printf_rank0("PBC %d\n", pbc);
 
@@ -176,7 +179,8 @@ void genPoint(const Config &config, Point &point, int dim) {
 
     if (myRank == 0) {
         if (config.random) {
-            pd.randomPoints(dim, config.nTrg, box, 0, trgLocal, config.lognormal[0], config.lognormal[1]);
+            pd.randomPoints(dim, config.nTrg, box, 0, static_cast<DistType>(config.type), //
+                            trgLocal, config.dist[0], config.dist[1]);
         } else {
             PointDistribution::meshPoints(dim, config.nTrg, box, 0, trgLocal);
         }
