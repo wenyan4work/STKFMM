@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
 
     std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
-    saveEMat(M2L, "M2L_stokes_3D3D_p" + std::to_string(pEquiv));
-    saveEMat(M2C, "M2C_stokes_3D3D_p" + std::to_string(pEquiv));
+    saveEMat(M2L, "M2L_stokes_vel_3D3D_p" + std::to_string(pEquiv));
+    saveEMat(M2C, "M2C_stokes_vel_3D3D_p" + std::to_string(pEquiv));
 
     EMat AM(kdim[0] * checkN, kdim[1] * equivN); // M den to M check
     EMat AMpinvU(AM.cols(), AM.rows());
