@@ -184,6 +184,7 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &
         exit(1);
     }
     scaleSrc(srcSLValue, srcDLValue, scale);
+    std::fill(trgValue.begin(), trgValue.end(), 0.0);
     PtFMM_Evaluate(treePtr, trgValue, nTrg, &srcSLValue, &srcDLValue);
     periodizeFMM(trgValue);
     scaleTrg(trgValue, scale);

@@ -27,6 +27,7 @@ const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
     {KERNEL::PVelGrad, &pvfmm::StokesLayerKernel<double>::PVelGrad()},
     {KERNEL::PVelLaplacian, &pvfmm::StokesLayerKernel<double>::PVelLaplacian()},
     {KERNEL::Traction, &pvfmm::StokesLayerKernel<double>::Traction()},
+    {KERNEL::LapGrad, &pvfmm::LaplaceLayerKernel<double>::Grad()},
 };
 
 std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
