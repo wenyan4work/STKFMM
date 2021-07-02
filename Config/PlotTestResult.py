@@ -27,7 +27,7 @@ params = {
 plt.rcParams.update(params)
 
 component = {
-    'laplace_grad': [r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$'],
+    'laplace_Grad': [r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$'],
     'laplace_PGrad': [r'$\phi$', r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$'],
     'laplace_PGradGrad': [r'$\phi$', r'$\partial \phi/\partial x$', r'$\partial \phi/\partial y$', r'$\partial \phi/\partial z$',
                           r'$\partial^2\phi/\partial x^2$', r'$\partial^2\phi/\partial x\partial y$', r'$\partial^2\phi/\partial x \partial z$',
@@ -49,7 +49,7 @@ component = {
 }
 
 kernelTitle = {
-    'laplace_grad': r'Laplace $[q,\bm{d}]\to[\nabla \phi]$',
+    'laplace_Grad': r'Laplace $[q,\bm{d}]\to[\nabla \phi]$',
     'laplace_PGrad': r'Laplace $[q,\bm{d}]\to[\phi,\nabla \phi]$',
     'laplace_PGradGrad': r'Laplace $[q,\bm{d}]\to[\phi,\nabla\phi,\nabla\nabla\phi]$',
     'laplace_QPGradGrad': r'Laplace Quadrupole $\bm{Q}\to[\phi,\nabla\phi,\nabla\nabla\phi]$',
