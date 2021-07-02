@@ -97,7 +97,7 @@ void Stk3DFMM::evaluateFMM(const KERNEL kernel, const int nSL, const double *src
         std::copy(srcDLValuePtr, srcDLValuePtr + nDL * fmm.kdimDL, srcDLValueInternal.begin());
         fmm.evaluateFMM(srcSLValueInternal, srcDLValueInternal, trgValueInternal, scaleFactor);
     } else {
-        std::vector<double> empty;
+        std::vector<double> empty(0);
         fmm.evaluateFMM(srcSLValueInternal, empty, trgValueInternal, scaleFactor);
     }
 
