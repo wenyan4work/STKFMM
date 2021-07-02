@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
                 verifyResult[kernel].resize(nTrg * kdimTrg, 0);
             }
         } else {
-            runSimpleKernel(point, input, verifyResult);
+            runSimpleKernel(config, point, input, verifyResult);
         }
         if (config.dump)
             dumpValue("verify", point, input, verifyResult);

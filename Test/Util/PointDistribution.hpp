@@ -30,6 +30,8 @@ class PointDistribution {
 
     void randomNormalFill(std::vector<double> &vec, double a, double b);
 
+    void randomShuffle(const int kdim, std::vector<double>& coord, std::vector<double>& value);
+
     // static methods
     static void fixedPoints(int nPts, double box, double shift, std::vector<double> &srcCoord);
 

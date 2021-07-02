@@ -121,43 +121,33 @@ ComponentError::ComponentError(const std::vector<double> &A, const std::vector<d
 
     // L2Norm of True value
     double L2True = 0;
+    double maxTrue = 0;
     for (auto &v : valueTrue) {
         L2True += v * v;
+        maxTrue = std::max(maxTrue, std::abs(v));
     }
 
     // error without drift correction
     {
-        errorMaxRel = 0;
-        double e2sum = 0;
+        double L2Err = 0;
+        double maxErr = 0;
         for (int i = 0; i < N; i++) {
-            double e2 = pow(valueTrue[i] - value[i], 2);
-            e2sum += e2;
-            errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
+            double err = value[i] - valueTrue[i];
+            double e2 = err * err;
+            L2Err += e2;
+            maxErr = std::max(maxErr, std::abs(err));
         }
-        errorRMS = sqrt(e2sum) / sqrt(N);
-        errorL2 = sqrt(e2sum) / sqrt(L2True);
+        errorRMS = sqrt(L2Err) / sqrt(N);
+        errorL2 = sqrt(L2Err) / sqrt(L2True);
+        errorMaxRel = maxErr / maxTrue;
     }
 
-    // drift and error after drift correction
+    // drift
     drift = 0;
     for (int i = 0; i < N; i++) {
-        drift += A[i] - B[i];
+        drift += value[i] - valueTrue[i];
     }
     drift /= N;
-    driftL2 = drift * N / sqrt(L2True);
-
-    auto valueWithoutDrift = value;
-    for (auto &v : valueWithoutDrift) {
-        v -= drift;
-    }
-    {
-        double e2sum = 0;
-        for (int i = 0; i < N; i++) {
-            double e2 = pow(valueTrue[i] - valueWithoutDrift[i], 2);
-            e2sum += e2;
-        }
-        errorL2WithoutDrift = sqrt(e2sum) / sqrt(L2True);
-    }
 }
 
 // generate (distributed) FMM points
@@ -443,22 +433,23 @@ void dumpValue(const std::string &tag, const Point &point, const Input &input, c
     }
 }
 
-void runSimpleKernel(const Point &point, Input &input, Result &result) {
+void runSimpleKernel(const Config &config, const Point &point, Input &input, Result &result) {
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-    // create a copy for MPI
-    std::vector<double> srcSLCoordGlobal = point.srcLocalSL;
-    std::vector<double> srcDLCoordGlobal = point.srcLocalDL;
-    std::vector<double> trgCoordLocal = point.trgLocal;
-
-    // src is fully replicated on every node
     // trg remains distributed
-    PointDistribution::collectPtsAll(srcSLCoordGlobal);
-    PointDistribution::collectPtsAll(srcDLCoordGlobal);
+    std::vector<double> trgCoordLocal = point.trgLocal;
 
     // loop over all activated kernels
     for (auto &data : input) {
+        // create a copy for MPI
+        std::vector<double> srcSLCoordGlobal = point.srcLocalSL;
+        std::vector<double> srcDLCoordGlobal = point.srcLocalDL;
+
+        // src is fully replicated on every node
+        PointDistribution::collectPtsAll(srcSLCoordGlobal);
+        PointDistribution::collectPtsAll(srcDLCoordGlobal);
+
         KERNEL kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
@@ -468,6 +459,10 @@ void runSimpleKernel(const Point &point, Input &input, Result &result) {
         std::vector<double> srcDLValueGlobal = value.srcLocalDL;
         PointDistribution::collectPtsAll(srcSLValueGlobal);
         PointDistribution::collectPtsAll(srcDLValueGlobal);
+
+        PointDistribution pd(config.rngseed);
+        pd.randomShuffle(kdimSL, srcSLCoordGlobal, srcSLValueGlobal);
+        pd.randomShuffle(kdimDL, srcDLCoordGlobal, srcDLValueGlobal);
 
         // on every node, from global src to local trg
         const int nSL = srcSLCoordGlobal.size() / 3;
@@ -685,8 +680,6 @@ auto errorJson(const ComponentError &error) {
     output["errorRMS"] = error.errorRMS;
     output["errorMaxRel"] = error.errorMaxRel;
     output["drift"] = error.drift;
-    output["driftL2"] = error.driftL2;
-    output["errorL2WithoutDrift"] = error.errorL2WithoutDrift;
     return output;
 };
 

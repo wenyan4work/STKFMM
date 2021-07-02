@@ -61,6 +61,11 @@ kernelTitle = {
     'stokes_Traction': r'StokesPVel traction $[\bm{f},q,\bm{D}] \to \bm{\sigma}$',
 }
 
+errorLabel = [r'$\epsilon_{\rm RMS}$ for each component',
+              r'$\epsilon_{L2}$ for each component',
+              r'$\max \epsilon_{\rm rel}$ for each component']
+errorName = ['RMS', 'L2Rel', 'MaxRel']
+
 
 def parseError(error):
     '''
@@ -72,10 +77,7 @@ def parseError(error):
     result = []
     for item in error:
         result.append([
-            # error before drift correction
-            item["errorRMS"], item["errorL2"], item["errorMaxRel"],
-            # error after drift correction
-            item["drift"], item["driftL2"], item["errorL2WithoutDrift"]
+            item["errorRMS"], item["errorL2"], item["errorMaxRel"], item["drift"]
         ]
         )
     return np.transpose(np.array(result))
@@ -84,14 +86,13 @@ def parseError(error):
 def plotRecord(ax, multOrder, treeTime, runTime, name, errorname, error, compname):
     dim = error.shape[2]
     # 0: errorRMS, 1: errorL2, 2: errorMaxRel, 3: drift, etc
-    plotComponent = 1
     for i in range(dim):
         ax.semilogy(multOrder, error[:, plotComponent, i], '--o',
                     fillstyle='none', label=compname[i])
 
     ax.set_title(name)
     ax.legend(loc='upper left', ncol=3,
-              title=r'$\epsilon_{L2}$ for each component')
+              title=errorLabel[plotComponent])
     ax.set_xlabel(r"$m$")
     ax.set_ylabel(errorname)
     ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(5))
@@ -111,7 +112,7 @@ def plotRecord(ax, multOrder, treeTime, runTime, name, errorname, error, compnam
     return
 
 
-def plotData(data):
+def plotData(data, plotComponent):
     '''
     data should be records for the same kernel
     '''
@@ -156,7 +157,8 @@ def plotData(data):
                    kernelTitle[kernel], k, error[k], component[kernel])
         index += 1
     foldername = os.path.basename(os.getcwd())
-    plt.savefig('Test_'+foldername+'_'+kernel+'.png')
+    plt.savefig('Test_'+foldername+'_'+kernel +
+                '_'+errorName[plotComponent]+'.png')
 
 
 parser = argparse.ArgumentParser()
@@ -177,4 +179,5 @@ for kernel in kernelset:
     for record in logs:
         if record["kernel"] == kernel:
             data.append(record)
-    plotData(data)
+    for plotComponent in [0, 1, 2]:
+        plotData(data, plotComponent)

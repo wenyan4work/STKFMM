@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -175,6 +176,33 @@ void PointDistribution::randomNormalFill(std::vector<double> &vec, double m, dou
     for (auto &v : vec) {
         v = dist(gen_);
     }
+}
+
+void PointDistribution::randomShuffle(const int kdim, std::vector<double> &coord, std::vector<double> &value) {
+    // random shuffle coord and value
+    const int N = coord.size() / 3;
+    assert(value.size() == N * kdim);
+    std::vector<int> perm(N);
+    for (int i = 0; i < N; i++) {
+        perm[i] = i;
+    }
+
+    std::shuffle(perm.begin(), perm.end(), gen_);
+    std::vector<double> coord_new(3 * N);
+    std::vector<double> value_new(kdim * N);
+#pragma omp parallel for
+    for (int i = 0; i < N; i++) {
+        const int idx = perm[i];
+        // printf("%d %d\n", i, idx);
+        for (int k = 0; k < 3; k++) {
+            coord_new[3 * i + k] = coord[3 * idx + k];
+        }
+        for (int k = 0; k < kdim; k++) {
+            value_new[kdim * i + k] = value[kdim * idx + k];
+        }
+    }
+    coord = coord_new;
+    value = value_new;
 }
 
 void PointDistribution::dumpPoints(const std::string &filename, std::vector<double> &coordLocal,
