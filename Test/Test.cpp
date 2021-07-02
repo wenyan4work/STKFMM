@@ -539,7 +539,7 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
         double treeTime, runTime;
         Record record;
 
-        if (config.direct) {
+        if (p <= 2) {
             auto srcSLCoord = point.srcLocalSL; // a copy
             auto srcSLValue = value.srcLocalSL; // a copy
             auto srcDLCoord = point.srcLocalDL; // a copy

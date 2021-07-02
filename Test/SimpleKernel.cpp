@@ -813,6 +813,67 @@ void StokesDLPVelLaplacian(double *s, double *t, double *db, double *pvelLaplaci
         (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
 }
 
+void LaplaceSLGrad(double *s, double *t, double *q, double *pgrad) {
+    const double sx = s[0];
+    const double sy = s[1];
+    const double sz = s[2];
+
+    const double tx = t[0];
+    const double ty = t[1];
+    const double tz = t[2];
+
+    const double charge = q[0];
+
+    if (sx == tx && sy == ty && sz == tz) {
+        for (int i = 0; i < 3; i++) {
+            pgrad[i] = 0;
+        }
+        return;
+    }
+
+    double &gx = pgrad[0];
+    double &gy = pgrad[1];
+    double &gz = pgrad[2];
+    gx = (charge * (sx - tx)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    gy = (charge * (sy - ty)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    gz = (charge * (sz - tz)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+}
+
+void LaplaceDLGrad(double *s, double *t, double *db, double *pgrad) {
+    const double sx = s[0];
+    const double sy = s[1];
+    const double sz = s[2];
+
+    const double tx = t[0];
+    const double ty = t[1];
+    const double tz = t[2];
+
+    const double dx = db[0];
+    const double dy = db[1];
+    const double dz = db[2];
+
+    if (sx == tx && sy == ty && sz == tz) {
+        for (int i = 0; i < 3; i++) {
+            pgrad[i] = 0;
+        }
+        return;
+    }
+
+    double &gx = pgrad[0];
+    double &gy = pgrad[1];
+    double &gz = pgrad[2];
+
+    gx = dx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    gy = dy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
+         (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
+             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+}
+
 void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad) {
     const double sx = s[0];
     const double sy = s[1];
