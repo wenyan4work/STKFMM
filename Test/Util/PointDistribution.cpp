@@ -115,25 +115,25 @@ void PointDistribution::randomPoints(int dim, int nPts, double box, double shift
     case DistType::Ellipse: {
         const double r = 0.45;
         const double center[3] = {0.5, 0.5, 0.5};
-        // randomNormalFill(ptsCoord, 0, 1);
-        // for (size_t i = 0; i < N; i++) {
-        //     double x = ptsCoord[3 * i + 0];
-        //     double y = ptsCoord[3 * i + 1];
-        //     double z = ptsCoord[3 * i + 2];
-        //     double l = sqrt(x * x + y * y + z * z);
-        //     ptsCoord[3 * i + 0] = center[0] + abs(m) * r * x / l;
-        //     ptsCoord[3 * i + 1] = center[1] + abs(m) * r * y / l;
-        //     ptsCoord[3 * i + 2] = center[2] + abs(s) * r * z / l;
-        // }
-
-        randomUniformFill(ptsCoord, 0, 1);
+        randomNormalFill(ptsCoord, 0, 1);
         for (size_t i = 0; i < N; i++) {
-            double phi = 2 * M_PI * ptsCoord[3 * i];
-            double theta = M_PI * ptsCoord[3 * i + 1];
-            ptsCoord[3 * i + 0] = center[0] + 0.25 * r * sin(theta) * cos(phi);
-            ptsCoord[3 * i + 1] = center[1] + 0.25 * r * sin(theta) * sin(phi);
-            ptsCoord[3 * i + 2] = center[2] + r * cos(theta);
+            double x = ptsCoord[3 * i + 0];
+            double y = ptsCoord[3 * i + 1];
+            double z = ptsCoord[3 * i + 2];
+            double l = sqrt(x * x + y * y + z * z);
+            ptsCoord[3 * i + 0] = center[0] + abs(m) * r * x / l;
+            ptsCoord[3 * i + 1] = center[1] + abs(m) * r * y / l;
+            ptsCoord[3 * i + 2] = center[2] + abs(s) * r * z / l;
         }
+
+        // randomUniformFill(ptsCoord, 0, 1);
+        // for (size_t i = 0; i < N; i++) {
+        //     double phi = 2 * M_PI * ptsCoord[3 * i];
+        //     double theta = M_PI * ptsCoord[3 * i + 1];
+        //     ptsCoord[3 * i + 0] = center[0] + 0.25 * r * sin(theta) * cos(phi);
+        //     ptsCoord[3 * i + 1] = center[1] + 0.25 * r * sin(theta) * sin(phi);
+        //     ptsCoord[3 * i + 2] = center[2] + r * cos(theta);
+        // }
     } break;
     default:
         randomUniformFill(ptsCoord, 0, 1);
