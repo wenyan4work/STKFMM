@@ -40,8 +40,8 @@ void Config::parse(int argc, char **argv) {
     app.add_option("--eps", epsilon, "epsilon or a for Regularized and RPY kernels");
     app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
     app.add_option("--seed", rngseed, "seed for random number generator");
-    app.add_option("--dist", dist, "parameters for the random distribution");
-    app.add_option("--type", type,
+    app.add_option("--distParam", distParam, "parameters for the random distribution");
+    app.add_option("--distType", distType,
                    "type of random distribution, Uniform = 1, LogNormal = 2, Gaussian = 3, Ellipse = 4");
 
     // flags
@@ -94,8 +94,8 @@ void Config::print() const {
     printf_rank0("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
     printf_rank0("box %g\n", box);
     printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
-    printf_rank0("dist %g,%g\n", dist[0], dist[1]);
-    printf_rank0("type %d\n", type);
+    printf_rank0("distParam %g,%g\n", distParam[0], distParam[1]);
+    printf_rank0("distType %d\n", distType);
     printf_rank0("Kernel %d\n", K);
     printf_rank0("PBC %d\n", pbc);
 
@@ -170,8 +170,8 @@ void genPoint(const Config &config, Point &point, int dim) {
 
     if (myRank == 0) {
         if (config.random) {
-            pd.randomPoints(dim, config.nTrg, box, 0, static_cast<DistType>(config.type), //
-                            trgLocal, config.dist[0], config.dist[1]);
+            pd.randomPoints(dim, config.nTrg, box, 0, static_cast<DistType>(config.distType), //
+                            trgLocal, config.distParam[0], config.distParam[1]);
         } else {
             PointDistribution::meshPoints(dim, config.nTrg, box, 0, trgLocal);
         }

@@ -21,8 +21,8 @@ struct Config {
     int rngseed = 0;
     double box = 1;
     std::array<double, 3> origin = {0, 0, 0};
-    std::array<double, 2> dist = {-1.0, 0.5};
-    int type = 1;
+    std::array<double, 2> distParam = {-1.0, 0.5};
+    int distType = 1;
     int K = 1;
     int maxOrder = 16;
     int pbc = 0;
