@@ -43,6 +43,8 @@
 // clang-format on
 
 namespace pvfmm {
+constexpr int SRC_BLK = 500;
+
 /**
  * @brief inverse square root of a simd vec type
  *

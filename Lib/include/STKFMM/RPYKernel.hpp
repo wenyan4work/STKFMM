@@ -18,7 +18,6 @@ template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                    Matrix<Real_t> &trg_value) {
 
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -87,7 +86,6 @@ void rpy_u_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<
             store_intrin(&trg_value[2][t], vz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -99,7 +97,6 @@ template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void rpy_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                        Matrix<Real_t> &trg_value) {
 
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -181,7 +178,6 @@ void rpy_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Mat
             store_intrin(&trg_value[5][t], lapvz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -193,7 +189,6 @@ template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                        Matrix<Real_t> &trg_value) {
 
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -269,7 +264,6 @@ void stk_ulapu_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Mat
             store_intrin(&trg_value[5][t], lapvz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -281,7 +275,6 @@ template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                 Matrix<Real_t> &trg_value) {
 
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
     for (int i = 0; i < NWTN_ITER; i++) {
@@ -381,7 +374,6 @@ void laplace_phigradphi_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_v
             store_intrin(&trg_value[3][t], gradphiz);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(rpy_u, rpy_u_uKernel, 4, 3)
@@ -405,7 +397,6 @@ inline const Kernel<T> &RPYKernel<T>::ulapu() {
     static Kernel<T> gr_ker = BuildKernel<T, rpy_u<T, NEWTON_ITE>>("rpy_u", 3, std::pair<int, int>(4, 3));
 
     static Kernel<T> glapg_ker = BuildKernel<T, stk_ulapu<T, NEWTON_ITE>>("stk_ulapu", 3, std::pair<int, int>(3, 6));
-    // glapg_ker.surf_dim = 3;
 
     static Kernel<T> grlapgr_ker = BuildKernel<T, rpy_ulapu<T, NEWTON_ITE>>("rpy_ulapu", 3, std::pair<int, int>(4, 6),
                                                                             &gr_ker,    // k_s2m
@@ -417,7 +408,6 @@ inline const Kernel<T> &RPYKernel<T>::ulapu() {
                                                                             &g_ker,     // k_l2l
                                                                             &glapg_ker, // k_l2t
                                                                             NULL);
-    // grlapgr_ker.surf_dim = 4;
     return grlapgr_ker;
 }
 

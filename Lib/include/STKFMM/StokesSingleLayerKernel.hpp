@@ -28,7 +28,6 @@ template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                          Matrix<Real_t> &trg_value) {
 
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -39,8 +38,7 @@ void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, M
     const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);
     const Vec_t facp = set_intrin<Vec_t, Real_t>(2 * FACV);
     // p = (1/4pi) rk Fk /r^3
-    // const Vec_t n23 = set_intrin<Vec_t, Real_t>(static_cast<Real_t>(-2.0
-    // / 3.0));
+    // const Vec_t n23 = set_intrin<Vec_t, Real_t>(static_cast<Real_t>(-2.0 / 3.0));
 
     size_t src_cnt_ = src_coord.Dim(1);
     size_t trg_cnt_ = trg_coord.Dim(1);
@@ -98,7 +96,6 @@ void stokes_pvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, M
             store_intrin(&trg_value[3][t], vz);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_pvel, stokes_pvel_uKernel, 4, 4)
@@ -111,7 +108,6 @@ GEN_KERNEL(stokes_pvel, stokes_pvel_uKernel, 4, 4)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_pvelgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -290,7 +286,6 @@ void stokes_pvelgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[15][t], vzgzSum);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_pvelgrad, stokes_pvelgrad_uKernel, 4, 16)
@@ -303,7 +298,6 @@ GEN_KERNEL(stokes_pvelgrad, stokes_pvelgrad_uKernel, 4, 16)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_traction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -397,7 +391,6 @@ void stokes_traction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[8][t], tv8);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_traction, stokes_traction_uKernel, 4, 9)
@@ -410,7 +403,6 @@ GEN_KERNEL(stokes_traction, stokes_traction_uKernel, 4, 9)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_pvellaplacian_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                   Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -498,7 +490,6 @@ void stokes_pvellaplacian_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src
             store_intrin(&trg_value[6][t], vzlap);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_pvellaplacian, stokes_pvellaplacian_uKernel, 4, 7)

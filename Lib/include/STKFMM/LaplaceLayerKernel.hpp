@@ -38,7 +38,6 @@ namespace pvfmm {
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_p_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                        Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -80,7 +79,6 @@ void laplace_p_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Mat
             store_intrin(&trg_value[0][t], tp);
         }
     }
-#undef SRC_BLK
 }
 
 /**
@@ -97,7 +95,6 @@ void laplace_p_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Mat
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -155,13 +152,11 @@ void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             store_intrin(&trg_value[3][t], tv2);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -251,13 +246,11 @@ void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -303,13 +296,11 @@ void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[0][t], tv);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                  Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -374,13 +365,11 @@ void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_
             store_intrin(&trg_value[3][t], tg2);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                      Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -494,13 +483,11 @@ void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -574,13 +561,11 @@ void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             store_intrin(&trg_value[0][t], p);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                    Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -729,7 +714,6 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(laplace_p, laplace_p_uKernel, 1, 1)

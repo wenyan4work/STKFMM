@@ -20,6 +20,10 @@ void StokesSLPVel(double *s, double *t, double *f, double *pvel) {
     const double ty = t[1];
     const double tz = t[2];
 
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
+
     if (sx == tx && sy == ty && sz == tz) {
         pvel[0] = pvel[1] = pvel[2] = pvel[3] = 0;
         return;
@@ -35,20 +39,13 @@ void StokesSLPVel(double *s, double *t, double *f, double *pvel) {
     double &vy = pvel[2];
     double &vz = pvel[3];
 
-    p = (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz)) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vx = ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-          fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vy = ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-          fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vz = ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-          fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    p = (fx * rx + fy * ry + fz * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vx = (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vy = (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vz = (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void StokesSLPVelGrad(double *s, double *t, double *f, double *pvelGrad) {
@@ -59,6 +56,10 @@ void StokesSLPVelGrad(double *s, double *t, double *f, double *pvelGrad) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double fx = f[0];
     const double fy = f[1];
@@ -89,96 +90,53 @@ void StokesSLPVelGrad(double *s, double *t, double *f, double *pvelGrad) {
     double &vzgy = pvelGrad[14];
     double &vzgz = pvelGrad[15];
 
-    p = (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz)) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vx = ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-          fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vy = ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-          fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vz = ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-          fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    pgx = fx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-          (3 * (sx - tx) * (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz))) /
-              (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    pgy = fy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-          (3 * (sy - ty) * (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz))) /
-              (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    pgz = fz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-          (3 * (sz - tz) * (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz))) /
-              (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    p = (fx * rx + fy * ry + fz * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vx = (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vy = (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vz = (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    // grad p
+    pgx =
+        (-3 * rx * (fx * rx + fy * ry + fz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        fx / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    pgy =
+        (-3 * ry * (fx * rx + fy * ry + fz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        fy / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    pgz =
+        (-3 * rz * (fx * rx + fy * ry + fz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        fz / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
     // grad vx
-    vxgx = (-(fz * sz) - TrD + fx * (-4 * sx + 4 * tx) - fy * (sy - ty) + fz * tz) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sx - tx) *
-            ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-             fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vxgy = (-(fy * (sx - tx)) + fx * (-2 * sy + 2 * ty)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sy - ty) *
-            ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-             fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vxgz = (-(fz * (sx - tx)) + fx * (-2 * sz + 2 * tz)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sz - tz) *
-            ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-             fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    vxgx = (-3 * rx * (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+           (4 * fx * rx + fy * ry + fz * rz - TrD) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vxgy = (fy * rx + 2 * fx * ry) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * ry * (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vxgz = (fz * rx + 2 * fx * rz) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * rz * (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
     // grad vy
-    vygx = (fy * (-2 * sx + 2 * tx) - fx * (sy - ty)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sx - tx) *
-            ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-             fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                   2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vygy = (-(fz * sz) - TrD - fx * (sx - tx) + fy * (-4 * sy + 4 * ty) + fz * tz) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sy - ty) *
-            ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-             fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                   2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vygz = (-(fz * (sy - ty)) + fy * (-2 * sz + 2 * tz)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sz - tz) *
-            ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-             fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                   2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-
+    vygx = (2 * fy * rx + fx * ry) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * rx * (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vygy = (-3 * ry * (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+           (fx * rx + 4 * fy * ry + fz * rz - TrD) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vygz = (fz * ry + 2 * fy * rz) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * rz * (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
     // grad vz
-    vzgx = (fz * (-2 * sx + 2 * tx) - fx * (sz - tz)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sx - tx) *
-            ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-             fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vzgy = (fz * (-2 * sy + 2 * ty) - fy * (sz - tz)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sy - ty) *
-            ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-             fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vzgz = (-(fy * sy) - TrD - fx * (sx - tx) + fy * ty + fz * (-4 * sz + 4 * tz)) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-           (3 * (sz - tz) *
-            ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-             fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2)))) /
-               (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    vzgx = (2 * fz * rx + fx * rz) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * rx * (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vzgy = (2 * fz * ry + fy * rz) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5)) -
+           (3 * ry * (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vzgz = (-3 * rz * (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD))) /
+               (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+           (fx * rx + fy * ry + 4 * fz * rz - TrD) / (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void StokesSLTraction(double *s, double *t, double *f, double *traction) {
@@ -189,6 +147,10 @@ void StokesSLTraction(double *s, double *t, double *f, double *traction) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double fx = f[0];
     const double fy = f[1];
@@ -212,36 +174,26 @@ void StokesSLTraction(double *s, double *t, double *f, double *traction) {
         return;
     }
 
-    txx = (3 * fz * Power(sx, 2) * sz + 2 * Power(sx, 2) * TrD - Power(sy, 2) * TrD - Power(sz, 2) * TrD +
-           3 * fx * Power(sx - tx, 3) - 6 * fz * sx * sz * tx - 4 * sx * TrD * tx + 3 * fz * sz * Power(tx, 2) +
-           2 * TrD * Power(tx, 2) + 3 * fy * Power(sx - tx, 2) * (sy - ty) + 2 * sy * TrD * ty - TrD * Power(ty, 2) -
-           3 * fz * Power(sx, 2) * tz + 2 * sz * TrD * tz + 6 * fz * sx * tx * tz - 3 * fz * Power(tx, 2) * tz -
-           TrD * Power(tz, 2)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    txy = (3 * (sx - tx) * (sy - ty) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    txz = (3 * (sx - tx) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tyx = (3 * (sx - tx) * (sy - ty) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tyy = (3 * fz * Power(sy, 2) * sz - Power(sx, 2) * TrD + 2 * Power(sy, 2) * TrD - Power(sz, 2) * TrD +
-           2 * sx * TrD * tx - TrD * Power(tx, 2) + 3 * fx * (sx - tx) * Power(sy - ty, 2) +
-           3 * fy * Power(sy - ty, 3) - 6 * fz * sy * sz * ty - 4 * sy * TrD * ty + 3 * fz * sz * Power(ty, 2) +
-           2 * TrD * Power(ty, 2) - 3 * fz * Power(sy, 2) * tz + 2 * sz * TrD * tz + 6 * fz * sy * ty * tz -
-           3 * fz * Power(ty, 2) * tz - TrD * Power(tz, 2)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tyz = (3 * (sy - ty) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tzx = (3 * (sx - tx) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tzy = (3 * (sy - ty) * (sz - tz) * (fz * sz + TrD + fx * (sx - tx) + fy * (sy - ty) - fz * tz)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    tzz = (3 * fz * Power(sz, 3) - (Power(sx, 2) + Power(sy, 2)) * TrD + 2 * Power(sz, 2) * TrD + 2 * sx * TrD * tx -
-           TrD * Power(tx, 2) + 2 * sy * TrD * ty - TrD * Power(ty, 2) + 3 * fx * (sx - tx) * Power(sz - tz, 2) +
-           3 * fy * (sy - ty) * Power(sz - tz, 2) - sz * (9 * fz * sz + 4 * TrD) * tz +
-           (9 * fz * sz + 2 * TrD) * Power(tz, 2) - 3 * fz * Power(tz, 3)) /
-          (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    txx = (-3 * Power(rx, 2) * (fx * rx + fy * ry + fz * rz) + (2 * Power(rx, 2) - Power(ry, 2) - Power(rz, 2)) * TrD) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    txy = (-3 * rx * ry * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    txz = (-3 * rx * rz * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tyx = (-3 * rx * ry * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tyy = (-3 * Power(ry, 2) * (fx * rx + fy * ry + fz * rz) - (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) * TrD) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tyz = (-3 * ry * rz * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tzx = (-3 * rx * rz * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tzy = (-3 * ry * rz * (fx * rx + fy * ry + fz * rz - TrD)) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    tzz = (-3 * Power(rz, 2) * (fx * rx + fy * ry + fz * rz) - (Power(rx, 2) + Power(ry, 2) - 2 * Power(rz, 2)) * TrD) /
+          (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 }
+
 void StokesSLPVelLaplacian(double *s, double *t, double *f, double *pvelLaplacian) {
     const double sx = s[0];
     const double sy = s[1];
@@ -250,6 +202,10 @@ void StokesSLPVelLaplacian(double *s, double *t, double *f, double *pvelLaplacia
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double fx = f[0];
     const double fy = f[1];
@@ -272,33 +228,20 @@ void StokesSLPVelLaplacian(double *s, double *t, double *f, double *pvelLaplacia
         return;
     }
 
-    p = (fx * (-sx + tx) + fy * (-sy + ty) + fz * (-sz + tz)) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vx = ((sx - tx) * (fz * sz + TrD + fy * (sy - ty) - fz * tz) +
-          fx * (2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) - 4 * sx * tx + 2 * Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vy = ((sy - ty) * (fz * sz + TrD + fx * (sx - tx) - fz * tz) +
-          fy * (Power(sx, 2) + 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 4 * sy * ty +
-                2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    vz = ((fy * sy + TrD + fx * (sx - tx) - fy * ty) * (sz - tz) +
-          fz * (Power(sx, 2) + Power(sy, 2) + 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                Power(ty, 2) - 4 * sz * tz + 2 * Power(tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    p = (fx * rx + fy * ry + fz * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vx = (fx * (2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) + rx * (fy * ry + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vy = (fy * (Power(rx, 2) + 2 * Power(ry, 2) + Power(rz, 2)) + ry * (fx * rx + fz * rz - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    vz = (fz * (Power(rx, 2) + Power(ry, 2) + 2 * Power(rz, 2)) + rz * (fx * rx + fy * ry - TrD)) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 
-    vxlap = (-3 * (sx - tx) * (fy * (sy - ty) + fz * (sz - tz)) +
-             fx * (-2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) + 4 * sx * tx - 2 * Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-            (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vylap = (-3 * (sy - ty) * (fx * (sx - tx) + fz * (sz - tz)) +
-             fy * (Power(sx, 2) - 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) + 4 * sy * ty -
-                   2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-            (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vzlap = (-3 * (fx * (sx - tx) + fy * (sy - ty)) * (sz - tz) +
-             fz * (Power(sx, 2) + Power(sy, 2) - 2 * Power(sz, 2) - 2 * sx * tx + Power(tx, 2) - 2 * sy * ty +
-                   Power(ty, 2) + 4 * sz * tz - 2 * Power(tz, 2))) /
-            (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    vxlap = (-3 * rx * (fy * ry + fz * rz) + fx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) /
+            (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vylap = (-3 * ry * (fx * rx + fz * rz) + fy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2))) /
+            (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vzlap = (-3 * (fx * rx + fy * ry) * rz + fz * (Power(rx, 2) + Power(ry, 2) - 2 * Power(rz, 2))) /
+            (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 }
 
 //                         3           3           9             4/16/
@@ -310,6 +253,10 @@ void StokesDLPVel(double *s, double *t, double *db, double *pvel) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double dbxx = db[0];
     const double dbxy = db[1];
@@ -333,35 +280,25 @@ void StokesDLPVel(double *s, double *t, double *db, double *pvel) {
     double &vy = pvel[2];
     double &vz = pvel[3];
 
-    p = (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-         3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) - 2 * dbzz * sx * tx +
-         3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * Power(tx, 2) +
-         3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty -
-         3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) + 3 * dbxz * sx * tz + 3 * dbzx * sx * tz +
-         3 * dbyz * sy * tz + 3 * dbzy * sy * tz + 4 * dbzz * sz * tz - 3 * dbxz * tx * tz - 3 * dbzx * tx * tz -
-         3 * dbyz * ty * tz - 3 * dbzy * ty * tz - 2 * dbzz * Power(tz, 2) +
-         dbyy * (Power(sx, 2) - 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) + 4 * sy * ty -
-                 2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)) +
-         dbxx * (-2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) + 4 * sx * tx - 2 * Power(tx, 2) - 2 * sy * ty +
-                 Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-
-    vx = ((-sx + tx) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vy = ((-sy + ty) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vz = ((-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2)) *
-          (-sz + tz)) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    p = (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+         3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+         dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+         dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vx = (-3 * rx *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vy = (-3 * ry *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vz = (-3 * rz *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 }
+
 void StokesDLPVelGrad(double *s, double *t, double *db, double *pvelGrad) {
     const double sx = s[0];
     const double sy = s[1];
@@ -370,6 +307,10 @@ void StokesDLPVelGrad(double *s, double *t, double *db, double *pvelGrad) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double dbxx = db[0];
     const double dbxy = db[1];
@@ -404,202 +345,132 @@ void StokesDLPVelGrad(double *s, double *t, double *db, double *pvelGrad) {
     double &vzgx = pvelGrad[13];
     double &vzgy = pvelGrad[14];
     double &vzgz = pvelGrad[15];
-    p = (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-         3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) - 2 * dbzz * sx * tx +
-         3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * Power(tx, 2) +
-         3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty -
-         3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) + 3 * dbxz * sx * tz + 3 * dbzx * sx * tz +
-         3 * dbyz * sy * tz + 3 * dbzy * sy * tz + 4 * dbzz * sz * tz - 3 * dbxz * tx * tz - 3 * dbzx * tx * tz -
-         3 * dbyz * ty * tz - 3 * dbzy * ty * tz - 2 * dbzz * Power(tz, 2) +
-         dbyy * (Power(sx, 2) - 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) + 4 * sy * ty -
-                 2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)) +
-         dbxx * (-2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) + 4 * sx * tx - 2 * Power(tx, 2) - 2 * sy * ty +
-                 Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    p = (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+         3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+         dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+         dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vx = (-3 * rx *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vy = (-3 * ry *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vz = (-3 * rz *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 
-    vx = ((-sx + tx) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vy = ((-sy + ty) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vz = ((-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2)) *
-          (-sz + tz)) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    // grad p
+    pgx = (-4 * dbxx * rx + 2 * dbyy * rx + 2 * dbzz * rx - 3 * dbxy * ry - 3 * dbyx * ry - 3 * dbxz * rz -
+           3 * dbzx * rz) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (5 * rx *
+           (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+            3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+            dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+            dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)))) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 
-    pgx =
-        ((4 * dbxx * (sx - tx) - 2 * (dbyy + dbzz) * (sx - tx) + 3 * (dbxy + dbyx) * (sy - ty) +
-          3 * (dbxz + dbzx) * (sz - tz)) *
-             (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-         5 * (sx - tx) *
-             (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-              3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) -
-              2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx +
-              dbzz * Power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty +
-              3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) +
-              dbyy * (Power(sx - tx, 2) - 2 * Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              dbxx * (-2 * Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              (4 * dbzz * sz + 3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty)) * tz -
-              2 * dbzz * Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    pgy =
-        ((3 * (dbxy + dbyx) * (sx - tx) - 2 * (dbxx - 2 * dbyy + dbzz) * (sy - ty) + 3 * (dbyz + dbzy) * (sz - tz)) *
-             (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-         5 * (sy - ty) *
-             (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-              3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) -
-              2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx +
-              dbzz * Power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty +
-              3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) +
-              dbyy * (Power(sx - tx, 2) - 2 * Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              dbxx * (-2 * Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              (4 * dbzz * sz + 3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty)) * tz -
-              2 * dbzz * Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    pgz =
-        ((3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty) - 2 * (dbxx + dbyy - 2 * dbzz) * (sz - tz)) *
-             (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-         5 * (sz - tz) *
-             (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-              3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) -
-              2 * dbzz * sx * tx + 3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx +
-              dbzz * Power(tx, 2) + 3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty +
-              3 * dbzy * sz * ty - 3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) +
-              dbyy * (Power(sx - tx, 2) - 2 * Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              dbxx * (-2 * Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-              (4 * dbzz * sz + 3 * (dbxz + dbzx) * (sx - tx) + 3 * (dbyz + dbzy) * (sy - ty)) * tz -
-              2 * dbzz * Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+    pgy = (-3 * dbxy * rx - 3 * dbyx * rx + 2 * dbxx * ry - 4 * dbyy * ry + 2 * dbzz * ry - 3 * dbyz * rz -
+           3 * dbzy * rz) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (5 * ry *
+           (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+            3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+            dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+            dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)))) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+    pgz = (-3 * dbxz * rx - 3 * dbzx * rx - 3 * dbyz * ry - 3 * dbzy * ry + 2 * dbxx * rz + 2 * dbyy * rz -
+           4 * dbzz * rz) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (5 * rz *
+           (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+            3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+            dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+            dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2)))) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 
     // vx grad
+    vxgx = (3 * (-(rx * (2 * dbxx * rx + (dbxy + dbyx) * ry + (dbxz + dbzx) * rz) *
+                   (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+                 5 * Power(rx, 2) *
+                     (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+                      (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)) -
+                 (Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) *
+                     (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+                      (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+           (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 
-    vxgx = (3 * (-sx + tx) * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) *
-                (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-            5 * (sx - tx) * (-sx + tx) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2)) +
-            (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vxgy = ((-sx + tx) *
-            (3 * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sy - ty) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vxgz = ((-sx + tx) *
-            (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sz - tz) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+    vxgy =
+        (3 * rx *
+         (-(((dbxy + dbyx) * rx + 2 * dbyy * ry + (dbyz + dbzy) * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * ry *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+
+    vxgz =
+        (3 * rx *
+         (-(((dbxz + dbzx) * rx + (dbyz + dbzy) * ry + 2 * dbzz * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * rz *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 
     // vy grad
-    vygx = ((-sy + ty) *
-            (3 * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sx - tx) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vygy = (3 * (-sy + ty) * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) *
-                (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-            5 * (sy - ty) * (-sy + ty) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2)) +
-            (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vygz = ((-sy + ty) *
-            (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sz - tz) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+    vygx =
+        (3 * ry *
+         (-((2 * dbxx * rx + (dbxy + dbyx) * ry + (dbxz + dbzx) * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * rx *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+
+    vygy = (3 * (-(ry * ((dbxy + dbyx) * rx + 2 * dbyy * ry + (dbyz + dbzy) * rz) *
+                   (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+                 5 * Power(ry, 2) *
+                     (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+                      (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)) -
+                 (Power(rx, 2) + Power(ry, 2) + Power(rz, 2)) *
+                     (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+                      (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+           (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+
+    vygz =
+        (3 * ry *
+         (-(((dbxz + dbzx) * rx + (dbyz + dbzy) * ry + 2 * dbzz * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * rz *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 
     // vz grad
-    vzgx = ((-sz + tz) *
-            (3 * (2 * dbxx * (sx - tx) + (dbxy + dbyx) * (sy - ty) + (dbxz + dbzx) * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sx - tx) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vzgy = ((-sz + tz) *
-            (3 * ((dbxy + dbyx) * (sx - tx) + 2 * dbyy * (sy - ty) + (dbyz + dbzy) * (sz - tz)) *
-                 (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) +
-             5 * (sy - ty) *
-                 (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                        (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                  3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                  3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                  3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                  3 * dbzz * Power(tz, 2)))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
-    vzgz = (3 * ((dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty) + 2 * dbzz * (sz - tz)) *
-                (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) * (-sz + tz) +
-            (Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2)) +
-            5 * (sz - tz) * (-sz + tz) *
-                (-3 * ((dbxy + dbyx) * sx * sy + dbyy * Power(sy, 2) + (dbxz + dbzx) * sx * sz +
-                       (dbyz + dbzy) * sy * sz + dbzz * Power(sz, 2)) -
-                 3 * dbxx * Power(sx - tx, 2) + 3 * ((dbxy + dbyx) * sy + (dbxz + dbzx) * sz) * tx +
-                 3 * (2 * dbyy * sy + (dbyz + dbzy) * sz + (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbyy * Power(ty, 2) +
-                 3 * (2 * dbzz * sz + (dbxz + dbzx) * (sx - tx) + (dbyz + dbzy) * (sy - ty)) * tz -
-                 3 * dbzz * Power(tz, 2))) /
-           (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+    vzgx =
+        (3 * rz *
+         (-((2 * dbxx * rx + (dbxy + dbyx) * ry + (dbxz + dbzx) * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * rx *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+
+    vzgy =
+        (3 * rz *
+         (-(((dbxy + dbyx) * rx + 2 * dbyy * ry + (dbyz + dbzy) * rz) * (Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) +
+          5 * ry *
+              (dbxx * Power(rx, 2) + (dbxy + dbyx) * rx * ry + dbyy * Power(ry, 2) + (dbxz + dbzx) * rx * rz +
+               (dbyz + dbzy) * ry * rz + dbzz * Power(rz, 2)))) /
+        (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
+    vzgz = (-3 * (Power(rx, 2) + Power(ry, 2)) * (dbxx * Power(rx, 2) + ry * ((dbxy + dbyx) * rx + dbyy * ry)) -
+            6 * ((dbxz + dbzx) * rx + (dbyz + dbzy) * ry) * (Power(rx, 2) + Power(ry, 2)) * rz +
+            3 *
+                (4 * dbxx * Power(rx, 2) + 4 * ry * ((dbxy + dbyx) * rx + dbyy * ry) -
+                 3 * dbzz * (Power(rx, 2) + Power(ry, 2))) *
+                Power(rz, 2) +
+            9 * ((dbxz + dbzx) * rx + (dbyz + dbzy) * ry) * Power(rz, 3) + 6 * dbzz * Power(rz, 4)) /
+           (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 }
 
 void StokesDLTraction(double *s, double *t, double *db, double *traction) {
@@ -610,6 +481,10 @@ void StokesDLTraction(double *s, double *t, double *db, double *traction) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double dbxx = db[0];
     const double dbxy = db[1];
@@ -661,6 +536,7 @@ void StokesDLTraction(double *s, double *t, double *db, double *traction) {
     tzy = vzy + vyz;
     tzz = vzz + vzz - p;
 }
+
 void StokesDLPVelLaplacian(double *s, double *t, double *db, double *pvelLaplacian) {
     const double sx = s[0];
     const double sy = s[1];
@@ -669,6 +545,10 @@ void StokesDLPVelLaplacian(double *s, double *t, double *db, double *pvelLaplaci
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double dbxx = db[0];
     const double dbxy = db[1];
@@ -696,121 +576,44 @@ void StokesDLPVelLaplacian(double *s, double *t, double *db, double *pvelLaplaci
     }
 
     // p,vx,vy,vz,vxlap,vylap,vzlap
-    p = (dbzz * Power(sx, 2) - 3 * dbxy * sx * sy - 3 * dbyx * sx * sy + dbzz * Power(sy, 2) - 3 * dbxz * sx * sz -
-         3 * dbzx * sx * sz - 3 * dbyz * sy * sz - 3 * dbzy * sy * sz - 2 * dbzz * Power(sz, 2) - 2 * dbzz * sx * tx +
-         3 * dbxy * sy * tx + 3 * dbyx * sy * tx + 3 * dbxz * sz * tx + 3 * dbzx * sz * tx + dbzz * Power(tx, 2) +
-         3 * dbxy * sx * ty + 3 * dbyx * sx * ty - 2 * dbzz * sy * ty + 3 * dbyz * sz * ty + 3 * dbzy * sz * ty -
-         3 * dbxy * tx * ty - 3 * dbyx * tx * ty + dbzz * Power(ty, 2) + 3 * dbxz * sx * tz + 3 * dbzx * sx * tz +
-         3 * dbyz * sy * tz + 3 * dbzy * sy * tz + 4 * dbzz * sz * tz - 3 * dbxz * tx * tz - 3 * dbzx * tx * tz -
-         3 * dbyz * ty * tz - 3 * dbzy * ty * tz - 2 * dbzz * Power(tz, 2) +
-         dbyy * (Power(sx, 2) - 2 * Power(sy, 2) + Power(sz, 2) - 2 * sx * tx + Power(tx, 2) + 4 * sy * ty -
-                 2 * Power(ty, 2) - 2 * sz * tz + Power(tz, 2)) +
-         dbxx * (-2 * Power(sx, 2) + Power(sy, 2) + Power(sz, 2) + 4 * sx * tx - 2 * Power(tx, 2) - 2 * sy * ty +
-                 Power(ty, 2) - 2 * sz * tz + Power(tz, 2))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-
-    vx = ((-sx + tx) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vy = ((-sy + ty) *
-          (-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2))) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    vz = ((-3 * dbxx * Power(sx - tx, 2) - 3 * dbxy * (sx - tx) * (sy - ty) - 3 * dbyx * (sx - tx) * (sy - ty) -
-           3 * dbyy * Power(sy - ty, 2) - 3 * dbxz * (sx - tx) * (sz - tz) - 3 * dbzx * (sx - tx) * (sz - tz) -
-           3 * dbyz * (sy - ty) * (sz - tz) - 3 * dbzy * (sy - ty) * (sz - tz) - 3 * dbzz * Power(sz - tz, 2)) *
-          (-sz + tz)) /
-         (8. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-
+    p = (dbzz * Power(rx, 2) - 3 * dbxy * rx * ry - 3 * dbyx * rx * ry + dbzz * Power(ry, 2) - 3 * dbxz * rx * rz -
+         3 * dbzx * rx * rz - 3 * dbyz * ry * rz - 3 * dbzy * ry * rz - 2 * dbzz * Power(rz, 2) +
+         dbyy * (Power(rx, 2) - 2 * Power(ry, 2) + Power(rz, 2)) +
+         dbxx * (-2 * Power(rx, 2) + Power(ry, 2) + Power(rz, 2))) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vx = (-3 * rx *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vy = (-3 * ry *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    vz = (-3 * rz *
+          (dbxx * Power(rx, 2) + dbxy * rx * ry + dbyx * rx * ry + dbyy * Power(ry, 2) + dbxz * rx * rz +
+           dbzx * rx * rz + dbyz * ry * rz + dbzy * ry * rz + dbzz * Power(rz, 2))) /
+         (8. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
     vxlap =
-        (3 *
-         (dbzz * Power(sx, 3) - 4 * dbxy * Power(sx, 2) * sy - 4 * dbyx * Power(sx, 2) * sy + dbzz * sx * Power(sy, 2) +
-          dbxy * Power(sy, 3) + dbyx * Power(sy, 3) - 4 * dbxz * Power(sx, 2) * sz - 4 * dbzx * Power(sx, 2) * sz -
-          5 * dbyz * sx * sy * sz - 5 * dbzy * sx * sy * sz + dbxz * Power(sy, 2) * sz + dbzx * Power(sy, 2) * sz -
-          4 * dbzz * sx * Power(sz, 2) + dbxy * sy * Power(sz, 2) + dbyx * sy * Power(sz, 2) + dbxz * Power(sz, 3) +
-          dbzx * Power(sz, 3) - 3 * dbzz * Power(sx, 2) * tx + 8 * dbxy * sx * sy * tx + 8 * dbyx * sx * sy * tx -
-          dbzz * Power(sy, 2) * tx + 8 * dbxz * sx * sz * tx + 8 * dbzx * sx * sz * tx + 5 * dbyz * sy * sz * tx +
-          5 * dbzy * sy * sz * tx + 4 * dbzz * Power(sz, 2) * tx + 3 * dbzz * sx * Power(tx, 2) -
-          4 * dbxy * sy * Power(tx, 2) - 4 * dbyx * sy * Power(tx, 2) - 4 * dbxz * sz * Power(tx, 2) -
-          4 * dbzx * sz * Power(tx, 2) - dbzz * Power(tx, 3) + 4 * dbxy * Power(sx, 2) * ty +
-          4 * dbyx * Power(sx, 2) * ty - 2 * dbzz * sx * sy * ty - 3 * dbxy * Power(sy, 2) * ty -
-          3 * dbyx * Power(sy, 2) * ty + 5 * dbyz * sx * sz * ty + 5 * dbzy * sx * sz * ty - 2 * dbxz * sy * sz * ty -
-          2 * dbzx * sy * sz * ty - dbxy * Power(sz, 2) * ty - dbyx * Power(sz, 2) * ty - 8 * dbxy * sx * tx * ty -
-          8 * dbyx * sx * tx * ty + 2 * dbzz * sy * tx * ty - 5 * dbyz * sz * tx * ty - 5 * dbzy * sz * tx * ty +
-          4 * dbxy * Power(tx, 2) * ty + 4 * dbyx * Power(tx, 2) * ty + dbzz * sx * Power(ty, 2) +
-          3 * dbxy * sy * Power(ty, 2) + 3 * dbyx * sy * Power(ty, 2) + dbxz * sz * Power(ty, 2) +
-          dbzx * sz * Power(ty, 2) - dbzz * tx * Power(ty, 2) - dbxy * Power(ty, 3) - dbyx * Power(ty, 3) -
-          dbxx * (sx - tx) * (2 * Power(sx - tx, 2) - 3 * (Power(sy - ty, 2) + Power(sz - tz, 2))) +
-          dbyy * (sx - tx) * (Power(sx - tx, 2) - 4 * Power(sy - ty, 2) + Power(sz - tz, 2)) +
-          (5 * dbyz * sx * sy + 5 * dbzy * sx * sy + 8 * dbzz * sx * sz - 2 * dbxy * sy * sz - 2 * dbyx * sy * sz -
-           5 * dbyz * sy * tx - 5 * dbzy * sy * tx - 8 * dbzz * sz * tx +
-           dbxz * (-3 * Power(sz, 2) + 4 * Power(sx - tx, 2) - Power(sy - ty, 2)) +
-           dbzx * (-3 * Power(sz, 2) + 4 * Power(sx - tx, 2) - Power(sy - ty, 2)) - 5 * dbyz * sx * ty -
-           5 * dbzy * sx * ty + 2 * dbxy * sz * ty + 2 * dbyx * sz * ty + 5 * dbyz * tx * ty + 5 * dbzy * tx * ty) *
-              tz +
-          (3 * (dbxz + dbzx) * sz + 4 * dbzz * (-sx + tx) + (dbxy + dbyx) * (sy - ty)) * Power(tz, 2) -
-          (dbxz + dbzx) * Power(tz, 3))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+        (3 * (2 * dbxx * Power(rx, 3) - dbyy * Power(rx, 3) - dbzz * Power(rx, 3) + 4 * dbxy * Power(rx, 2) * ry +
+              4 * dbyx * Power(rx, 2) * ry - 3 * dbxx * rx * Power(ry, 2) + 4 * dbyy * rx * Power(ry, 2) -
+              dbzz * rx * Power(ry, 2) - dbxy * Power(ry, 3) - dbyx * Power(ry, 3) +
+              (4 * (dbxz + dbzx) * Power(rx, 2) + 5 * (dbyz + dbzy) * rx * ry - (dbxz + dbzx) * Power(ry, 2)) * rz -
+              ((3 * dbxx + dbyy - 4 * dbzz) * rx + (dbxy + dbyx) * ry) * Power(rz, 2) - (dbxz + dbzx) * Power(rz, 3))) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
     vylap =
-        (3 *
-         (-4 * dbxx * Power(sx, 2) * sy + 3 * dbyy * Power(sx, 2) * sy + dbzz * Power(sx, 2) * sy +
-          dbxx * Power(sy, 3) - 2 * dbyy * Power(sy, 3) + dbzz * Power(sy, 3) + dbyz * Power(sx, 2) * sz +
-          dbzy * Power(sx, 2) * sz - 5 * dbxz * sx * sy * sz - 5 * dbzx * sx * sy * sz - 4 * dbyz * Power(sy, 2) * sz -
-          4 * dbzy * Power(sy, 2) * sz + dbxx * sy * Power(sz, 2) + 3 * dbyy * sy * Power(sz, 2) -
-          4 * dbzz * sy * Power(sz, 2) + dbyz * Power(sz, 3) + dbzy * Power(sz, 3) + 8 * dbxx * sx * sy * tx -
-          6 * dbyy * sx * sy * tx - 2 * dbzz * sx * sy * tx - 2 * dbyz * sx * sz * tx - 2 * dbzy * sx * sz * tx +
-          5 * dbxz * sy * sz * tx + 5 * dbzx * sy * sz * tx - 4 * dbxx * sy * Power(tx, 2) +
-          3 * dbyy * sy * Power(tx, 2) + dbzz * sy * Power(tx, 2) + dbyz * sz * Power(tx, 2) +
-          dbzy * sz * Power(tx, 2) + 4 * dbxx * Power(sx, 2) * ty - 3 * dbyy * Power(sx, 2) * ty -
-          dbzz * Power(sx, 2) * ty - 3 * dbxx * Power(sy, 2) * ty + 6 * dbyy * Power(sy, 2) * ty -
-          3 * dbzz * Power(sy, 2) * ty + 5 * dbxz * sx * sz * ty + 5 * dbzx * sx * sz * ty + 8 * dbyz * sy * sz * ty +
-          8 * dbzy * sy * sz * ty - dbxx * Power(sz, 2) * ty - 3 * dbyy * Power(sz, 2) * ty +
-          4 * dbzz * Power(sz, 2) * ty - 8 * dbxx * sx * tx * ty + 6 * dbyy * sx * tx * ty + 2 * dbzz * sx * tx * ty -
-          5 * dbxz * sz * tx * ty - 5 * dbzx * sz * tx * ty + 4 * dbxx * Power(tx, 2) * ty -
-          3 * dbyy * Power(tx, 2) * ty - dbzz * Power(tx, 2) * ty + 3 * dbxx * sy * Power(ty, 2) -
-          6 * dbyy * sy * Power(ty, 2) + 3 * dbzz * sy * Power(ty, 2) - 4 * dbyz * sz * Power(ty, 2) -
-          4 * dbzy * sz * Power(ty, 2) - dbxx * Power(ty, 3) + 2 * dbyy * Power(ty, 3) - dbzz * Power(ty, 3) +
-          dbxy * (sx - tx) * (Power(sx - tx, 2) - 4 * Power(sy - ty, 2) + Power(sz - tz, 2)) +
-          dbyx * (sx - tx) * (Power(sx - tx, 2) - 4 * Power(sy - ty, 2) + Power(sz - tz, 2)) -
-          (dbyz * (3 * Power(sz, 2) + Power(sx - tx, 2) - 4 * Power(sy - ty, 2)) +
-           dbzy * (3 * Power(sz, 2) + Power(sx - tx, 2) - 4 * Power(sy - ty, 2)) -
-           (-2 * (dbxx + 3 * dbyy - 4 * dbzz) * sz + 5 * (dbxz + dbzx) * (sx - tx)) * (sy - ty)) *
-              tz +
-          (3 * (dbyz + dbzy) * sz + (dbxx + 3 * dbyy - 4 * dbzz) * (sy - ty)) * Power(tz, 2) -
-          (dbyz + dbzy) * Power(tz, 3))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+        (3 * (-((dbxy + dbyx) * Power(rx, 3)) + (4 * dbxx - 3 * dbyy - dbzz) * Power(rx, 2) * ry +
+              4 * (dbxy + dbyx) * rx * Power(ry, 2) - (dbxx - 2 * dbyy + dbzz) * Power(ry, 3) +
+              (-((dbyz + dbzy) * Power(rx, 2)) + 5 * (dbxz + dbzx) * rx * ry + 4 * (dbyz + dbzy) * Power(ry, 2)) * rz -
+              ((dbxy + dbyx) * rx + (dbxx + 3 * dbyy - 4 * dbzz) * ry) * Power(rz, 2) - (dbyz + dbzy) * Power(rz, 3))) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
     vzlap =
-        (3 *
-         (dbyz * Power(sx, 2) * sy + dbzy * Power(sx, 2) * sy + dbyz * Power(sy, 3) + dbzy * Power(sy, 3) -
-          4 * dbxx * Power(sx, 2) * sz + dbyy * Power(sx, 2) * sz + 3 * dbzz * Power(sx, 2) * sz -
-          5 * dbxy * sx * sy * sz - 5 * dbyx * sx * sy * sz + dbxx * Power(sy, 2) * sz - 4 * dbyy * Power(sy, 2) * sz +
-          3 * dbzz * Power(sy, 2) * sz - 4 * dbyz * sy * Power(sz, 2) - 4 * dbzy * sy * Power(sz, 2) +
-          dbxx * Power(sz, 3) + dbyy * Power(sz, 3) - 2 * dbzz * Power(sz, 3) - 2 * dbyz * sx * sy * tx -
-          2 * dbzy * sx * sy * tx + 8 * dbxx * sx * sz * tx - 2 * dbyy * sx * sz * tx - 6 * dbzz * sx * sz * tx +
-          5 * dbxy * sy * sz * tx + 5 * dbyx * sy * sz * tx + dbyz * sy * Power(tx, 2) + dbzy * sy * Power(tx, 2) -
-          4 * dbxx * sz * Power(tx, 2) + dbyy * sz * Power(tx, 2) + 3 * dbzz * sz * Power(tx, 2) -
-          dbyz * Power(sx, 2) * ty - dbzy * Power(sx, 2) * ty - 3 * dbyz * Power(sy, 2) * ty -
-          3 * dbzy * Power(sy, 2) * ty + 5 * dbxy * sx * sz * ty + 5 * dbyx * sx * sz * ty - 2 * dbxx * sy * sz * ty +
-          8 * dbyy * sy * sz * ty - 6 * dbzz * sy * sz * ty + 4 * dbyz * Power(sz, 2) * ty +
-          4 * dbzy * Power(sz, 2) * ty + 2 * dbyz * sx * tx * ty + 2 * dbzy * sx * tx * ty - 5 * dbxy * sz * tx * ty -
-          5 * dbyx * sz * tx * ty - dbyz * Power(tx, 2) * ty - dbzy * Power(tx, 2) * ty + 3 * dbyz * sy * Power(ty, 2) +
-          3 * dbzy * sy * Power(ty, 2) + dbxx * sz * Power(ty, 2) - 4 * dbyy * sz * Power(ty, 2) +
-          3 * dbzz * sz * Power(ty, 2) - dbyz * Power(ty, 3) - dbzy * Power(ty, 3) +
-          dbxz * (sx - tx) * (Power(sx, 2) - 2 * sx * tx + Power(tx, 2) + Power(sy - ty, 2) - 4 * Power(sz - tz, 2)) +
-          dbzx * (sx - tx) * (Power(sx, 2) - 2 * sx * tx + Power(tx, 2) + Power(sy - ty, 2) - 4 * Power(sz - tz, 2)) +
-          (-3 * dbzz * Power(sx, 2) + 5 * dbxy * sx * sy + 5 * dbyx * sx * sy - 3 * dbzz * Power(sy, 2) +
-           8 * dbyz * sy * sz + 8 * dbzy * sy * sz + 6 * dbzz * Power(sz, 2) + 6 * dbzz * sx * tx - 5 * dbxy * sy * tx -
-           5 * dbyx * sy * tx - 3 * dbzz * Power(tx, 2) -
-           dbyy * (3 * Power(sz, 2) + Power(sx - tx, 2) - 4 * Power(sy - ty, 2)) +
-           dbxx * (-3 * Power(sz, 2) + 4 * Power(sx - tx, 2) - Power(sy - ty, 2)) +
-           (6 * dbzz * sy - 8 * (dbyz + dbzy) * sz - 5 * (dbxy + dbyx) * (sx - tx)) * ty - 3 * dbzz * Power(ty, 2)) *
-              tz +
-          (3 * (dbxx + dbyy - 2 * dbzz) * sz - 4 * (dbyz + dbzy) * (sy - ty)) * Power(tz, 2) -
-          (dbxx + dbyy - 2 * dbzz) * Power(tz, 3))) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 3.5));
+        (-3 * ((dbxz + dbzx) * rx + (dbyz + dbzy) * ry) * (Power(rx, 2) + Power(ry, 2)) +
+         3 *
+             ((4 * dbxx - dbyy - 3 * dbzz) * Power(rx, 2) + 5 * (dbxy + dbyx) * rx * ry -
+              (dbxx - 4 * dbyy + 3 * dbzz) * Power(ry, 2)) *
+             rz +
+         12 * ((dbxz + dbzx) * rx + (dbyz + dbzy) * ry) * Power(rz, 2) - 3 * (dbxx + dbyy - 2 * dbzz) * Power(rz, 3)) /
+        (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5));
 }
 
 void LaplaceSLGrad(double *s, double *t, double *q, double *pgrad) {
@@ -821,6 +624,10 @@ void LaplaceSLGrad(double *s, double *t, double *q, double *pgrad) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double charge = q[0];
 
@@ -834,9 +641,9 @@ void LaplaceSLGrad(double *s, double *t, double *q, double *pgrad) {
     double &gx = pgrad[0];
     double &gy = pgrad[1];
     double &gz = pgrad[2];
-    gx = (charge * (sx - tx)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gy = (charge * (sy - ty)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gz = (charge * (sz - tz)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    gx = -0.25 * (charge * rx) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy = -0.25 * (charge * ry) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz = -0.25 * (charge * rz) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void LaplaceDLGrad(double *s, double *t, double *db, double *pgrad) {
@@ -852,6 +659,10 @@ void LaplaceDLGrad(double *s, double *t, double *db, double *pgrad) {
     const double dy = db[1];
     const double dz = db[2];
 
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
+
     if (sx == tx && sy == ty && sz == tz) {
         for (int i = 0; i < 3; i++) {
             pgrad[i] = 0;
@@ -863,15 +674,15 @@ void LaplaceDLGrad(double *s, double *t, double *db, double *pgrad) {
     double &gy = pgrad[1];
     double &gz = pgrad[2];
 
-    gx = dx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gy = dy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    gx =
+        (-3 * rx * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dx / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy =
+        (-3 * ry * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dy / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz =
+        (-3 * rz * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dz / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad) {
@@ -882,6 +693,10 @@ void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double charge = q[0];
 
@@ -896,10 +711,10 @@ void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad) {
     double &gx = pgrad[1];
     double &gy = pgrad[2];
     double &gz = pgrad[3];
-    p = charge / (4. * Pi * Sqrt(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)));
-    gx = (charge * (sx - tx)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gy = (charge * (sy - ty)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gz = (charge * (sz - tz)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
+    p = charge / (4. * Pi * Sqrt(Power(rx, 2) + Power(ry, 2) + Power(rz, 2)));
+    gx = -0.25 * (charge * rx) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy = -0.25 * (charge * ry) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz = -0.25 * (charge * rz) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
@@ -915,6 +730,10 @@ void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
     const double dy = db[1];
     const double dz = db[2];
 
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
+
     if (sx == tx && sy == ty && sz == tz) {
         for (int i = 0; i < 4; i++) {
             pgrad[i] = 0;
@@ -927,17 +746,16 @@ void LaplaceDLPGrad(double *s, double *t, double *db, double *pgrad) {
     double &gy = pgrad[2];
     double &gz = pgrad[3];
 
-    p = (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz)) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gx = dx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gy = dy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
+    p = (dx * rx + dy * ry + dz * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gx =
+        (-3 * rx * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dx / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy =
+        (-3 * ry * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dy / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz =
+        (-3 * rz * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dz / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
 }
 
 void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
@@ -948,6 +766,10 @@ void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
     const double tx = t[0];
     const double ty = t[1];
     const double tz = t[2];
+
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
 
     const double charge = q[0];
 
@@ -968,27 +790,20 @@ void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad) {
     double &gyy = pgradgrad[7];
     double &gyz = pgradgrad[8];
     double &gzz = pgradgrad[9];
-    const double prefac = 1 / (4 * M_PI);
 
-    p = charge / (4. * Pi * Sqrt(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2)));
-    gx = (charge * (sx - tx)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gy = (charge * (sy - ty)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gz = (charge * (sz - tz)) / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gxx = prefac * charge *
-          ((3 * Power(-sx + tx, 2)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), -1.5));
-    gxy = prefac * charge *
-          ((3 * (-sx + tx) * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gxz = prefac * charge *
-          ((3 * (-sx + tx) * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gyy = prefac * charge *
-          ((3 * Power(-sy + ty, 2)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), -1.5));
-    gyz = prefac * charge *
-          ((3 * (-sy + ty) * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gzz = prefac * charge *
-          ((3 * Power(-sz + tz, 2)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), -1.5));
+    p = charge / (4. * Pi * Sqrt(Power(rx, 2) + Power(ry, 2) + Power(rz, 2)));
+    gx = -0.25 * (charge * rx) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy = -0.25 * (charge * ry) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz = -0.25 * (charge * rz) / (Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gxx = (3 * charge * Power(rx, 2)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          charge / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gyy = (3 * charge * Power(ry, 2)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          charge / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gzz = (3 * charge * Power(rz, 2)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          charge / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gxy = (3 * charge * rx * ry) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gxz = (3 * charge * rx * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gyz = (3 * charge * ry * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 }
 
 void LaplaceDLPGradGrad(double *s, double *t, double *db, double *pgradgrad) {
@@ -1005,6 +820,10 @@ void LaplaceDLPGradGrad(double *s, double *t, double *db, double *pgradgrad) {
     const double dy = db[1];
     const double dz = db[2];
 
+    const double rx = tx - sx;
+    const double ry = ty - sy;
+    const double rz = tz - sz;
+
     if (sx == tx && sy == ty && sz == tz) {
         for (int i = 0; i < 10; i++) {
             pgradgrad[i] = 0;
@@ -1022,73 +841,42 @@ void LaplaceDLPGradGrad(double *s, double *t, double *db, double *pgradgrad) {
     double &gyy = pgradgrad[7];
     double &gyz = pgradgrad[8];
     double &gzz = pgradgrad[9];
-    const double prefac = 1 / (4 * M_PI);
 
-    p = (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz)) /
-        (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5));
-    gx = dx / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sx - tx) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gy = dy / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sy - ty) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    gz = dz / (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 1.5)) +
-         (3 * (sz - tz) * (dx * (-sx + tx) + dy * (-sy + ty) + dz * (-sz + tz))) /
-             (4. * Pi * Power(Power(sx - tx, 2) + Power(sy - ty, 2) + Power(sz - tz, 2), 2.5));
-    const double s0 = db[0];
-    const double s1 = db[1];
-    const double s2 = db[2];
-    gxx = prefac *
-          ((15 * s0 * Power(-sx + tx, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s1 * Power(-sx + tx, 2) * (-sy + ty)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s2 * Power(-sx + tx, 2) * (-sz + tz)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-           (9 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (3 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (3 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gxy = prefac * ((15 * s0 * Power(-sx + tx, 2) * (-sy + ty)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s1 * (-sx + tx) * Power(-sy + ty, 2)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s2 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-                    (3 * s1 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-                    (3 * s0 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gxz = prefac * ((15 * s0 * Power(-sx + tx, 2) * (-sz + tz)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s1 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s2 * (-sx + tx) * Power(-sz + tz, 2)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-                    (3 * s2 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-                    (3 * s0 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gyy = prefac *
-          ((15 * s0 * (-sx + tx) * Power(-sy + ty, 2)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s1 * Power(-sy + ty, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s2 * Power(-sy + ty, 2) * (-sz + tz)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-           (3 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (9 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (3 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gyz = prefac * ((15 * s0 * (-sx + tx) * (-sy + ty) * (-sz + tz)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s1 * Power(-sy + ty, 2) * (-sz + tz)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-                    (15 * s2 * (-sy + ty) * Power(-sz + tz, 2)) /
-                        Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-                    (3 * s2 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-                    (3 * s1 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
-    gzz = prefac *
-          ((15 * s0 * (-sx + tx) * Power(-sz + tz, 2)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s1 * (-sy + ty) * Power(-sz + tz, 2)) /
-               Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) +
-           (15 * s2 * Power(-sz + tz, 3)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 3.5) -
-           (3 * s0 * (-sx + tx)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (3 * s1 * (-sy + ty)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5) -
-           (9 * s2 * (-sz + tz)) / Power(Power(-sx + tx, 2) + Power(-sy + ty, 2) + Power(-sz + tz, 2), 2.5));
+    p = (dx * rx + dy * ry + dz * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gx =
+        (-3 * rx * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dx / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gy =
+        (-3 * ry * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dy / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+    gz =
+        (-3 * rz * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) +
+        dz / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 1.5));
+
+    gxx = (15 * Power(rx, 2) * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dx * rx) / (2. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gyy = (15 * Power(ry, 2) * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dy * ry) / (2. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gzz = (15 * Power(rz, 2) * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dz * rz) / (2. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * (dx * rx + dy * ry + dz * rz)) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gxy = (15 * rx * ry * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dy * rx) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * dx * ry) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gxz = (15 * rx * rz * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dz * rx) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * dx * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
+    gyz = (15 * ry * rz * (dx * rx + dy * ry + dz * rz)) /
+              (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 3.5)) -
+          (3 * dz * ry) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5)) -
+          (3 * dy * rz) / (4. * Pi * Power(Power(rx, 2) + Power(ry, 2) + Power(rz, 2), 2.5));
 }
 
 void StokesRegSLVel(double *s, double *t, double *f, double *vel) {
