@@ -11,8 +11,8 @@ max = 2000
 direct = false
 verify = false
 convergence = true
-distType = 4
-distParam = [0.5, 1.0]
+distType = 2
+distParam = [-1.0, 0.5]
 random = true
 wall = false
 

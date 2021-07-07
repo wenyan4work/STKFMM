@@ -7,11 +7,12 @@ kernel = 24
 pbc = 0
 seed = 0
 eps = 1e-4
-max = 500
+max = 1000
 direct = false
 verify = true
 convergence = false
 random = true
-distType = 1
+distType = 2
+distParam = [-1.0, 0.5]
 wall = true
 

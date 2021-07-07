@@ -732,7 +732,7 @@ GEN_KERNEL(laplace_quadpgradgrad, laplace_quadpgradgrad_uKernel, 9, 10)
  */
 template <class T>
 struct LaplaceLayerKernel {
-    inline static const Kernel<T> &Grad();       ///< Laplace Grad Kernel, for test only
+    // inline static const Kernel<T> &Grad();       ///< Laplace Grad Kernel, for test only
     inline static const Kernel<T> &PGrad();      ///< Laplace PGrad Kernel
     inline static const Kernel<T> &PGradGrad();  ///< Laplace PGradGrad
     inline static const Kernel<T> &QPGradGrad(); ///< Laplace Quadruple PGradGrad, no double layer
@@ -747,19 +747,16 @@ struct LaplaceLayerKernel {
     static constexpr int NEWTON_ITE = sizeof(T) / 4;
 };
 
-template <class T>
-inline const Kernel<T> &LaplaceLayerKernel<T>::Grad() {
+// template <class T>
+// inline const Kernel<T> &LaplaceLayerKernel<T>::Grad() {
 
-    static Kernel<T> potn_ker = BuildKernel<T, laplace_p<T, NEWTON_ITE>, laplace_dipolep<T, NEWTON_ITE>>(
-        "laplace", 3, std::pair<int, int>(1, 1));
-    potn_ker.surf_dim = 3;
-    static Kernel<T> grad_ker =
-        BuildKernel<T, laplace_grad<T, NEWTON_ITE>>("laplace_Grad", 3, std::pair<int, int>(1, 3), &potn_ker, &potn_ker,
-                                                    NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
-    grad_ker.surf_dim = 3;
-
-    return grad_ker;
-}
+//     static Kernel<T> potn_ker = BuildKernel<T, laplace_p<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(1, 1));
+//     static Kernel<T> grad_ker =
+//         BuildKernel<T, laplace_grad<T, NEWTON_ITE>>("laplace_Grad", 3, std::pair<int, int>(1, 3), &potn_ker,
+//         &potn_ker,
+//                                                     NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
+//     return grad_ker;
+// }
 
 template <class T>
 inline const Kernel<T> &LaplaceLayerKernel<T>::PGrad() {

@@ -10,8 +10,7 @@
 typedef void (*kernel_func)(double *, double *, double *, double *);
 
 std::unordered_map<KERNEL, std::pair<kernel_func, kernel_func>>
-    SL_kernels({{KERNEL::LapGrad, std::make_pair(LaplaceSLGrad, nullptr)},
-                {KERNEL::LapPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
+    SL_kernels({{KERNEL::LapPGrad, std::make_pair(LaplaceSLPGrad, LaplaceDLPGrad)},
                 {KERNEL::LapPGradGrad, std::make_pair(LaplaceSLPGradGrad, LaplaceDLPGradGrad)},
                 {KERNEL::LapQPGradGrad, std::make_pair(LaplaceQPGradGrad, nullptr)},
                 {KERNEL::Stokes, std::make_pair(StokesSL, nullptr)},
