@@ -196,16 +196,10 @@ void FMMData::periodizeFMM(std::vector<double> &trgValue) {
     }
 
     // the value calculated by pvfmm
-    pvfmm::Vector<double> v = treePtr->RootNode()->FMMData()->upward_equiv;
-
-    // add to trg_value
-    auto &trgCoord = treeDataPtr->trg_coord;
+    const pvfmm::Vector<double> v = treePtr->RootNode()->FMMData()->upward_equiv;
+    const auto &trgCoord = treeDataPtr->trg_coord;
     const int nTrg = trgCoord.Dim() / 3;
     const int equivN = equivCoord.size() / 3;
-
-    int kDim = kernelFunctionPtr->k_m2l->ker_dim[0];
-    int M = kDim * equivN;
-    int N = kDim * equivN; // checkN = equivN in this code.
 
     // post correction of net flux for stokes_PVel kernels
     if (periodicity == PAXIS::PXYZ &&

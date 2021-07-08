@@ -394,7 +394,7 @@ void genSrcValue(const Config &config, const Point &point, Input &input) {
                     trD += value.srcLocalDL[9 * i + 8];
                 }
                 MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-                trD /= (3 * nDL);
+                trD /= (3 * nDLGlobal);
                 for (int i = 0; i < nDL; i++) {
                     value.srcLocalDL[9 * i + 0] -= trD;
                     value.srcLocalDL[9 * i + 4] -= trD;
