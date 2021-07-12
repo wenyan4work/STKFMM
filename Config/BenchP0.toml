@@ -1,9 +1,8 @@
 nsl = 99
 ndl = 99
 ntrg = 99
-box = 30
+box = 32
 origin = [1,2,3]
-lognormal = [-1,0.5]
 kernel = 0 
 pbc = 0
 seed = 0
@@ -12,6 +11,8 @@ max = 2000
 direct = false
 verify = false
 convergence = true
+distType = 2
+distParam = [-1.0, 0.5]
 random = true
 wall = false
 

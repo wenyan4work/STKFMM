@@ -1,16 +1,18 @@
 nsl = 32
 ndl = 32
 ntrg = 32
-box = 10
+box = 16
 origin = [1,2,3]
 kernel = 0 
 pbc = 0
 seed = 0
 eps = 1e-4
-max = 500
+max = 1000
 direct = false
 verify = true
 convergence = true
-random = false
+random = true
+distType = 2
+distParam = [-1.0, 0.5]
 wall = false
 

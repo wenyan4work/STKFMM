@@ -31,15 +31,17 @@ void Config::parse(int argc, char **argv) {
     app.add_option("-T,--ntrg", nTrg, "number of source TRG points");
     app.add_option("-B,--box", box, "testing cubic box edge length");
     app.add_option("-O,--origin", origin, "testing cubic box origin point");
-    app.add_option("-L,--lognormal", lognormal, "parameters for the random lognormal distribution");
     app.add_option("-K,--kernel", K, "test which kernels");
     app.add_option("-P,--pbc", pbc, "periodic boundary condition. 0=none, 1=PX, 2=PXY, 3=PXYZ");
     app.add_option("-M,--maxOrder", maxOrder, "max KIFMM order, must be even number. Default 16.");
 
     // tunnings
-    app.add_option("--seed", rngseed, "seed for random number generator");
     app.add_option("--eps", epsilon, "epsilon or a for Regularized and RPY kernels");
     app.add_option("--max", maxPoints, "max number of points in an octree leaf box");
+    app.add_option("--seed", rngseed, "seed for random number generator");
+    app.add_option("--distParam", distParam, "parameters for the random distribution");
+    app.add_option("--distType", distType,
+                   "type of random distribution, Uniform = 1, LogNormal = 2, Gaussian = 3, Ellipse = 4");
 
     // flags
     app.add_flag("--direct,!--no-direct", direct, "run O(N^2) direct summation with S2T kernels");
@@ -91,7 +93,8 @@ void Config::print() const {
     printf_rank0("nSL %d, nDL %d, nTrg %d\n", nSL, nDL, nTrg);
     printf_rank0("box %g\n", box);
     printf_rank0("origin %g,%g,%g\n", origin[0], origin[1], origin[2]);
-    printf_rank0("lognormal %g,%g\n", lognormal[0], lognormal[1]);
+    printf_rank0("distParam %g,%g\n", distParam[0], distParam[1]);
+    printf_rank0("distType %d\n", distType);
     printf_rank0("Kernel %d\n", K);
     printf_rank0("PBC %d\n", pbc);
 
@@ -118,43 +121,33 @@ ComponentError::ComponentError(const std::vector<double> &A, const std::vector<d
 
     // L2Norm of True value
     double L2True = 0;
+    double maxTrue = 0;
     for (auto &v : valueTrue) {
         L2True += v * v;
+        maxTrue = std::max(maxTrue, std::abs(v));
     }
 
     // error without drift correction
     {
-        errorMaxRel = 0;
-        double e2sum = 0;
+        double L2Err = 0;
+        double maxErr = 0;
         for (int i = 0; i < N; i++) {
-            double e2 = pow(valueTrue[i] - value[i], 2);
-            e2sum += e2;
-            errorMaxRel = std::max(errorMaxRel, fabs(sqrt(e2) / valueTrue[i]));
+            double err = value[i] - valueTrue[i];
+            double e2 = err * err;
+            L2Err += e2;
+            maxErr = std::max(maxErr, std::abs(err));
         }
-        errorRMS = sqrt(e2sum) / sqrt(N);
-        errorL2 = sqrt(e2sum) / sqrt(L2True);
+        errorRMS = sqrt(L2Err) / sqrt(N);
+        errorL2 = sqrt(L2Err) / sqrt(L2True);
+        errorMaxRel = maxErr / maxTrue;
     }
 
-    // drift and error after drift correction
+    // drift
     drift = 0;
     for (int i = 0; i < N; i++) {
-        drift += A[i] - B[i];
+        drift += value[i] - valueTrue[i];
     }
     drift /= N;
-    driftL2 = drift * N / sqrt(L2True);
-
-    auto valueWithoutDrift = value;
-    for (auto &v : valueWithoutDrift) {
-        v -= drift;
-    }
-    {
-        double e2sum = 0;
-        for (int i = 0; i < N; i++) {
-            double e2 = pow(valueTrue[i] - valueWithoutDrift[i], 2);
-            e2sum += e2;
-        }
-        errorL2WithoutDrift = sqrt(e2sum) / sqrt(L2True);
-    }
 }
 
 // generate (distributed) FMM points
@@ -176,7 +169,8 @@ void genPoint(const Config &config, Point &point, int dim) {
 
     if (myRank == 0) {
         if (config.random) {
-            pd.randomPoints(dim, config.nTrg, box, 0, trgLocal, config.lognormal[0], config.lognormal[1]);
+            pd.randomPoints(dim, config.nTrg, box, 0, static_cast<DistType>(config.distType), //
+                            trgLocal, config.distParam[0], config.distParam[1]);
         } else {
             PointDistribution::meshPoints(dim, config.nTrg, box, 0, trgLocal);
         }
@@ -400,7 +394,7 @@ void genSrcValue(const Config &config, const Point &point, Input &input) {
                     trD += value.srcLocalDL[9 * i + 8];
                 }
                 MPI_Allreduce(MPI_IN_PLACE, &trD, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-                trD /= (3 * nDL);
+                trD /= (3 * nDLGlobal);
                 for (int i = 0; i < nDL; i++) {
                     value.srcLocalDL[9 * i + 0] -= trD;
                     value.srcLocalDL[9 * i + 4] -= trD;
@@ -439,22 +433,23 @@ void dumpValue(const std::string &tag, const Point &point, const Input &input, c
     }
 }
 
-void runSimpleKernel(const Point &point, Input &input, Result &result) {
+void runSimpleKernel(const Config &config, const Point &point, Input &input, Result &result) {
     int myRank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-    // create a copy for MPI
-    std::vector<double> srcSLCoordGlobal = point.srcLocalSL;
-    std::vector<double> srcDLCoordGlobal = point.srcLocalDL;
-    std::vector<double> trgCoordLocal = point.trgLocal;
-
-    // src is fully replicated on every node
     // trg remains distributed
-    PointDistribution::collectPtsAll(srcSLCoordGlobal);
-    PointDistribution::collectPtsAll(srcDLCoordGlobal);
+    std::vector<double> trgCoordLocal = point.trgLocal;
 
     // loop over all activated kernels
     for (auto &data : input) {
+        // create a copy for MPI
+        std::vector<double> srcSLCoordGlobal = point.srcLocalSL;
+        std::vector<double> srcDLCoordGlobal = point.srcLocalDL;
+
+        // src is fully replicated on every node
+        PointDistribution::collectPtsAll(srcSLCoordGlobal);
+        PointDistribution::collectPtsAll(srcDLCoordGlobal);
+
         KERNEL kernel = data.first;
         auto &value = data.second;
         int kdimSL, kdimDL, kdimTrg;
@@ -464,6 +459,10 @@ void runSimpleKernel(const Point &point, Input &input, Result &result) {
         std::vector<double> srcDLValueGlobal = value.srcLocalDL;
         PointDistribution::collectPtsAll(srcSLValueGlobal);
         PointDistribution::collectPtsAll(srcDLValueGlobal);
+
+        PointDistribution pd(config.rngseed);
+        pd.randomShuffle(kdimSL, srcSLCoordGlobal, srcSLValueGlobal);
+        pd.randomShuffle(kdimDL, srcDLCoordGlobal, srcDLValueGlobal);
 
         // on every node, from global src to local trg
         const int nSL = srcSLCoordGlobal.size() / 3;
@@ -540,7 +539,7 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
         double treeTime, runTime;
         Record record;
 
-        if (config.direct) {
+        if (p <= 2) {
             auto srcSLCoord = point.srcLocalSL; // a copy
             auto srcSLValue = value.srcLocalSL; // a copy
             auto srcDLCoord = point.srcLocalDL; // a copy
@@ -578,7 +577,7 @@ void runFMM(const Config &config, const int p, const Point &point, Input &input,
             const int nDL = point.srcLocalDL.size() / 3;
             const int nTrg = point.trgLocal.size() / 3;
             trgLocalValue.clear();
-            trgLocalValue.resize(kdimTrg * nTrg, 0);
+            trgLocalValue.resize(kdimTrg * nTrg, 0.0);
 
             fmmPtr->clearFMM(kernel);
             fmmPtr->setBox(origin, box);
@@ -681,8 +680,6 @@ auto errorJson(const ComponentError &error) {
     output["errorRMS"] = error.errorRMS;
     output["errorMaxRel"] = error.errorMaxRel;
     output["drift"] = error.drift;
-    output["driftL2"] = error.driftL2;
-    output["errorL2WithoutDrift"] = error.errorL2WithoutDrift;
     return output;
 };
 

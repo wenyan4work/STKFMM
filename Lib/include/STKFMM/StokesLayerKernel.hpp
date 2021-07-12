@@ -27,10 +27,6 @@ namespace pvfmm {
  */
 template <class T>
 struct StokesLayerKernel {
-    // S2U - single-layer density — to — potential kernel
-    // D2U - double-layer density — to — potential kernel
-    // S2UdU - single-layer density — to — potential & gradient
-    // D2UdU - double-layer density — to — potential & gradient
     inline static const Kernel<T> &Vel();           ///< Stokeslet 3x3, SL->Vel
     inline static const Kernel<T> &PVel();          ///< SL+DL -> PVel
     inline static const Kernel<T> &PVelGrad();      ///< SL+DL -> PVelGrad

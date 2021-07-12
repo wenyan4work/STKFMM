@@ -32,6 +32,7 @@ class FMMData {
 
     std::vector<double> equivCoord; ///< periodicity L2T equivalent point coord
     std::vector<double> M2Ldata;    ///< periodicity M2L operator data
+    std::vector<double> M2Cdata;    ///< periodicity M2C operator data
 
     FMMData() = delete; ///< forbid default constructor
 
@@ -154,13 +155,13 @@ class FMMData {
      * @brief read the M2L Matrix from file
      *
      */
-    void readM2LMat(const int kDim, const std::string &dataName, std::vector<double> &data);
+    void readMat(const int kDim, const std::string &dataName, std::vector<double> &data);
 
     /**
-     * @brief setup this->M2Ldata
+     * @brief setup this->M2Ldata, this->M2Cdata
      *
      */
-    void setupM2Ldata();
+    void setupPeriodicData();
 
     /**
      * @brief periodize the target values

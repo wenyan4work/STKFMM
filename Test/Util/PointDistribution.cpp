@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -96,16 +97,55 @@ void PointDistribution::meshPoints(int dim, int nPts, double box, double shift, 
     }
 }
 
-void PointDistribution::randomPoints(int dim, int nPts, double box, double shift, std::vector<double> &ptsCoord,
-                                     double m, double s) {
-    const int n = pow(nPts + 1, dim);
-    ptsCoord.resize(n * 3);
-    randomLogNormalFill(ptsCoord, m, s);
+void PointDistribution::randomPoints(int dim, int nPts, double box, double shift, DistType type,
+                                     std::vector<double> &ptsCoord, double m, double s) {
+    const int N = pow(nPts + 1, dim);
+    ptsCoord.resize(N * 3);
+
+    switch (type) {
+    case DistType::Uniform: {
+        randomUniformFill(ptsCoord, 0, 1);
+    } break;
+    case DistType::LogNormal: {
+        randomLogNormalFill(ptsCoord, m, s);
+    } break;
+    case DistType::Gaussian: {
+        randomNormalFill(ptsCoord, m, s);
+    } break;
+    case DistType::Ellipse: {
+        const double r = 0.45;
+        const double center[3] = {0.5, 0.5, 0.5};
+        randomNormalFill(ptsCoord, 0, 1);
+        for (size_t i = 0; i < N; i++) {
+            double x = ptsCoord[3 * i + 0];
+            double y = ptsCoord[3 * i + 1];
+            double z = ptsCoord[3 * i + 2];
+            double l = sqrt(x * x + y * y + z * z);
+            ptsCoord[3 * i + 0] = center[0] + abs(m) * r * x / l;
+            ptsCoord[3 * i + 1] = center[1] + abs(m) * r * y / l;
+            ptsCoord[3 * i + 2] = center[2] + abs(s) * r * z / l;
+        }
+
+        // randomUniformFill(ptsCoord, 0, 1);
+        // for (size_t i = 0; i < N; i++) {
+        //     double phi = 2 * M_PI * ptsCoord[3 * i];
+        //     double theta = M_PI * ptsCoord[3 * i + 1];
+        //     ptsCoord[3 * i + 0] = center[0] + 0.25 * r * sin(theta) * cos(phi);
+        //     ptsCoord[3 * i + 1] = center[1] + 0.25 * r * sin(theta) * sin(phi);
+        //     ptsCoord[3 * i + 2] = center[2] + r * cos(theta);
+        // }
+    } break;
+    default:
+        randomUniformFill(ptsCoord, 0, 1);
+        return;
+    }
+
     for (auto &v : ptsCoord) {
         v = v - floor(v); // put to [0,1)
         v = v * box + shift;
     }
-    for (int i = 0; i < n; i++) {
+
+    for (int i = 0; i < N; i++) {
         if (dim < 3)
             ptsCoord[3 * i + 2] = shift;
         if (dim < 2)
@@ -139,6 +179,41 @@ void PointDistribution::randomLogNormalFill(std::vector<double> &vec, double m, 
     }
 }
 
+void PointDistribution::randomNormalFill(std::vector<double> &vec, double m, double s) {
+    // random fill according to log normal
+    std::normal_distribution<double> dist(m, s);
+    for (auto &v : vec) {
+        v = dist(gen_);
+    }
+}
+
+void PointDistribution::randomShuffle(const int kdim, std::vector<double> &coord, std::vector<double> &value) {
+    // random shuffle coord and value
+    const int N = coord.size() / 3;
+    assert(value.size() == N * kdim);
+    std::vector<int> perm(N);
+    for (int i = 0; i < N; i++) {
+        perm[i] = i;
+    }
+
+    std::shuffle(perm.begin(), perm.end(), gen_);
+    std::vector<double> coord_new(3 * N);
+    std::vector<double> value_new(kdim * N);
+#pragma omp parallel for
+    for (int i = 0; i < N; i++) {
+        const int idx = perm[i];
+        // printf("%d %d\n", i, idx);
+        for (int k = 0; k < 3; k++) {
+            coord_new[3 * i + k] = coord[3 * idx + k];
+        }
+        for (int k = 0; k < kdim; k++) {
+            value_new[kdim * i + k] = value[kdim * idx + k];
+        }
+    }
+    coord = coord_new;
+    value = value_new;
+}
+
 void PointDistribution::dumpPoints(const std::string &filename, std::vector<double> &coordLocal,
                                    std::vector<double> &valueLocal, const int valueDimension) {
     FILE *fp = fopen(filename.c_str(), "w");
@@ -154,9 +229,9 @@ void PointDistribution::dumpPoints(const std::string &filename, std::vector<doub
         exit(1);
     }
     for (int i = 0; i < npts; i++) {
-        fprintf(fp, "%.10e, %.10e, %.10e", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
+        fprintf(fp, "%18.16e, %18.16e, %18.16e", coord[3 * i], coord[3 * i + 1], coord[3 * i + 2]);
         for (int j = 0; j < valueDimension; j++) {
-            fprintf(fp, ", %.10e", value[valueDimension * i + j]);
+            fprintf(fp, ", %18.16e", value[valueDimension * i + j]);
         }
         fprintf(fp, " \n");
     }

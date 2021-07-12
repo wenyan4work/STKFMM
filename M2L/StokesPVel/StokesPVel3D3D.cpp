@@ -7,74 +7,10 @@
 
 #include "SVD_pvfmm.hpp"
 
-#include <Eigen/Dense>
-
-#include <algorithm>
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <numeric>
-
-#define DIRECTLAYER 2
-
 namespace StokesPVel3D3D {
 
-using EVec3 = Eigen::Vector3d;
-using EVec4 = Eigen::Vector4d;
-using EMat3 = Eigen::Matrix3d;
-using EMat4 = Eigen::Matrix4d;
+;
 using EMat64 = Eigen::Matrix<double, 6, 4>;
-constexpr double eps = std::numeric_limits<double>::epsilon();
-
-/**
- * \brief Returns the coordinates of points on the surface of a cube.
- * \param[in] p Number of points on an edge of the cube is (n+1)
- * \param[in] c Coordinates to the centre of the cube (3D array).
- * \param[in] alpha Scaling factor for the size of the cube.
- * \param[in] depth Depth of the cube in the octree.
- * \return Vector with coordinates of points on the surface of the cube in the
- * format [x0 y0 z0 x1 y1 z1 .... ].
- */
-template <class Real_t>
-std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
-    size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
-
-    std::vector<Real_t> coord(n_ * 3);
-    coord[0] = coord[1] = coord[2] = -1.0;
-    size_t cnt = 1;
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = -1.0;
-            coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = -1.0;
-            coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
-            cnt++;
-        }
-    for (int i = 0; i < p - 1; i++)
-        for (int j = 0; j < p - 1; j++) {
-            coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
-            coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
-            coord[cnt * 3 + 2] = -1.0;
-            cnt++;
-        }
-    for (size_t i = 0; i < (n_ / 2) * 3; i++)
-        coord[cnt * 3 + i] = -coord[i];
-
-    Real_t r = 0.5 * pow(0.5, depth);
-    Real_t b = alpha * r;
-    for (size_t i = 0; i < n_; i++) {
-        coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
-        coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
-        coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
-    }
-    return coord;
-}
 
 /**********************************************
  *   Ewald for Stokeslet
@@ -468,93 +404,82 @@ void testTranslation() {
 int main(int argc, char **argv) {
     Eigen::initParallel();
     Eigen::setNbThreads(1);
+    constexpr int kdim[2] = {4, 4}; // target, source dimension
 
-    std::cout << std::scientific << std::setprecision(18);
-
-    const int pEquiv = atoi(argv[1]); // (8-1)^2*6 + 2 points
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    const int pEquiv = atoi(argv[1]);
     const int pCheck = atoi(argv[1]);
-    const double scaleEquiv = 1.05;
-    const double scaleCheck = 2.95;
-    const double pCenterEquiv[3] = {-(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2, -(scaleEquiv - 1) / 2};
-    const double pCenterCheck[3] = {-(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2, -(scaleCheck - 1) / 2};
-    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterEquiv[0]), scaleEquiv, 0);
-    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointMCheck = surface(pCheck, (double *)&(pCenterCheck[0]), scaleCheck, 0);
-    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
 
-    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterCheck[0]), scaleCheck, 0);
-    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
-    auto pointLCheck = surface(pCheck, (double *)&(pCenterEquiv[0]), scaleEquiv, 0);
-    // center at 0.5,0.5,0.5, periodic box 1,1,1, scale 1.05, depth = 0
+    const double pCenterMEquiv[3] = {-(scaleIn - 1) / 2, -(scaleIn - 1) / 2, -(scaleIn - 1) / 2};
+    const double pCenterMCheck[3] = {-(scaleOut - 1) / 2, -(scaleOut - 1) / 2, -(scaleOut - 1) / 2};
 
-    // calculate the operator M2L with least square
+    const double pCenterLEquiv[3] = {-(scaleOut - 1) / 2, -(scaleOut - 1) / 2, -(scaleOut - 1) / 2};
+    const double pCenterLCheck[3] = {-(scaleIn - 1) / 2, -(scaleIn - 1) / 2, -(scaleIn - 1) / 2};
+
+    auto pointMEquiv = surface(pEquiv, (double *)&(pCenterMEquiv[0]), scaleIn, 0);
+    auto pointMCheck = surface(pCheck, (double *)&(pCenterMCheck[0]), scaleOut, 0);
+
+    auto pointLCheck = surface(pCheck, (double *)&(pCenterLCheck[0]), scaleIn, 0);
+    auto pointLEquiv = surface(pEquiv, (double *)&(pCenterLEquiv[0]), scaleOut, 0);
+
     const int equivN = pointMEquiv.size() / 3;
-    const int checkN = pointLCheck.size() / 3;
+    const int checkN = pointMCheck.size() / 3;
+    EMat M2L(kdim[1] * equivN, kdim[1] * equivN); // M2L density
+    EMat M2C(kdim[0] * checkN, kdim[1] * equivN); // M2C check surface
 
-    Eigen::MatrixXd A(4 * checkN, 4 * equivN);
+    EMat AL(kdim[0] * checkN, kdim[1] * equivN); // L den to L check
+    EMat ALpinvU(AL.cols(), AL.rows());
+    EMat ALpinvVT(AL.cols(), AL.rows());
+
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
+        EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            const Eigen::Vector3d Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
+            const EVec3 Lpoint(pointLEquiv[3 * l], pointLEquiv[3 * l + 1], pointLEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Lpoint, W);
-            A.block<4, 4>(4 * k, 4 * l) = W;
+            AL.block<kdim[0], kdim[1]>(kdim[0] * k, kdim[1] * l) = W;
         }
     }
-    Eigen::MatrixXd ApinvU(A.cols(), A.rows());
-    Eigen::MatrixXd ApinvVT(A.cols(), A.rows());
-    pinv(A, ApinvU, ApinvVT);
+    pinv(AL, ALpinvU, ALpinvVT);
 
-    Eigen::MatrixXd M2L(4 * equivN, 4 * equivN);
-    M2L.setZero();
 #pragma omp parallel for
     for (int i = 0; i < equivN; i++) {
-        const Eigen::Vector3d Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
-        const EVec3 npoint(0.5, 0.5, 0.5);
-        Eigen::MatrixXd f(4 * checkN, 4);
+        const EVec3 Mpoint(pointMEquiv[3 * i], pointMEquiv[3 * i + 1], pointMEquiv[3 * i + 2]);
+
+        EMat f(kdim[0] * checkN, kdim[1]);
         for (int k = 0; k < checkN; k++) {
-            Eigen::Vector3d Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
-            EMat4 val = EMat4::Zero();
-            EMat4 neu = EMat4::Zero();
-            WkernelFF(Cpoint, Mpoint, val);
-            WkernelFF(Cpoint, npoint, neu);
-            EMat4 temp = val;
-            // EMat4 temp = val - neu;
-            // std::cout << temp << std::endl;
-            // temp.row(0).setZero();
-            temp.col(3) = val.col(3) - neu.col(3);
-            // temp.row(0) = val.row(0) - neu.row(0);
-            // std::cout << temp << std::endl;
-            f.block<4, 4>(4 * k, 0) = temp;
+            EVec3 Cpoint(pointLCheck[3 * k], pointLCheck[3 * k + 1], pointLCheck[3 * k + 2]);
+            EMat4 W = EMat4::Zero();
+            WkernelFF(Cpoint, Mpoint, W);
+            f.block<kdim[0], kdim[1]>(kdim[0] * k, 0) = W;
         }
-        // std::cout << f.col(0) << std::endl;
-        M2L.block(0, 4 * i, 4 * equivN, 4) = (ApinvU.transpose() * (ApinvVT.transpose() * f));
-        // std::cout << "M2L\n" << M2L.block(0, 4 * i, 4 * equivN, 4) << std::endl;
+        M2C.block(0, kdim[1] * i, kdim[0] * checkN, kdim[1]) = f;
+        M2L.block(0, kdim[1] * i, kdim[0] * checkN, kdim[1]) = (ALpinvU.transpose() * (ALpinvVT.transpose() * f));
     }
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
 
-    // dump M2L
-    for (int i = 0; i < 4 * equivN; i++) {
-        for (int j = 0; j < 4 * equivN; j++) {
-            std::cout << i << " " << j << " " << std::scientific << std::setprecision(18) << M2L(i, j) << std::endl;
-        }
-    }
+    std::cout << "Precomputing time:" << duration / 1e6 << std::endl;
 
-    // A operator
-    A.resize(4 * checkN, 4 * equivN);
-    ApinvU.resize(A.cols(), A.rows());
-    ApinvVT.resize(A.cols(), A.rows());
+    saveEMat(M2L, "M2L_stokes_PVel_3D3D_p" + std::to_string(pEquiv));
+    saveEMat(M2C, "M2C_stokes_PVel_3D3D_p" + std::to_string(pEquiv));
+
+    EMat AM(kdim[0] * checkN, kdim[1] * equivN); // M den to M check
+    EMat AMpinvU(AM.cols(), AM.rows());
+    EMat AMpinvVT(AM.cols(), AM.rows());
+
 #pragma omp parallel for
     for (int k = 0; k < checkN; k++) {
-        Eigen::Vector3d Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
+        EVec3 Cpoint(pointMCheck[3 * k], pointMCheck[3 * k + 1], pointMCheck[3 * k + 2]);
         for (int l = 0; l < equivN; l++) {
-            Eigen::Vector3d Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
+            const EVec3 Mpoint(pointMEquiv[3 * l], pointMEquiv[3 * l + 1], pointMEquiv[3 * l + 2]);
             EMat4 W = EMat4::Zero();
             Wkernel(Cpoint, Mpoint, W);
-            A.block<4, 4>(4 * k, 4 * l) = W;
+            AM.block<kdim[0], kdim[1]>(kdim[0] * k, kdim[1] * l) = W;
         }
     }
-    pinv(A, ApinvU, ApinvVT);
+    pinv(AM, AMpinvU, AMpinvVT);
 
     // Test
     // Sum of force and trD must be zero
@@ -603,7 +528,7 @@ int main(int argc, char **argv) {
         }
         f.block<4, 1>(4 * k, 0) = temp;
     }
-    Eigen::VectorXd Msource = (ApinvU.transpose() * (ApinvVT.transpose() * f));
+    Eigen::VectorXd Msource = (AMpinvU.transpose() * (AMpinvVT.transpose() * f));
 
     EVec4 fnetM;
     EVec3 dnetM;

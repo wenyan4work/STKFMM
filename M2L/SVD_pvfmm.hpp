@@ -9,11 +9,97 @@
 #define SVD_PVFMM_HPP_
 
 #include <cassert>
+#include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <numeric>
+#include <string>
 #include <vector>
 
 #include <Eigen/Dense>
+
+using EVec2 = Eigen::Vector2d;
+using EVec3 = Eigen::Vector3d;
+using EVec4 = Eigen::Vector4d;
+using EMat2 = Eigen::Matrix2d;
+using EMat3 = Eigen::Matrix3d;
+using EMat4 = Eigen::Matrix4d;
+
+using EVec = Eigen::VectorXd;
+using EMat = Eigen::MatrixXd;
+
+constexpr double eps = std::numeric_limits<double>::epsilon() * 10;
+constexpr int DIRECTLAYER = 2;
+constexpr int SUM1D = 500000;
+
+constexpr double scaleIn = 1.05;
+constexpr double scaleOut = 2.95;
+
+template <class Matrix>
+void saveEMat(const Matrix &mat, const std::string &fname) {
+    FILE *fptr = fopen(fname.c_str(), "w");
+    const int M = mat.rows();
+    const int N = mat.cols();
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            fprintf(fptr, "%d %d %18.16e\n", i, j, mat(i, j));
+        }
+    }
+    fclose(fptr);
+}
+
+/**
+ * \brief Returns the coordinates of points on the surface of a cube.
+ * \param[in] p Number of points on an edge of the cube is (n+1)
+ * \param[in] c Coordinates to the centre of the cube (3D array).
+ * \param[in] alpha Scaling factor for the size of the cube.
+ * \param[in] depth Depth of the cube in the octree.
+ * \return Vector with coordinates of points on the surface of the cube in the
+ * format [x0 y0 z0 x1 y1 z1 .... ].
+ */
+
+template <class Real_t>
+std::vector<Real_t> surface(int p, Real_t *c, Real_t alpha, int depth) {
+    size_t n_ = (6 * (p - 1) * (p - 1) + 2); // Total number of points.
+
+    std::vector<Real_t> coord(n_ * 3);
+    coord[0] = coord[1] = coord[2] = -1.0;
+    size_t cnt = 1;
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = -1.0;
+            coord[cnt * 3 + 1] = (2.0 * (i + 1) - p + 1) / (p - 1);
+            coord[cnt * 3 + 2] = (2.0 * j - p + 1) / (p - 1);
+            cnt++;
+        }
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = (2.0 * i - p + 1) / (p - 1);
+            coord[cnt * 3 + 1] = -1.0;
+            coord[cnt * 3 + 2] = (2.0 * (j + 1) - p + 1) / (p - 1);
+            cnt++;
+        }
+    for (int i = 0; i < p - 1; i++)
+        for (int j = 0; j < p - 1; j++) {
+            coord[cnt * 3] = (2.0 * (i + 1) - p + 1) / (p - 1);
+            coord[cnt * 3 + 1] = (2.0 * j - p + 1) / (p - 1);
+            coord[cnt * 3 + 2] = -1.0;
+            cnt++;
+        }
+    for (size_t i = 0; i < (n_ / 2) * 3; i++)
+        coord[cnt * 3 + i] = -coord[i];
+
+    Real_t r = 0.5 * pow(0.5, depth);
+    Real_t b = alpha * r;
+    for (size_t i = 0; i < n_; i++) {
+        coord[i * 3 + 0] = (coord[i * 3 + 0] + 1.0) * b + c[0];
+        coord[i * 3 + 1] = (coord[i * 3 + 1] + 1.0) * b + c[1];
+        coord[i * 3 + 2] = (coord[i * 3 + 2] + 1.0) * b + c[2];
+    }
+    return coord;
+}
 
 template <class T>
 inline void gemm(char TransA, char TransB, int M, int N, int K, T alpha, T *A, int lda, T *B, int ldb, T beta, T *C,
@@ -422,10 +508,10 @@ inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA, T *S, T
         const size_t ldu = *LDU;
         const size_t ldv = *LDVT;
 
-        Eigen::MatrixXd A1(*M, *N);
-        Eigen::MatrixXd S1(dim[1], dim[1]);
-        Eigen::MatrixXd U1(*M, dim[1]);
-        Eigen::MatrixXd V1(dim[1], *N);
+        EMat A1(*M, *N);
+        EMat S1(dim[1], dim[1]);
+        EMat U1(*M, dim[1]);
+        EMat V1(dim[1], *N);
         for (size_t i = 0; i < *N; i++)
             for (size_t j = 0; j < *M; j++) {
                 //				A1[j][i] = A[j + i * lda];
@@ -510,7 +596,7 @@ void pinv_pvfmm(T *M, int n1, int n2, T eps, T *M_) {
     //	mem::aligned_delete < T > (tVT);
 }
 
-inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinv) {
+inline void pinv(const EMat &Mat, EMat &MatPinv) {
     double eps = 1;
     while (eps + 1.0 > 1.0) {
         eps *= 0.5;
@@ -538,7 +624,7 @@ inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinv) {
     }
 }
 
-inline void pinv(const Eigen::MatrixXd &Mat, Eigen::MatrixXd &MatPinvU, Eigen::MatrixXd &MatPinvVT) {
+inline void pinv(const EMat &Mat, EMat &MatPinvU, EMat &MatPinvVT) {
     // this is the really backward stable SVD used by pvfmm
 
     double eps = 1;

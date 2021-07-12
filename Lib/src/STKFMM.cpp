@@ -1,6 +1,6 @@
 #include "STKFMM/STKFMM.hpp"
 
-extern pvfmm::PeriodicType pvfmm::periodicType;
+// extern pvfmm::PeriodicType pvfmm::periodicType;
 
 namespace stkfmm {
 
@@ -27,6 +27,7 @@ const std::unordered_map<KERNEL, const pvfmm::Kernel<double> *> kernelMap = {
     {KERNEL::PVelGrad, &pvfmm::StokesLayerKernel<double>::PVelGrad()},
     {KERNEL::PVelLaplacian, &pvfmm::StokesLayerKernel<double>::PVelLaplacian()},
     {KERNEL::Traction, &pvfmm::StokesLayerKernel<double>::Traction()},
+    // {KERNEL::LapGrad, &pvfmm::LaplaceLayerKernel<double>::Grad()}, // for internal test only
 };
 
 std::tuple<int, int, int> getKernelDimension(KERNEL kernel_) {
@@ -60,21 +61,6 @@ const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) {
 STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
     : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_), kernelComb(kernelComb_) {
     using namespace impl;
-    // set periodic boundary condition
-    switch (pbc) {
-    case PAXIS::NONE:
-        pvfmm::periodicType = pvfmm::PeriodicType::NONE;
-        break;
-    case PAXIS::PX:
-        pvfmm::periodicType = pvfmm::PeriodicType::PX;
-        break;
-    case PAXIS::PXY:
-        pvfmm::periodicType = pvfmm::PeriodicType::PXY;
-        break;
-    case PAXIS::PXYZ:
-        pvfmm::periodicType = pvfmm::PeriodicType::PXYZ;
-        break;
-    }
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -91,7 +77,7 @@ void STKFMM::setBox(double origin_[3], double len_) {
     origin[2] = origin_[2];
     len = len_;
     // find and calculate scale & shift factor to map the box to [0,1)
-    scaleFactor = 1 / len;
+    scaleFactor = 1.0 / len;
     // new coordinate = (pos-origin)*scaleFactor, in [0,1)
 
     if (stkfmm::verbose && rank == 0) {

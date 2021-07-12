@@ -21,106 +21,12 @@ namespace pvfmm {
 
 /*********************************************************
  *                                                        *
- *   Stokes Double Vel kernel, source: 9, target: 3     *
- *                                                        *
- **********************************************************/
-template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
-void stokes_doublevel93_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
-                                Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
-    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    Real_t nwtn_scal = 1; // scaling factor for newton iterations
-    for (int i = 0; i < NWTN_ITER; i++) {
-        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
-    }
-    const Real_t FACV = 1 / (8 * const_pi<Real_t>() * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal);
-    const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);     // vi = 1/8pi (-3rirjrk/r^5) Djk
-    const Vec_t facp = set_intrin<Vec_t, Real_t>(FACV * 2); // p = 1/4pi (-3 rjrk/r^5 + delta_jk) Djk
-    const Vec_t nthree = set_intrin<Vec_t, Real_t>(-3.0);
-
-    size_t src_cnt_ = src_coord.Dim(1);
-    size_t trg_cnt_ = trg_coord.Dim(1);
-    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
-        size_t src_cnt = src_cnt_ - sblk;
-        if (src_cnt > SRC_BLK)
-            src_cnt = SRC_BLK;
-        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
-            const Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
-            const Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
-            const Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
-
-            Vec_t vx = zero_intrin<Vec_t>();
-            Vec_t vy = zero_intrin<Vec_t>();
-            Vec_t vz = zero_intrin<Vec_t>();
-
-            for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
-
-                // sxx,sxy,sxz,...,szz
-                Vec_t sxx = bcast_intrin<Vec_t>(&src_value[0][s]);
-                Vec_t sxy = bcast_intrin<Vec_t>(&src_value[1][s]);
-                Vec_t sxz = bcast_intrin<Vec_t>(&src_value[2][s]);
-                Vec_t syx = bcast_intrin<Vec_t>(&src_value[3][s]);
-                Vec_t syy = bcast_intrin<Vec_t>(&src_value[4][s]);
-                Vec_t syz = bcast_intrin<Vec_t>(&src_value[5][s]);
-                Vec_t szx = bcast_intrin<Vec_t>(&src_value[6][s]);
-                Vec_t szy = bcast_intrin<Vec_t>(&src_value[7][s]);
-                Vec_t szz = bcast_intrin<Vec_t>(&src_value[8][s]);
-
-                Vec_t r2 = mul_intrin(dx, dx);
-                r2 = add_intrin(r2, mul_intrin(dy, dy));
-                r2 = add_intrin(r2, mul_intrin(dz, dz));
-
-                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
-                Vec_t rinv2 = mul_intrin(rinv, rinv);
-                Vec_t rinv4 = mul_intrin(rinv2, rinv2);
-
-                Vec_t rinv5 = mul_intrin(rinv, rinv4);
-
-                // commonCoeff = -3 rj rk Djk
-                Vec_t commonCoeff = mul_intrin(sxx, mul_intrin(dx, dx));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sxy, mul_intrin(dx, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sxz, mul_intrin(dx, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syx, mul_intrin(dy, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syy, mul_intrin(dy, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(syz, mul_intrin(dy, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szx, mul_intrin(dz, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szy, mul_intrin(dz, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(szz, mul_intrin(dz, dz)));
-                commonCoeff = mul_intrin(commonCoeff, nthree);
-
-                Vec_t trace = add_intrin(add_intrin(sxx, syy), szz);
-                vx = add_intrin(vx, mul_intrin(rinv5, mul_intrin(dx, commonCoeff)));
-                vy = add_intrin(vy, mul_intrin(rinv5, mul_intrin(dy, commonCoeff)));
-                vz = add_intrin(vz, mul_intrin(rinv5, mul_intrin(dz, commonCoeff)));
-            }
-
-            vx = add_intrin(mul_intrin(vx, facv), load_intrin<Vec_t>(&trg_value[0][t]));
-            vy = add_intrin(mul_intrin(vy, facv), load_intrin<Vec_t>(&trg_value[1][t]));
-            vz = add_intrin(mul_intrin(vz, facv), load_intrin<Vec_t>(&trg_value[2][t]));
-
-            store_intrin(&trg_value[0][t], vx);
-            store_intrin(&trg_value[1][t], vy);
-            store_intrin(&trg_value[2][t], vz);
-        }
-    }
-#undef SRC_BLK
-}
-
-GEN_KERNEL(stokes_doublevel93, stokes_doublevel93_uKernel, 9, 3);
-
-/*********************************************************
- *                                                        *
  *   Stokes Double P Vel kernel, source: 9, target: 4     *
  *                                                        *
  **********************************************************/
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_doublepvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -129,7 +35,7 @@ void stokes_doublepvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
     }
     const Real_t FACV = 1 / (8 * const_pi<Real_t>() * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal);
     const Vec_t facv = set_intrin<Vec_t, Real_t>(FACV);     // vi = 1/8pi (-3rirjrk/r^5) Djk
-    const Vec_t facp = set_intrin<Vec_t, Real_t>(FACV * 2); // p = 1/4pi (-3 rjrk/r^5 + delta_jk) Djk
+    const Vec_t facp = set_intrin<Vec_t, Real_t>(FACV * 2); // p = 1/4pi (-3 rjrk/r^5 + delta_jk/r^3) Djk
     const Vec_t nthree = set_intrin<Vec_t, Real_t>(-3.0);
 
     size_t src_cnt_ = src_coord.Dim(1);
@@ -186,8 +92,10 @@ void stokes_doublepvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
                 commonCoeff = add_intrin(commonCoeff, mul_intrin(szz, mul_intrin(dz, dz)));
                 commonCoeff = mul_intrin(commonCoeff, nthree);
 
-                Vec_t trace = add_intrin(add_intrin(sxx, syy), szz);
-                p = add_intrin(p, mul_intrin(add_intrin(commonCoeff, mul_intrin(r2, trace)), rinv5));
+                const Vec_t trace = add_intrin(add_intrin(sxx, syy), szz);
+                // p = add_intrin(p, mul_intrin(add_intrin(commonCoeff, mul_intrin(r2, trace)), rinv5));
+                p = add_intrin(p, mul_intrin(commonCoeff, rinv5));
+                p = add_intrin(p, mul_intrin(mul_intrin(r2, rinv5), trace));
                 vx = add_intrin(vx, mul_intrin(rinv5, mul_intrin(dx, commonCoeff)));
                 vy = add_intrin(vy, mul_intrin(rinv5, mul_intrin(dy, commonCoeff)));
                 vz = add_intrin(vz, mul_intrin(rinv5, mul_intrin(dz, commonCoeff)));
@@ -204,7 +112,6 @@ void stokes_doublepvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
             store_intrin(&trg_value[3][t], vz);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_doublepvel, stokes_doublepvel_uKernel, 9, 4)
@@ -217,7 +124,6 @@ GEN_KERNEL(stokes_doublepvel, stokes_doublepvel_uKernel, 9, 4)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_doublepvelgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                    Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -340,20 +246,17 @@ void stokes_doublepvelgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
 
                 // vgrad
                 Vec_t commonCoeffn1 = mul_intrin(none, commonCoeff);
-                // (-2*(t0 - s0)*sv0 - (t1 - s1)*(sv1 + sv3) - (t2 - s2)*(sv2 +
-                // sv6))
+                // (-2*(t0 - s0)*sv0 - (t1 - s1)*(sv1 + sv3) - (t2 - s2)*(sv2 + sv6))
                 Vec_t dcFd0 = mul_intrin(ntwo, mul_intrin(dx, sxx));
                 dcFd0 = add_intrin(dcFd0, mul_intrin(none, mul_intrin(dy, add_intrin(sxy, syx))));
                 dcFd0 = add_intrin(dcFd0, mul_intrin(none, mul_intrin(dz, add_intrin(sxz, szx))));
 
-                // (-2*(t1 - s1)*sv4 - (t0 - s0)*(sv1 + sv3) - (t2 - s2)*(sv5 +
-                // sv7))
+                // (-2*(t1 - s1)*sv4 - (t0 - s0)*(sv1 + sv3) - (t2 - s2)*(sv5 + sv7))
                 Vec_t dcFd1 = mul_intrin(ntwo, mul_intrin(dy, syy));
                 dcFd1 = add_intrin(dcFd1, mul_intrin(none, mul_intrin(dx, add_intrin(sxy, syx))));
                 dcFd1 = add_intrin(dcFd1, mul_intrin(none, mul_intrin(dz, add_intrin(syz, szy))));
 
-                // (-2*(t2 - s2)*sv8 - (t0 - s0)*(sv2 + sv6) - (t1 - s1)*(sv5 +
-                // sv7))
+                // (-2*(t2 - s2)*sv8 - (t0 - s0)*(sv2 + sv6) - (t1 - s1)*(sv5 + sv7))
                 Vec_t dcFd2 = mul_intrin(ntwo, mul_intrin(dz, szz));
                 dcFd2 = add_intrin(dcFd2, mul_intrin(none, mul_intrin(dx, add_intrin(sxz, szx))));
                 dcFd2 = add_intrin(dcFd2, mul_intrin(none, mul_intrin(dy, add_intrin(syz, szy))));
@@ -460,7 +363,6 @@ void stokes_doublepvelgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
             store_intrin(&trg_value[15][t], vzzSum);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_doublepvelgrad, stokes_doublepvelgrad_uKernel, 9, 16)
@@ -473,7 +375,6 @@ GEN_KERNEL(stokes_doublepvelgrad, stokes_doublepvelgrad_uKernel, 9, 16)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_doublelaplacian_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                     Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -614,7 +515,6 @@ void stokes_doublelaplacian_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &s
             store_intrin(&trg_value[6][t], pzSum);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_doublelaplacian, stokes_doublelaplacian_uKernel, 9, 7)
@@ -627,7 +527,6 @@ GEN_KERNEL(stokes_doublelaplacian, stokes_doublelaplacian_uKernel, 9, 7)
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_doubletraction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                    Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -721,20 +620,17 @@ void stokes_doubletraction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
 
                 // vgrad
                 Vec_t commonCoeffn1 = mul_intrin(none, commonCoeff);
-                // (-2*(t0 - s0)*sv0 - (t1 - s1)*(sv1 + sv3) - (t2 - s2)*(sv2 +
-                // sv6))
+                // (-2*(t0 - s0)*sv0 - (t1 - s1)*(sv1 + sv3) - (t2 - s2)*(sv2 + sv6))
                 Vec_t dcFd0 = mul_intrin(ntwo, mul_intrin(dx, sxx));
                 dcFd0 = add_intrin(dcFd0, mul_intrin(none, mul_intrin(dy, add_intrin(sxy, syx))));
                 dcFd0 = add_intrin(dcFd0, mul_intrin(none, mul_intrin(dz, add_intrin(sxz, szx))));
 
-                // (-2*(t1 - s1)*sv4 - (t0 - s0)*(sv1 + sv3) - (t2 - s2)*(sv5 +
-                // sv7))
+                // (-2*(t1 - s1)*sv4 - (t0 - s0)*(sv1 + sv3) - (t2 - s2)*(sv5 + sv7))
                 Vec_t dcFd1 = mul_intrin(ntwo, mul_intrin(dy, syy));
                 dcFd1 = add_intrin(dcFd1, mul_intrin(none, mul_intrin(dx, add_intrin(sxy, syx))));
                 dcFd1 = add_intrin(dcFd1, mul_intrin(none, mul_intrin(dz, add_intrin(syz, szy))));
 
-                // (-2*(t2 - s2)*sv8 - (t0 - s0)*(sv2 + sv6) - (t1 - s1)*(sv5 +
-                // sv7))
+                // (-2*(t2 - s2)*sv8 - (t0 - s0)*(sv2 + sv6) - (t1 - s1)*(sv5 + sv7))
                 Vec_t dcFd2 = mul_intrin(ntwo, mul_intrin(dz, szz));
                 dcFd2 = add_intrin(dcFd2, mul_intrin(none, mul_intrin(dx, add_intrin(sxz, szx))));
                 dcFd2 = add_intrin(dcFd2, mul_intrin(none, mul_intrin(dy, add_intrin(syz, szy))));
@@ -825,361 +721,9 @@ void stokes_doubletraction_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
             store_intrin(&trg_value[8][t], tzzSum);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_doubletraction, stokes_doubletraction_uKernel, 9, 9)
-
-/*********************************************************
- *                                                        *
- *   Stokes Double Vel kernel, source: 9, target: 3       *
- *                                                        *
- **********************************************************/
-template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
-void stokes_double_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
-                           Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
-    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    Real_t nwtn_scal = 1; // scaling factor for newton iterations
-    for (int i = 0; i < NWTN_ITER; i++) {
-        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
-    }
-    const Real_t OOEP = -3.0 / (4 * const_pi<Real_t>());
-    Vec_t inv_nwtn_scal5 = set_intrin<Vec_t, Real_t>(1.0 / (nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal));
-
-    size_t src_cnt_ = src_coord.Dim(1);
-    size_t trg_cnt_ = trg_coord.Dim(1);
-    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
-        size_t src_cnt = src_cnt_ - sblk;
-        if (src_cnt > SRC_BLK)
-            src_cnt = SRC_BLK;
-        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
-            Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
-            Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
-            Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
-
-            Vec_t tvx = zero_intrin<Vec_t>();
-            Vec_t tvy = zero_intrin<Vec_t>();
-            Vec_t tvz = zero_intrin<Vec_t>();
-            for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
-
-                Vec_t sv0 = bcast_intrin<Vec_t>(&src_value[0][s]);
-                Vec_t sv1 = bcast_intrin<Vec_t>(&src_value[1][s]);
-                Vec_t sv2 = bcast_intrin<Vec_t>(&src_value[2][s]);
-                Vec_t sv3 = bcast_intrin<Vec_t>(&src_value[3][s]);
-                Vec_t sv4 = bcast_intrin<Vec_t>(&src_value[4][s]);
-                Vec_t sv5 = bcast_intrin<Vec_t>(&src_value[5][s]);
-                Vec_t sv6 = bcast_intrin<Vec_t>(&src_value[6][s]);
-                Vec_t sv7 = bcast_intrin<Vec_t>(&src_value[7][s]);
-                Vec_t sv8 = bcast_intrin<Vec_t>(&src_value[8][s]);
-
-                Vec_t r2 = mul_intrin(dx, dx);
-                r2 = add_intrin(r2, mul_intrin(dy, dy));
-                r2 = add_intrin(r2, mul_intrin(dz, dz));
-
-                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
-                Vec_t rinv2 = mul_intrin(rinv, rinv);
-                Vec_t rinv4 = mul_intrin(rinv2, rinv2);
-
-                Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv4), inv_nwtn_scal5);
-
-                Vec_t commonCoeff = mul_intrin(sv0, mul_intrin(dx, dx));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv1, mul_intrin(dx, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv2, mul_intrin(dx, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv3, mul_intrin(dy, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv4, mul_intrin(dy, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv5, mul_intrin(dy, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv6, mul_intrin(dz, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv7, mul_intrin(dz, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv8, mul_intrin(dz, dz)));
-
-                tvx = add_intrin(tvx, mul_intrin(rinv5, mul_intrin(dx, commonCoeff)));
-                tvy = add_intrin(tvy, mul_intrin(rinv5, mul_intrin(dy, commonCoeff)));
-                tvz = add_intrin(tvz, mul_intrin(rinv5, mul_intrin(dz, commonCoeff)));
-            }
-            Vec_t ooep = set_intrin<Vec_t, Real_t>(OOEP);
-
-            tvx = add_intrin(mul_intrin(tvx, ooep), load_intrin<Vec_t>(&trg_value[0][t]));
-            tvy = add_intrin(mul_intrin(tvy, ooep), load_intrin<Vec_t>(&trg_value[1][t]));
-            tvz = add_intrin(mul_intrin(tvz, ooep), load_intrin<Vec_t>(&trg_value[2][t]));
-
-            store_intrin(&trg_value[0][t], tvx);
-            store_intrin(&trg_value[1][t], tvy);
-            store_intrin(&trg_value[2][t], tvz);
-        }
-    }
-#undef SRC_BLK
-}
-GEN_KERNEL(stokes_double, stokes_double_uKernel, 9, 3)
-
-/*********************************************************
- *                                                        *
- *  Stokes Double Pressure kernel, source: 9, target: 1   *
- *                                                        *
- **********************************************************/
-template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
-void stokes_double_pressure_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
-                                    Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
-    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    Real_t nwtn_scal = 1; // scaling factor for newton iterations
-    for (int i = 0; i < NWTN_ITER; i++) {
-        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
-    }
-    const Real_t OOEP = 1.0 / (2 * const_pi<Real_t>());
-    Vec_t inv_nwtn_scal5 = set_intrin<Vec_t, Real_t>(1.0 / (nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal));
-    Vec_t negthree = set_intrin<Vec_t, Real_t>(-3.0);
-
-    size_t src_cnt_ = src_coord.Dim(1);
-    size_t trg_cnt_ = trg_coord.Dim(1);
-    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
-        size_t src_cnt = src_cnt_ - sblk;
-        if (src_cnt > SRC_BLK)
-            src_cnt = SRC_BLK;
-        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
-            Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
-            Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
-            Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
-
-            Vec_t tv = zero_intrin<Vec_t>();
-            for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
-
-                Vec_t sv0 = bcast_intrin<Vec_t>(&src_value[0][s]);
-                Vec_t sv1 = bcast_intrin<Vec_t>(&src_value[1][s]);
-                Vec_t sv2 = bcast_intrin<Vec_t>(&src_value[2][s]);
-                Vec_t sv3 = bcast_intrin<Vec_t>(&src_value[3][s]);
-                Vec_t sv4 = bcast_intrin<Vec_t>(&src_value[4][s]);
-                Vec_t sv5 = bcast_intrin<Vec_t>(&src_value[5][s]);
-                Vec_t sv6 = bcast_intrin<Vec_t>(&src_value[6][s]);
-                Vec_t sv7 = bcast_intrin<Vec_t>(&src_value[7][s]);
-                Vec_t sv8 = bcast_intrin<Vec_t>(&src_value[8][s]);
-
-                Vec_t r2 = mul_intrin(dx, dx);
-                r2 = add_intrin(r2, mul_intrin(dy, dy));
-                r2 = add_intrin(r2, mul_intrin(dz, dz));
-
-                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
-                Vec_t rinv2 = mul_intrin(rinv, rinv);
-                Vec_t rinv4 = mul_intrin(rinv2, rinv2);
-
-                Vec_t rinv5 = mul_intrin(mul_intrin(rinv, rinv4), inv_nwtn_scal5);
-
-                Vec_t pressure = mul_intrin(sv0, mul_intrin(dx, dx));
-                pressure = add_intrin(pressure, mul_intrin(sv1, mul_intrin(dx, dy)));
-                pressure = add_intrin(pressure, mul_intrin(sv2, mul_intrin(dx, dz)));
-                pressure = add_intrin(pressure, mul_intrin(sv3, mul_intrin(dy, dx)));
-                pressure = add_intrin(pressure, mul_intrin(sv4, mul_intrin(dy, dy)));
-                pressure = add_intrin(pressure, mul_intrin(sv5, mul_intrin(dy, dz)));
-                pressure = add_intrin(pressure, mul_intrin(sv6, mul_intrin(dz, dx)));
-                pressure = add_intrin(pressure, mul_intrin(sv7, mul_intrin(dz, dy)));
-                pressure = add_intrin(pressure, mul_intrin(sv8, mul_intrin(dz, dz)));
-                pressure = mul_intrin(pressure, negthree);
-                pressure = add_intrin(pressure, mul_intrin(sv0, r2));
-                pressure = add_intrin(pressure, mul_intrin(sv4, r2));
-                pressure = add_intrin(pressure, mul_intrin(sv8, r2));
-
-                tv = add_intrin(tv, mul_intrin(rinv5, pressure));
-            }
-            Vec_t ooep = set_intrin<Vec_t, Real_t>(OOEP);
-
-            tv = add_intrin(mul_intrin(tv, ooep), load_intrin<Vec_t>(&trg_value[0][t]));
-
-            store_intrin(&trg_value[0][t], tv);
-        }
-    }
-#undef SRC_BLK
-}
-
-GEN_KERNEL(stokes_double_pressure, stokes_double_pressure_uKernel, 9, 1)
-
-// Stokes double layer gradient of velocity, source: 9, target: 9
-template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
-void stokes_dgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
-                          Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
-    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
-
-    Real_t nwtn_scal = 1; // scaling factor for newton iterations
-    for (int i = 0; i < NWTN_ITER; i++) {
-        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
-    }
-    const Real_t OOEP = -3.0 / (4 * const_pi<Real_t>());
-    Vec_t inv_nwtn_scal7 = set_intrin<Vec_t, Real_t>(
-        1.0 / (nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal));
-    Vec_t inv_nwtn_scal5 = set_intrin<Vec_t, Real_t>(1.0 / (nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal * nwtn_scal));
-    Vec_t nwtn_scal2 = set_intrin<Vec_t, Real_t>((nwtn_scal * nwtn_scal));
-    Vec_t negone = set_intrin<Vec_t, Real_t>(-1.0);
-    Vec_t negtwo = set_intrin<Vec_t, Real_t>(-2.0);
-    Vec_t five = set_intrin<Vec_t, Real_t>(5.0);
-
-    size_t src_cnt_ = src_coord.Dim(1);
-    size_t trg_cnt_ = trg_coord.Dim(1);
-    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
-        size_t src_cnt = src_cnt_ - sblk;
-        if (src_cnt > SRC_BLK)
-            src_cnt = SRC_BLK;
-        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
-            Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
-            Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
-            Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
-
-            Vec_t tv0ac = zero_intrin<Vec_t>();
-            Vec_t tv1ac = zero_intrin<Vec_t>();
-            Vec_t tv2ac = zero_intrin<Vec_t>();
-            Vec_t tv3ac = zero_intrin<Vec_t>();
-            Vec_t tv4ac = zero_intrin<Vec_t>();
-            Vec_t tv5ac = zero_intrin<Vec_t>();
-            Vec_t tv6ac = zero_intrin<Vec_t>();
-            Vec_t tv7ac = zero_intrin<Vec_t>();
-            Vec_t tv8ac = zero_intrin<Vec_t>();
-
-            for (size_t s = sblk; s < sblk + src_cnt; s++) {
-                Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
-                Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
-                Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
-
-                Vec_t sv0 = bcast_intrin<Vec_t>(&src_value[0][s]);
-                Vec_t sv1 = bcast_intrin<Vec_t>(&src_value[1][s]);
-                Vec_t sv2 = bcast_intrin<Vec_t>(&src_value[2][s]);
-                Vec_t sv3 = bcast_intrin<Vec_t>(&src_value[3][s]);
-                Vec_t sv4 = bcast_intrin<Vec_t>(&src_value[4][s]);
-                Vec_t sv5 = bcast_intrin<Vec_t>(&src_value[5][s]);
-                Vec_t sv6 = bcast_intrin<Vec_t>(&src_value[6][s]);
-                Vec_t sv7 = bcast_intrin<Vec_t>(&src_value[7][s]);
-                Vec_t sv8 = bcast_intrin<Vec_t>(&src_value[8][s]);
-
-                Vec_t r2 = mul_intrin(dx, dx);
-                r2 = add_intrin(r2, mul_intrin(dy, dy));
-                r2 = add_intrin(r2, mul_intrin(dz, dz));
-
-                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
-                Vec_t rinv2 = mul_intrin(rinv, rinv);
-                Vec_t rinv4 = mul_intrin(rinv2, rinv2);
-
-                Vec_t rinv5 = mul_intrin(rinv, rinv4);
-                Vec_t rinv7 = mul_intrin(mul_intrin(rinv2, rinv5), inv_nwtn_scal7);
-                rinv5 = mul_intrin(rinv5, inv_nwtn_scal5);
-
-                Vec_t commonCoeff = mul_intrin(sv0, mul_intrin(dx, dx));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv1, mul_intrin(dx, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv2, mul_intrin(dx, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv3, mul_intrin(dy, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv4, mul_intrin(dy, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv5, mul_intrin(dy, dz)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv6, mul_intrin(dz, dx)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv7, mul_intrin(dz, dy)));
-                commonCoeff = add_intrin(commonCoeff, mul_intrin(sv8, mul_intrin(dz, dz)));
-                commonCoeff = mul_intrin(negone, commonCoeff);
-
-                // (-2*(t0 - s0)*sv0 - (t1 - s1)*(sv1 + sv3) - (t2 - s2)*(sv2 +
-                // sv6))
-                Vec_t dcFd0 = mul_intrin(negtwo, mul_intrin(dx, sv0));
-                dcFd0 = add_intrin(dcFd0, mul_intrin(negone, mul_intrin(dy, add_intrin(sv1, sv3))));
-                dcFd0 = add_intrin(dcFd0, mul_intrin(negone, mul_intrin(dz, add_intrin(sv2, sv6))));
-
-                // (-2*(t1 - s1)*sv4 - (t0 - s0)*(sv1 + sv3) - (t2 - s2)*(sv5 +
-                // sv7))
-                Vec_t dcFd1 = mul_intrin(negtwo, mul_intrin(dy, sv4));
-                dcFd1 = add_intrin(dcFd1, mul_intrin(negone, mul_intrin(dx, add_intrin(sv1, sv3))));
-                dcFd1 = add_intrin(dcFd1, mul_intrin(negone, mul_intrin(dz, add_intrin(sv5, sv7))));
-
-                // (-2*(t2 - s2)*sv8 - (t0 - s0)*(sv2 + sv6) - (t1 - s1)*(sv5 +
-                // sv7))
-                Vec_t dcFd2 = mul_intrin(negtwo, mul_intrin(dz, sv8));
-                dcFd2 = add_intrin(dcFd2, mul_intrin(negone, mul_intrin(dx, add_intrin(sv2, sv6))));
-                dcFd2 = add_intrin(dcFd2, mul_intrin(negone, mul_intrin(dy, add_intrin(sv5, sv7))));
-
-                Vec_t tv0 = zero_intrin<Vec_t>();
-                Vec_t tv1 = zero_intrin<Vec_t>();
-                Vec_t tv2 = zero_intrin<Vec_t>();
-                Vec_t tv3 = zero_intrin<Vec_t>();
-                Vec_t tv4 = zero_intrin<Vec_t>();
-                Vec_t tv5 = zero_intrin<Vec_t>();
-                Vec_t tv6 = zero_intrin<Vec_t>();
-                Vec_t tv7 = zero_intrin<Vec_t>();
-                Vec_t tv8 = zero_intrin<Vec_t>();
-
-                // (5 * rrtensor * commonCoeff / rnorm ^ 7
-                //  - Outer[Times, rvec, {dcFd0, dcFd1, dcFd2}] / rnorm ^5
-                //  - IdentityMatrix[3] * commonCoeff / rnorm ^ 5);
-                tv0 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dx, dx)));
-                tv0 = mul_intrin(tv0, rinv7);
-                tv0 = add_intrin(tv0, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dx, dcFd0))));
-                tv0 = add_intrin(tv0, mul_intrin(negone, mul_intrin(rinv5, commonCoeff)));
-                tv1 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dx, dy)));
-                tv1 = mul_intrin(tv1, rinv7);
-                tv1 = add_intrin(tv1, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dx, dcFd1))));
-                tv2 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dx, dz)));
-                tv2 = mul_intrin(tv2, rinv7);
-                tv2 = add_intrin(tv2, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dx, dcFd2))));
-
-                tv3 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dy, dx)));
-                tv3 = mul_intrin(tv3, rinv7);
-                tv3 = add_intrin(tv3, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dy, dcFd0))));
-                tv4 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dy, dy)));
-                tv4 = mul_intrin(tv4, rinv7);
-                tv4 = add_intrin(tv4, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dy, dcFd1))));
-                tv4 = add_intrin(tv4, mul_intrin(negone, mul_intrin(rinv5, commonCoeff)));
-                tv5 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dy, dz)));
-                tv5 = mul_intrin(tv5, rinv7);
-                tv5 = add_intrin(tv5, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dy, dcFd2))));
-
-                tv6 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dz, dx)));
-                tv6 = mul_intrin(tv6, rinv7);
-                tv6 = add_intrin(tv6, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dz, dcFd0))));
-                tv7 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dz, dy)));
-                tv7 = mul_intrin(tv7, rinv7);
-                tv7 = add_intrin(tv7, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dz, dcFd1))));
-                tv8 = mul_intrin(five, mul_intrin(commonCoeff, mul_intrin(dz, dz)));
-                tv8 = mul_intrin(tv8, rinv7);
-                tv8 = add_intrin(tv8, mul_intrin(negone, mul_intrin(rinv5, mul_intrin(dz, dcFd2))));
-                tv8 = add_intrin(tv8, mul_intrin(negone, mul_intrin(rinv5, commonCoeff)));
-
-                tv0ac = add_intrin(tv0ac, tv0);
-                tv1ac = add_intrin(tv1ac, tv1);
-                tv2ac = add_intrin(tv2ac, tv2);
-                tv3ac = add_intrin(tv3ac, tv3);
-                tv4ac = add_intrin(tv4ac, tv4);
-                tv5ac = add_intrin(tv5ac, tv5);
-                tv6ac = add_intrin(tv6ac, tv6);
-                tv7ac = add_intrin(tv7ac, tv7);
-                tv8ac = add_intrin(tv8ac, tv8);
-            }
-            Vec_t ooep = set_intrin<Vec_t, Real_t>(OOEP);
-
-            tv0ac = add_intrin(mul_intrin(tv0ac, ooep), load_intrin<Vec_t>(&trg_value[0][t]));
-            tv1ac = add_intrin(mul_intrin(tv1ac, ooep), load_intrin<Vec_t>(&trg_value[1][t]));
-            tv2ac = add_intrin(mul_intrin(tv2ac, ooep), load_intrin<Vec_t>(&trg_value[2][t]));
-            tv3ac = add_intrin(mul_intrin(tv3ac, ooep), load_intrin<Vec_t>(&trg_value[3][t]));
-            tv4ac = add_intrin(mul_intrin(tv4ac, ooep), load_intrin<Vec_t>(&trg_value[4][t]));
-            tv5ac = add_intrin(mul_intrin(tv5ac, ooep), load_intrin<Vec_t>(&trg_value[5][t]));
-            tv6ac = add_intrin(mul_intrin(tv6ac, ooep), load_intrin<Vec_t>(&trg_value[6][t]));
-            tv7ac = add_intrin(mul_intrin(tv7ac, ooep), load_intrin<Vec_t>(&trg_value[7][t]));
-            tv8ac = add_intrin(mul_intrin(tv8ac, ooep), load_intrin<Vec_t>(&trg_value[8][t]));
-
-            store_intrin(&trg_value[0][t], tv0ac);
-            store_intrin(&trg_value[1][t], tv1ac);
-            store_intrin(&trg_value[2][t], tv2ac);
-            store_intrin(&trg_value[3][t], tv3ac);
-            store_intrin(&trg_value[4][t], tv4ac);
-            store_intrin(&trg_value[5][t], tv5ac);
-            store_intrin(&trg_value[6][t], tv6ac);
-            store_intrin(&trg_value[7][t], tv7ac);
-            store_intrin(&trg_value[8][t], tv8ac);
-        }
-    }
-#undef SRC_BLK
-}
-
-GEN_KERNEL(stokes_dgrad, stokes_dgrad_uKernel, 9, 9)
 
 } // namespace pvfmm
 #endif

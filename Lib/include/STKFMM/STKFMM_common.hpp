@@ -56,6 +56,8 @@ enum class KERNEL : unsigned {
     PVelGrad = 256,      ///< Stokes
     PVelLaplacian = 512, ///< Stokes
     Traction = 1024,     ///< Stokes
+
+    LapGrad = 2048
 };
 
 /**

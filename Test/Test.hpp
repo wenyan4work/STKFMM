@@ -21,7 +21,8 @@ struct Config {
     int rngseed = 0;
     double box = 1;
     std::array<double, 3> origin = {0, 0, 0};
-    std::array<double, 2> lognormal = {-1.0, 0.5};
+    std::array<double, 2> distParam = {-1.0, 0.5};
+    int distType = 1;
     int K = 1;
     int maxOrder = 16;
     int pbc = 0;
@@ -56,10 +57,7 @@ struct ComponentError {
     double errorRMS = 0;    // RMS error
     double errorMaxRel = 0; // max relative error
 
-    // error with drift correction
-    double drift = 0;            // mean drift
-    double driftL2 = 0;          // drift * n / L2norm(vec)
-    double errorL2WithoutDrift = 0; // L2 error after the average drift is subtracted off
+    double drift = 0; // mean drift
 
     ComponentError() = default;
     ComponentError(const std::vector<double> &A, const std::vector<double> &B);
@@ -84,7 +82,7 @@ void translatePoint(const Config &config, Point &point);
 
 void genSrcValue(const Config &config, const Point &point, Input &input);
 
-void runSimpleKernel(const Point &point, Input &input, Result &result);
+void runSimpleKernel(const Config &config, const Point &point, Input &input, Result &result);
 
 void runFMM(const Config &config, const int p, const Point &point, Input &input, Result &result, Timing &timing);
 

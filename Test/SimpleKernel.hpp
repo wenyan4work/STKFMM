@@ -13,6 +13,9 @@ void StokesDLPVelGrad(double *s, double *t, double *db, double *pvelGrad);
 void StokesDLTraction(double *s, double *t, double *db, double *traction);
 void StokesDLPVelLaplacian(double *s, double *t, double *db, double *pvelLaplacian);
 
+void LaplaceSLGrad(double *s, double *t, double *q, double *pgrad);
+void LaplaceDLGrad(double *s, double *t, double *db, double *pgrad);
+
 //                         3           3           1             4/10
 void LaplaceSLPGrad(double *s, double *t, double *q, double *pgrad);
 void LaplaceSLPGradGrad(double *s, double *t, double *q, double *pgradgrad);

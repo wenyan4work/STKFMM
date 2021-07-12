@@ -36,9 +36,65 @@ namespace pvfmm {
  * @param trg_value
  */
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
+void laplace_p_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
+                       Matrix<Real_t> &trg_value) {
+    size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
+
+    Real_t nwtn_scal = 1; // scaling factor for newton iterations
+    for (int i = 0; i < NWTN_ITER; i++) {
+        nwtn_scal = 2 * nwtn_scal * nwtn_scal * nwtn_scal;
+    }
+    const Real_t OOFP = 1.0 / (4 * nwtn_scal * const_pi<Real_t>());
+    Vec_t oofp = set_intrin<Vec_t, Real_t>(OOFP);
+
+    size_t src_cnt_ = src_coord.Dim(1);
+    size_t trg_cnt_ = trg_coord.Dim(1);
+    for (size_t sblk = 0; sblk < src_cnt_; sblk += SRC_BLK) {
+        size_t src_cnt = src_cnt_ - sblk;
+        if (src_cnt > SRC_BLK)
+            src_cnt = SRC_BLK;
+        for (size_t t = 0; t < trg_cnt_; t += VecLen) {
+            Vec_t tx = load_intrin<Vec_t>(&trg_coord[0][t]);
+            Vec_t ty = load_intrin<Vec_t>(&trg_coord[1][t]);
+            Vec_t tz = load_intrin<Vec_t>(&trg_coord[2][t]);
+
+            Vec_t tp = zero_intrin<Vec_t>();
+
+            for (size_t s = sblk; s < sblk + src_cnt; s++) {
+                Vec_t dx = sub_intrin(tx, bcast_intrin<Vec_t>(&src_coord[0][s]));
+                Vec_t dy = sub_intrin(ty, bcast_intrin<Vec_t>(&src_coord[1][s]));
+                Vec_t dz = sub_intrin(tz, bcast_intrin<Vec_t>(&src_coord[2][s]));
+                Vec_t sv = bcast_intrin<Vec_t>(&src_value[0][s]);
+
+                Vec_t r2 = mul_intrin(dx, dx);
+                r2 = add_intrin(r2, mul_intrin(dy, dy));
+                r2 = add_intrin(r2, mul_intrin(dz, dz));
+
+                Vec_t rinv = rsqrt_wrapper<Vec_t, Real_t, NWTN_ITER>(r2);
+                tp = add_intrin(tp, mul_intrin(sv, rinv));
+            }
+            tp = add_intrin(mul_intrin(tp, oofp),
+                            load_intrin<Vec_t>(&trg_value[0][t])); // potential
+
+            store_intrin(&trg_value[0][t], tp);
+        }
+    }
+}
+
+/**
+ * @brief micro kernel for Laplace single layer potential + gradient
+ *
+ * @tparam Real_t
+ * @tparam Real_t
+ * @tparam rsqrt_intrin0<Vec_t>
+ * @param src_coord
+ * @param src_value
+ * @param trg_coord
+ * @param trg_value
+ */
+template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -96,13 +152,11 @@ void laplace_pgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             store_intrin(&trg_value[3][t], tv2);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -192,13 +246,11 @@ void laplace_pgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_va
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER = 0>
 void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -244,13 +296,11 @@ void laplace_dipolep_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[0][t], tv);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                  Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -315,13 +365,11 @@ void laplace_dipolepgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_
             store_intrin(&trg_value[3][t], tg2);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                      Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -435,13 +483,11 @@ void laplace_dipolepgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -515,13 +561,11 @@ void laplace_quadp_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             store_intrin(&trg_value[0][t], p);
         }
     }
-#undef SRC_BLK
 }
 
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                    Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -670,9 +714,9 @@ void laplace_quadpgradgrad_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &sr
             store_intrin(&trg_value[9][t], gzz);
         }
     }
-#undef SRC_BLK
 }
 
+GEN_KERNEL(laplace_p, laplace_p_uKernel, 1, 1)
 GEN_KERNEL(laplace_pgrad, laplace_pgrad_uKernel, 1, 4)
 GEN_KERNEL(laplace_pgradgrad, laplace_pgradgrad_uKernel, 1, 10)
 GEN_KERNEL(laplace_dipolep, laplace_dipolep_uKernel, 3, 1)
@@ -688,6 +732,7 @@ GEN_KERNEL(laplace_quadpgradgrad, laplace_quadpgradgrad_uKernel, 9, 10)
  */
 template <class T>
 struct LaplaceLayerKernel {
+    // inline static const Kernel<T> &Grad();       ///< Laplace Grad Kernel, for test only
     inline static const Kernel<T> &PGrad();      ///< Laplace PGrad Kernel
     inline static const Kernel<T> &PGradGrad();  ///< Laplace PGradGrad
     inline static const Kernel<T> &QPGradGrad(); ///< Laplace Quadruple PGradGrad, no double layer
@@ -702,14 +747,21 @@ struct LaplaceLayerKernel {
     static constexpr int NEWTON_ITE = sizeof(T) / 4;
 };
 
+// template <class T>
+// inline const Kernel<T> &LaplaceLayerKernel<T>::Grad() {
+
+//     static Kernel<T> potn_ker = BuildKernel<T, laplace_p<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(1, 1));
+//     static Kernel<T> grad_ker =
+//         BuildKernel<T, laplace_grad<T, NEWTON_ITE>>("laplace_Grad", 3, std::pair<int, int>(1, 3), &potn_ker,
+//         &potn_ker,
+//                                                     NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
+//     return grad_ker;
+// }
+
 template <class T>
 inline const Kernel<T> &LaplaceLayerKernel<T>::PGrad() {
-    // S2U - single-layer density — to — potential kernel (1 x 1)
-    // D2U - double-layer density — to — potential kernel (1+3 x 1)
-    // S2UdU - single-layer density — to — potential & gradient (1 x 1)
-    // D2UdU - double-layer density — to — potential & gradient (1+3 x 1)
 
-    static Kernel<T> lap_pker = BuildKernel<T, laplace_poten<T, NEWTON_ITE>, laplace_dipolep<T, NEWTON_ITE>>(
+    static Kernel<T> lap_pker = BuildKernel<T, laplace_p<T, NEWTON_ITE>, laplace_dipolep<T, NEWTON_ITE>>(
         "laplace", 3, std::pair<int, int>(1, 1));
     lap_pker.surf_dim = 3;
 
@@ -724,7 +776,7 @@ inline const Kernel<T> &LaplaceLayerKernel<T>::PGrad() {
 template <class T>
 inline const Kernel<T> &LaplaceLayerKernel<T>::PGradGrad() {
 
-    static Kernel<T> lap_pker = BuildKernel<T, laplace_poten<T, NEWTON_ITE>, laplace_dipolep<T, NEWTON_ITE>>(
+    static Kernel<T> lap_pker = BuildKernel<T, laplace_p<T, NEWTON_ITE>, laplace_dipolep<T, NEWTON_ITE>>(
         "laplace", 3, std::pair<int, int>(1, 1));
     lap_pker.surf_dim = 3;
 
@@ -740,7 +792,7 @@ inline const Kernel<T> &LaplaceLayerKernel<T>::PGradGrad() {
 template <class T>
 inline const Kernel<T> &LaplaceLayerKernel<T>::QPGradGrad() {
 
-    static Kernel<T> lap_pker = BuildKernel<T, laplace_poten<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(1, 1));
+    static Kernel<T> lap_pker = BuildKernel<T, laplace_p<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(1, 1));
     static Kernel<T> lap_pggker =
         BuildKernel<T, laplace_pgradgrad<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(1, 10));
     static Kernel<T> lap_qpker = BuildKernel<T, laplace_quadp<T, NEWTON_ITE>>("laplace", 3, std::pair<int, int>(9, 1));

@@ -17,7 +17,6 @@ namespace pvfmm {
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                            Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -81,7 +80,6 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
             store_intrin(&trg_value[2][t], vz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -92,7 +90,6 @@ void stokes_regvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value,
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_regftvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -176,7 +173,6 @@ void stokes_regftvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[2][t], vz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -187,7 +183,6 @@ void stokes_regftvel_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_regftvelomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                                   Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -299,7 +294,6 @@ void stokes_regftvelomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src
             store_intrin(&trg_value[5][t], wz);
         }
     }
-#undef SRC_BLK
 }
 
 /**********************************************************
@@ -310,7 +304,6 @@ void stokes_regftvelomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src
 template <class Real_t, class Vec_t = Real_t, size_t NWTN_ITER>
 void stokes_velomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_value, Matrix<Real_t> &trg_coord,
                              Matrix<Real_t> &trg_value) {
-#define SRC_BLK 500
     size_t VecLen = sizeof(Vec_t) / sizeof(Real_t);
 
     Real_t nwtn_scal = 1; // scaling factor for newton iterations
@@ -398,7 +391,6 @@ void stokes_velomega_uKernel(Matrix<Real_t> &src_coord, Matrix<Real_t> &src_valu
             store_intrin(&trg_value[5][t], wz);
         }
     }
-#undef SRC_BLK
 }
 
 GEN_KERNEL(stokes_regvel, stokes_regvel_uKernel, 4, 3)

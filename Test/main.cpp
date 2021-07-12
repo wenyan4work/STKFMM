@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
                 verifyResult[kernel].resize(nTrg * kdimTrg, 0);
             }
         } else {
-            runSimpleKernel(point, input, verifyResult);
+            runSimpleKernel(config, point, input, verifyResult);
         }
         if (config.dump)
             dumpValue("verify", point, input, verifyResult);
@@ -55,11 +55,11 @@ int main(int argc, char **argv) {
         pResult.clear();
         transResult.clear();
         timing.clear();
-        int order = 2;
-        runFMM(config, 2, point, input, pResult, timing);
+        int order = 0;
+        runFMM(config, order, point, input, pResult, timing);
         if (config.dump)
             dumpValue("direct", point, input, pResult);
-        appendHistory(history, 2, timing, pResult, verifyResult, convResult, transResult);
+        appendHistory(history, order, timing, pResult, verifyResult, convResult, transResult);
     } else {
         for (int p = 6; p < config.maxOrder; p += 2) {
             printf_rank0("*********Testing order p = %d*********\n", p);
