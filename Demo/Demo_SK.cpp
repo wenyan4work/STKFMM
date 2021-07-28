@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "STKFMM/STKFMM.hpp"
+#include "../Test/SimpleKernel.hpp"
 
 #include "mpi.h"
 #include "omp.h"
@@ -19,20 +19,8 @@ int main(int argc, char **argv) {
     double origin[3] = {0, 0, 0};
     double box = 1;
 
-    auto kernel = stkfmm::KERNEL::Traction;
-    unsigned int kernelComb = stkfmm::asInteger(kernel);
     {
-        auto fmm = stkfmm::Stk3DFMM(16, 2000, stkfmm::PAXIS::PXY, kernelComb, false);
-        fmm.showActiveKernels();
-        fmm.setBox(origin, box);
-        // first evaluation
-        {
-            fmm.clearFMM(kernel);
-            fmm.setPoints(2, srcCoord.data(), 2, trgCoord.data());
-            fmm.setupTree(kernel);
-            fmm.evaluateFMM(kernel, 2, srcValue.data(), 2, trgValue.data());
-        }
-
+        StokesSLTraction(srcCoord.data() + 3, trgCoord.data(), srcValue.data() + 4, trgValue.data());
         // shift points
         double shift[3] = {0.5, 0.5, 0};
         for (int i = 0; i < 2; i++) {
@@ -42,14 +30,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        // second evaluation
-        {
-            fmm.clearFMM(kernel);
-            fmm.setPoints(2, srcCoord.data(), 2, trgCoord.data());
-            fmm.setupTree(kernel);
-            fmm.evaluateFMM(kernel, 2, srcValue.data(), 2, trgValue2.data());
-        }
-
+        StokesSLTraction(srcCoord.data() + 3, trgCoord.data(), srcValue.data() + 4, trgValue2.data());
         for (int i = 0; i < 18; i++) {
             printf("%18.16g,%18.16g,%g,%g\n", trgValue[i], trgValue2[i], trgValue[i] - trgValue2[i],
                    (trgValue[i] - trgValue2[i]) / trgValue2[i]);
