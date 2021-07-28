@@ -49,6 +49,7 @@ set(PyInterface
     CACHE BOOL "build python interface")
 
 add_subdirectory(Lib)
+add_subdirectory(Demo)
 
 if(BUILD_M2L)
   add_subdirectory(M2L)

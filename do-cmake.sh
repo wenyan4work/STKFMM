@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # change this to find Eigen3Config.cmake in this folder
-export EIGENPATH=$HOME/local/share/eigen3/cmake/  
+export EIGENPATH=$HOME/env_intel/share/eigen3/cmake/  
 
 cmake \
   -D CMAKE_CXX_COMPILER=mpicxx \
