@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
-    std::vector<double> srcCoord = {0.5, 0.5, 0.5, 0.6, 0.6, 0.6};
+    std::vector<double> srcCoord = {0.6001, 0.6001, 0.6001, 0.6, 0.6, 0.6};
     std::vector<double> trgCoord = srcCoord;
     std::vector<double> srcValue = {0.1, 0.2, 0.3, 0.4, -0.1, -0.2, -0.3, -0.4};
     std::vector<double> trgValue(2 * 9, 0.0);
@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     auto kernel = stkfmm::KERNEL::Traction;
     unsigned int kernelComb = stkfmm::asInteger(kernel);
     {
-        auto fmm = stkfmm::Stk3DFMM(16, 2000, stkfmm::PAXIS::PXY, kernelComb);
+        auto fmm = stkfmm::Stk3DFMM(16, 2000, stkfmm::PAXIS::PXY, kernelComb, false);
         fmm.showActiveKernels();
         fmm.setBox(origin, box);
         // first evaluation
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
         }
 
         // shift points
-        double shift[3] = {0.1, 0.2, 0};
+        double shift[3] = {-0.2, -0.2, 0};
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 3; j++) {
                 srcCoord[3 * i + j] += shift[j];

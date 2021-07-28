@@ -3,7 +3,7 @@
 
 namespace stkfmm {
 
-Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
+Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_, bool enableFF_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
     using namespace impl;
     poolFMM.clear();
@@ -11,7 +11,7 @@ Stk3DFMM::Stk3DFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelC
     for (const auto &it : kernelMap) {
         const auto kernel = it.first;
         if (kernelComb & asInteger(kernel)) {
-            poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts);
+            poolFMM[kernel] = new FMMData(kernel, pbc, multOrder, maxPts, enableFF_);
             if (!rank)
                 std::cout << "enable kernel " << it.second->ker_name << std::endl;
         }
