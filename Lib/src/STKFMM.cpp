@@ -58,7 +58,7 @@ const pvfmm::Kernel<double> *getKernelFunction(KERNEL kernelChoice_) {
 
 // base class STKFMM
 
-STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
+STKFMM::STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_, bool enableFF_)
     : multOrder(multOrder_), maxPts(maxPts_), pbc(pbc_), kernelComb(kernelComb_) {
     using namespace impl;
 

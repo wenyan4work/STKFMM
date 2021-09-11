@@ -2,26 +2,27 @@
 
 namespace stkfmm {
 
-StkWallFMM::StkWallFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_)
+StkWallFMM::StkWallFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_, bool enableFF_)
     : STKFMM(multOrder_, maxPts_, pbc_, kernelComb_) {
     using namespace impl;
     poolFMM.clear();
 
     if (kernelComb & asInteger(KERNEL::Stokes)) {
         // Stokes image, activate Stokes & Laplace kernels
-        poolFMM[KERNEL::Stokes] = new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts);             // uS
-        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts);         // uL1+uD
-        poolFMM[KERNEL::LapPGradGrad] = new FMMData(KERNEL::LapPGradGrad, pbc, multOrder, maxPts); // uL2
+        poolFMM[KERNEL::Stokes] = new FMMData(KERNEL::Stokes, pbc, multOrder, maxPts, enableFF_);             // uS
+        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts, enableFF_);         // uL1+uD
+        poolFMM[KERNEL::LapPGradGrad] = new FMMData(KERNEL::LapPGradGrad, pbc, multOrder, maxPts, enableFF_); // uL2
         if (!rank)
             std::cout << "enable Stokes image kernel " << std::endl;
     }
 
     if (kernelComb & asInteger(KERNEL::RPY)) {
         // RPY image, activate RPY, Laplace, & LapQuad kernels
-        poolFMM[KERNEL::RPY] = new FMMData(KERNEL::RPY, pbc, multOrder, maxPts);                     // uS
-        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts);           // phiSZ+phiDZ
-        poolFMM[KERNEL::LapPGradGrad] = new FMMData(KERNEL::LapPGradGrad, pbc, multOrder, maxPts);   // phiS+phiD
-        poolFMM[KERNEL::LapQPGradGrad] = new FMMData(KERNEL::LapQPGradGrad, pbc, multOrder, maxPts); // phibQ
+        poolFMM[KERNEL::RPY] = new FMMData(KERNEL::RPY, pbc, multOrder, maxPts, enableFF_);           // uS
+        poolFMM[KERNEL::LapPGrad] = new FMMData(KERNEL::LapPGrad, pbc, multOrder, maxPts, enableFF_); // phiSZ+phiDZ
+        poolFMM[KERNEL::LapPGradGrad] =
+            new FMMData(KERNEL::LapPGradGrad, pbc, multOrder, maxPts, enableFF_); // phiS+phiD
+        poolFMM[KERNEL::LapQPGradGrad] = new FMMData(KERNEL::LapQPGradGrad, pbc, multOrder, maxPts, enableFF_); // phibQ
         std::cout << "enable RPY image kernel " << std::endl;
     }
 

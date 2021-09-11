@@ -20,6 +20,7 @@ class FMMData {
   public:
     const stkfmm::KERNEL kernelChoice; ///< chosen kernel
     const stkfmm::PAXIS periodicity;   ///< chosen periodicity
+    bool enableFF;                     ///< enable periodic Far-Field fix
 
     int kdimSL;  ///< Single Layer kernel dimension
     int kdimDL;  ///< Double Layer kernel dimension
@@ -50,7 +51,7 @@ class FMMData {
      * @param multOrder_
      * @param maxPts_
      */
-    FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_);
+    FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_, bool enableFF_ = true);
 
     /**
      * @brief Destroy the FMMData object
@@ -124,7 +125,7 @@ class FMMData {
      * @return true
      * @return false
      */
-    bool hasDL() const { return kernelFunctionPtr->dbl_layer_poten; };
+    bool hasDL() const { return kernelFunctionPtr->dbl_layer_poten; }
 
   private:
     pvfmm::PtFMM<double> *matrixPtr;        ///< pvfmm PtFMM pointer

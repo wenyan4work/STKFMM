@@ -51,9 +51,9 @@ void FMMData::setupPeriodicData() {
 }
 
 // constructor
-FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_)
+FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int maxPts_, bool enableFF_)
     : kernelChoice(kernelChoice_), periodicity(periodicity_), multOrder(multOrder_), maxPts(maxPts_), treePtr(nullptr),
-      matrixPtr(nullptr), treeDataPtr(nullptr) {
+      matrixPtr(nullptr), treeDataPtr(nullptr), enableFF(enableFF_) {
 
     comm = MPI_COMM_WORLD;
     matrixPtr = new pvfmm::PtFMM<double>();
@@ -75,8 +75,13 @@ FMMData::FMMData(KERNEL kernelChoice_, PAXIS periodicity_, int multOrder_, int m
 
         equivCoord = surface(multOrder, (double *)&(pCenterLEquiv[0]), scaleLEquiv, 0);
 
-        setupPeriodicData();
-        matrixPtr->SetM2C(M2Cdata.data());
+        if (enableFF) {
+            setupPeriodicData();
+            matrixPtr->SetM2C(M2Cdata.data());
+        } else {
+            printf("PBC FF disabled\n");
+            matrixPtr->SetM2C(nullptr);
+        }
     }
 }
 
@@ -191,7 +196,7 @@ void FMMData::evaluateFMM(std::vector<double> &srcSLValue, std::vector<double> &
 }
 
 void FMMData::periodizeFMM(std::vector<double> &trgValue) {
-    if (periodicity == PAXIS::NONE) {
+    if (periodicity == PAXIS::NONE || enableFF == false) {
         return;
     }
 

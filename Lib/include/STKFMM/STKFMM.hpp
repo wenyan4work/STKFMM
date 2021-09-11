@@ -39,7 +39,7 @@ class STKFMM {
      * @param pbc_
      * @param kernelComb_
      */
-    STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_);
+    STKFMM(int multOrder_, int maxPts_, PAXIS pbc_, unsigned int kernelComb_, bool enableFF_ = true);
 
     /**
      * @brief Set FMM Box
@@ -197,7 +197,7 @@ class Stk3DFMM : public STKFMM {
      * @param kernelComb_
      */
     Stk3DFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
-             unsigned int kernelComb_ = asInteger(KERNEL::Stokes) | asInteger(KERNEL::RPY));
+             unsigned int kernelComb_ = asInteger(KERNEL::Stokes) | asInteger(KERNEL::RPY), bool enableFF_ = true);
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr);
@@ -231,7 +231,7 @@ class StkWallFMM : public STKFMM {
      * @param kernelComb_
      */
     StkWallFMM(int multOrder = 10, int maxPts = 2000, PAXIS pbc_ = PAXIS::NONE,
-               unsigned int kernelComb_ = asInteger(KERNEL::Stokes) | asInteger(KERNEL::RPY));
+               unsigned int kernelComb_ = asInteger(KERNEL::Stokes) | asInteger(KERNEL::RPY), bool enableFF_ = true);
 
     virtual void setPoints(const int nSL, const double *srcSLCoordPtr, const int nTrg, const double *trgCoordPtr,
                            const int nDL = 0, const double *srcDLCoordPtr = nullptr);
