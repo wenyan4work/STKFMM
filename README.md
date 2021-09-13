@@ -227,7 +227,7 @@ build/ $ ./Test/TestFMM.X --config ../Config/BenchP0.toml -P 3
 By default, only the `BUILD_TEST` is turned on.
 
 - If you need doxygen document, set `BUILD_DOC=ON`.
-- If you want to generate periodicity precomputed `M2L` data yourself, set `BUILD_M2L=ON`. In this case you will have to install the linear algebra library `Eigen`. If you do not want to generate periodicity precomputed data yourself, you can download them from `https://users.flatironinstitute.org/~wyan/pdata.7z` and unzip all data files to folder `$PVFMM_DIR/pdata`
+- If you want to generate periodicity precomputed `M2L` data yourself, set `BUILD_M2L=ON`. In this case you will have to install the linear algebra library `Eigen`. If you do not want to generate periodicity precomputed data yourself, you can download them from `https://users.flatironinstitute.org/~wyan/M2C.7z` and unzip all data files to folder `$PVFMM_DIR/pdata`
 - If you want to call this library from python, set `PyInterface=ON`. In this case you need some basic python facilities. Here is a basic example for `requirements.txt` used for python virtualenv:
 
 ```
