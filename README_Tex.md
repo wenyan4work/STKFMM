@@ -1,7 +1,7 @@
 <img src="./STKFMM_Logo_RGB.svg" width="200">
 
 ###
-A C++ library implements the [Kernel Aggregated Fast Multipole Method](https://arxiv.org/abs/2010.15155) based on the library PVFMM.
+A C++ library implements the [Kernel Aggregated Fast Multipole Method](https://link.springer.com/article/10.1007/s10444-021-09896-1) based on the library PVFMM.
 
 # What does it compute
 
