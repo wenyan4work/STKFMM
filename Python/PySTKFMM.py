@@ -5,6 +5,7 @@ import enum
 
 lib = cdll.LoadLibrary("libSTKFMM_SHARED.so")
 lib.Stk3DFMM_create.restype = c_void_p
+lib.StkWallFMM_create.restype = c_void_p
 
 
 class PAXIS(enum.IntEnum):
