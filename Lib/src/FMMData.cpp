@@ -16,6 +16,11 @@ void FMMData::readMat(const int kDim, const std::string &dataName, std::vector<d
     data.resize(size * size);
 
     char *pvfmm_dir = getenv("PVFMM_DIR");
+    if (pvfmm_dir == nullptr) {
+        std::cout << "Environment variable 'PVFMM_DIR' undefined. Unable to load pdata\n";
+        exit(1);
+    }
+
     std::string file = std::string(pvfmm_dir) + std::string("/pdata/") + dataName;
 
     std::cout << dataName << " " << size << std::endl;
