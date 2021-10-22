@@ -1,14 +1,15 @@
 #ifndef STKFMM_COMMON_
 #define STKFMM_COMMON_
 
+#include <pvfmm.hpp>
+#include <intrin_wrapper.hpp>
+
 #include "LaplaceLayerKernel.hpp"
 #include "RPYKernel.hpp"
 #include "StokesLayerKernel.hpp"
 #include "StokesRegSingleLayerKernel.hpp"
 
 #include <unordered_map>
-
-#include <pvfmm.hpp>
 
 namespace stkfmm {
 /**

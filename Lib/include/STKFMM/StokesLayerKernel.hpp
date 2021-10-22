@@ -45,7 +45,7 @@ struct StokesLayerKernel {
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Vel() {
-    static Kernel<T> ker = BuildKernel<T, stokes_vel<T, NEWTON_ITE>>("stokes_vel", 3, std::pair<int, int>(3, 3));
+    static Kernel<T> ker = BuildKernel<T, stokes_vel::Eval<T>>("stokes_vel", 3, std::pair<int, int>(3, 3));
     return ker;
 }
 
