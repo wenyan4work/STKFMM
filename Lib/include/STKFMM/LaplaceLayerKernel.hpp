@@ -166,6 +166,69 @@ struct laplace_dipolepgrad_new : public GenericKernel<laplace_dipolepgrad_new> {
     }
 };
 
+struct laplace_pgradgrad_new : public GenericKernel<laplace_pgradgrad_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (4.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[10], const VecType (&r)[3], const VecType (&f)[1], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv2 = rinv * rinv;
+        VecType rinv3 = rinv2 * rinv;
+        VecType three = (typename VecType::ScalarType)(3.0);
+        VecType sv = f[0] * rinv3;
+
+        u[0] += sv * r2;
+        u[1] -= sv * r[0];
+        u[2] -= sv * r[1];
+        u[3] -= sv * r[2];
+
+        sv *= rinv2;
+        u[4] += sv * (three * r[0] * r[0] - r2);
+        u[5] += sv * three * r[0] * r[1];
+        u[6] += sv * three * r[0] * r[2];
+        u[7] += sv * (three * r[1] * r[1] - r2);
+        u[8] += sv * three * r[1] * r[2];
+        u[9] += sv * (three * r[2] * r[2] - r2);
+    }
+};
+
+struct laplace_dipolepgradgrad_new : public GenericKernel<laplace_dipolepgradgrad_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (4.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[10], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        const VecType three = (typename VecType::ScalarType)(3.0);
+        const VecType threer2 = three * r2;
+        const VecType six = (typename VecType::ScalarType)(6.0);
+        const VecType fifteen = (typename VecType::ScalarType)(15.0);
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv2 = rinv * rinv;
+        VecType rinv3 = rinv2 * rinv;
+        VecType rinv5 = rinv2 * rinv3;
+        VecType rinv7 = rinv2 * rinv5;
+        VecType rdotn = r[0] * f[0] + r[1] * f[1] + r[2] * f[2];
+
+        u[0] += rdotn * rinv3;
+        u[1] += (f[0] * r2 - rdotn * three * r[0]) * rinv5;
+        u[2] += (f[1] * r2 - rdotn * three * r[1]) * rinv5;
+        u[3] += (f[2] * r2 - rdotn * three * r[2]) * rinv5;
+
+        u[4] += (fifteen * r[0] * r[0] * rdotn - r2 * (three * rdotn + six * r[0] * f[0])) * rinv7;
+        u[5] += (fifteen * r[0] * r[1] * rdotn - threer2 * (r[0] * f[1] + r[1] * f[0])) * rinv7;
+        u[6] += (fifteen * r[0] * r[2] * rdotn - threer2 * (r[0] * f[2] + r[2] * f[0])) * rinv7;
+        u[7] += (fifteen * r[1] * r[1] * rdotn - r2 * (three * rdotn + six * r[1] * f[1])) * rinv7;
+        u[8] += (fifteen * r[1] * r[2] * rdotn - threer2 * (r[1] * f[2] + r[2] * f[1])) * rinv7;
+        u[9] += (fifteen * r[2] * r[2] * rdotn - r2 * (three * rdotn + six * r[2] * f[2])) * rinv7;
+    }
+};
 
 template<class T> const Kernel<T>& LaplaceLayerKernelNew<T>::PGrad(){
   static Kernel<T> lap_pker =
@@ -180,6 +243,20 @@ template<class T> const Kernel<T>& LaplaceLayerKernelNew<T>::PGrad(){
   return lap_pgker;
 }
 
+template <class T>
+inline const Kernel<T> &LaplaceLayerKernelNew<T>::PGradGrad() {
+
+    static Kernel<T> lap_pker =
+        BuildKernel<T, laplace_p_new::Eval<T>, laplace_dipolep_new::Eval<T>>("laplace", 3, std::pair<int, int>(1, 1));
+    lap_pker.surf_dim = 3;
+
+    static Kernel<T> lap_pgker = BuildKernel<T, laplace_pgradgrad_new::Eval<T>, laplace_dipolepgradgrad_new::Eval<T>>(
+        "laplace_PGradGrad", 3, std::pair<int, int>(1, 10), &lap_pker, &lap_pker, NULL, &lap_pker, &lap_pker, NULL,
+        &lap_pker, NULL);
+    lap_pgker.surf_dim = 3;
+
+    return lap_pgker;
+}
 
 /**
  * @brief micro kernel for Laplace single layer potential + gradient
