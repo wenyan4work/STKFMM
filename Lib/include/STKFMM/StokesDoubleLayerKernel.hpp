@@ -19,6 +19,42 @@
 
 namespace pvfmm {
 
+
+struct stokes_doublepvel_new : public GenericKernel<stokes_doublepvel_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (8.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[4], const VecType (&r)[3], const VecType (&f)[9], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv3 = rinv * rinv * rinv;
+        VecType rinv5 = rinv3 * rinv * rinv;
+        const VecType two = (typename VecType::ScalarType)(2.0);
+        // clang-format off
+        const VecType sxx = f[0], sxy = f[1], sxz = f[2];
+        const VecType syx = f[3], syy = f[4], syz = f[5];
+        const VecType szx = f[6], szy = f[7], szz = f[8];
+        const VecType dx  = r[0], dy  = r[1], dz  = r[2];
+        // clang-format on
+
+        VecType commonCoeff = sxx * dx * dx + syy * dy * dy + szz * dz * dz;
+        commonCoeff += (sxy + syx) * dx * dy;
+        commonCoeff += (sxz + szx) * dx * dz;
+        commonCoeff += (syz + szy) * dy * dz;
+        commonCoeff *= (typename VecType::ScalarType)(-3.0) * rinv5;
+
+        const VecType trace = sxx + syy + szz;
+        u[0] += two * (commonCoeff + r2 * rinv5 * trace);
+        u[1] += dx * commonCoeff;
+        u[2] += dy * commonCoeff;
+        u[3] += dz * commonCoeff;
+    }
+};
+
+
 /*********************************************************
  *                                                        *
  *   Stokes Double P Vel kernel, source: 9, target: 4     *

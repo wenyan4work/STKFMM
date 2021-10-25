@@ -43,6 +43,35 @@ struct StokesLayerKernel {
     static constexpr int NEWTON_ITE = sizeof(T) / 4;
 };
 
+
+/**
+ * @brief Stokes Layer Kernels
+ *
+ * @tparam T float or double
+ */
+template <class T>
+struct StokesLayerKernelNew {
+    inline static const Kernel<T> &Vel();           ///< Stokeslet 3x3, SL->Vel
+    inline static const Kernel<T> &PVel();          ///< SL+DL -> PVel
+    inline static const Kernel<T> &PVelGrad();      ///< SL+DL -> PVelGrad
+    inline static const Kernel<T> &PVelLaplacian(); ///< SL+DL -> PVelLaplacian
+    inline static const Kernel<T> &Traction();      ///< SL+DL -> Traction
+};
+
+template <class T>
+inline const Kernel<T> &StokesLayerKernelNew<T>::Vel() {
+    static Kernel<T> ker = BuildKernel<T, stokes_vel::Eval<T>>("stokes_vel", 3, std::pair<int, int>(3, 3));
+    return ker;
+}
+
+template <class T>
+inline const Kernel<T> &StokesLayerKernelNew<T>::PVel() {
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
+    stokes_pker.surf_dim = 9;
+    return stokes_pker;
+}
+
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Vel() {
     static Kernel<T> ker = BuildKernel<T, stokes_vel::Eval<T>>("stokes_vel", 3, std::pair<int, int>(3, 3));

@@ -19,6 +19,30 @@
 
 namespace pvfmm {
 
+
+struct stokes_pvel_new : public GenericKernel<stokes_pvel_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (8.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[4], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv3 = rinv * rinv * rinv;
+        VecType commonCoeff = f[0] * r[0] + f[1] * r[1] + f[2] * r[2];
+        const VecType two = (typename VecType::ScalarType)(2.0);
+
+        u[0] += two * commonCoeff * rinv3;
+        commonCoeff -= f[3];
+        u[1] += rinv3 * (r2 * f[0] + r[0] * commonCoeff);
+        u[2] += rinv3 * (r2 * f[1] + r[1] * commonCoeff);
+        u[3] += rinv3 * (r2 * f[2] + r[2] * commonCoeff);
+    }
+};
+
+
 /*********************************************************
  *                                                        *
  *     Stokes P Vel kernel, source: 4, target: 4          *
