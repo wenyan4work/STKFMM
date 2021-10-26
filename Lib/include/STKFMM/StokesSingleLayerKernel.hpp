@@ -43,6 +43,67 @@ struct stokes_pvel_new : public GenericKernel<stokes_pvel_new> {
 };
 
 
+struct stokes_pvelgrad_new : public GenericKernel<stokes_pvelgrad_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (8.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[16], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv3 = rinv * rinv * rinv;
+        VecType rinv5 = rinv3 * rinv * rinv;
+        const VecType two = (typename VecType::ScalarType)(2.0);
+        const VecType nthree = (typename VecType::ScalarType)(-3.0);
+
+        // clang-format off
+        const VecType &dx = r[0], &dy = r[1], &dz = r[2];
+        const VecType &fx = f[0], &fy = f[1], &fz = f[2];
+        const VecType &tr = f[3];
+        // clang-format on
+
+        VecType commonCoeff = fx * dx + fy * dy + fz * dz;
+        u[0] += two * rinv3 * commonCoeff;
+
+        commonCoeff -= tr;
+        u[1] += rinv3 * (r2 * fx + commonCoeff * dx);
+        u[2] += rinv3 * (r2 * fy + commonCoeff * dy);
+        u[3] += rinv3 * (r2 * fz + commonCoeff * dz);
+
+        // px dp/dx, etc
+        commonCoeff += tr;
+        u[4] += two * (r2 * fx + nthree * dx * commonCoeff) * rinv5;
+        u[5] += two * (r2 * fy + nthree * dy * commonCoeff) * rinv5;
+        u[6] += two * (r2 * fz + nthree * dz * commonCoeff) * rinv5;
+
+
+        // qij = r^2 \delta_{ij} - 3 ri rj, symmetric
+        VecType qxx = r2 + nthree * dx * dx;
+        VecType qxy = nthree * dx * dy;
+        VecType qxz = nthree * dx * dz;
+        VecType qyy = r2 + nthree * dy * dy;
+        VecType qyz = nthree * dy * dz;
+        VecType qzz = r2 + nthree * dz * dz;
+
+        // vxx = dvx/dx , etc
+        commonCoeff -= tr;
+        u[7] += qxx * commonCoeff * rinv5;
+        u[8] += (qxy * commonCoeff + r2 * (dx * fy - dy * fx)) * rinv5;
+        u[9] += (qxz * commonCoeff + r2 * (dx * fz - dz * fx)) * rinv5;
+
+        u[10] += (qxy * commonCoeff + r2 * (dy * fx - dx * fy)) * rinv5;
+        u[11] += qyy * commonCoeff * rinv5;
+        u[12] += (qyz * commonCoeff + r2 * (dy * fz - dz * fy)) * rinv5;
+
+        u[13] += (qxz * commonCoeff + r2 * (dz * fx - dx * fz)) * rinv5;
+        u[14] += (qyz * commonCoeff + r2 * (dz * fy - dy * fz)) * rinv5;
+        u[15] += qzz * commonCoeff * rinv5;
+    }
+};
+
+
 /*********************************************************
  *                                                        *
  *     Stokes P Vel kernel, source: 4, target: 4          *
