@@ -104,6 +104,46 @@ struct stokes_pvelgrad_new : public GenericKernel<stokes_pvelgrad_new> {
 };
 
 
+struct stokes_pvellaplacian_new : public GenericKernel<stokes_pvellaplacian_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return 1.0 / (8.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[7], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv3 = rinv * rinv * rinv;
+        VecType rinv5 = rinv3 * rinv * rinv;
+        const VecType two = (typename VecType::ScalarType)(2.0);
+        const VecType nthree = (typename VecType::ScalarType)(-3.0);
+
+        // clang-format off
+        const VecType &dx = r[0], &dy = r[1], &dz = r[2];
+        const VecType &fx = f[0], &fy = f[1], &fz = f[2];
+        const VecType &tr = f[3];
+        // clang-format on
+
+        VecType commonCoeff = fx * dx + fy * dy + fz * dz;
+        // pressure
+        u[0] += two * rinv3 * commonCoeff;
+
+        // velocity
+        commonCoeff -= tr;
+        u[1] += rinv3 * (r2 * fx + commonCoeff * dx);
+        u[2] += rinv3 * (r2 * fy + commonCoeff * dy);
+        u[3] += rinv3 * (r2 * fz + commonCoeff * dz);
+
+        // laplacian
+        commonCoeff = nthree * (commonCoeff + tr);
+        u[4] += two * (fx * r2 + commonCoeff * dx) * rinv5;
+        u[5] += two * (fy * r2 + commonCoeff * dy) * rinv5;
+        u[6] += two * (fz * r2 + commonCoeff * dz) * rinv5;
+    }
+};
+
+
 /*********************************************************
  *                                                        *
  *     Stokes P Vel kernel, source: 4, target: 4          *
