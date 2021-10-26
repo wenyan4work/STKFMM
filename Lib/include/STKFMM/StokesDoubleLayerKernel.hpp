@@ -199,6 +199,68 @@ struct stokes_doublelaplacian_new : public GenericKernel<stokes_doublelaplacian_
 };
 
 
+struct stokes_doubletraction_new : public GenericKernel<stokes_doubletraction_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return -3.0 / (8.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[9], const VecType (&r)[3], const VecType (&f)[9], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv2 = rinv * rinv;
+        VecType rinv3 = rinv * rinv2;
+        VecType rinv5 = rinv3 * rinv2;
+        VecType rinv7 = rinv5 * rinv2;
+        const VecType two = (typename VecType::ScalarType)(2.0);
+        const VecType three = (typename VecType::ScalarType)(3.0);
+        const VecType five = (typename VecType::ScalarType)(5.0);
+        const VecType facp = (typename VecType::ScalarType)(0.66666666666666);
+
+        // clang-format off
+        const VecType sxx = f[0], sxy = f[1], sxz = f[2];
+        const VecType syx = f[3], syy = f[4], syz = f[5];
+        const VecType szx = f[6], szy = f[7], szz = f[8];
+        const VecType dx  = r[0], dy  = r[1], dz  = r[2];
+        // clang-format on
+
+        VecType commonCoeff = sxx * dx * dx + syy * dy * dy + szz * dz * dz;
+        commonCoeff += (sxy + syx) * dx * dy;
+        commonCoeff += (sxz + szx) * dx * dz;
+        commonCoeff += (syz + szy) * dy * dz;
+        VecType commonCoeffn3 = (typename VecType::ScalarType)(-3.0) * commonCoeff;
+        VecType commonCoeff5 = (typename VecType::ScalarType)(5.0) * commonCoeff;
+
+        VecType trace = sxx + syy + szz;
+        VecType dcFd0 = -two * dx * sxx - dy * (sxy + syx) - dz * (sxz + szx);
+        VecType dcFd1 = -two * dy * syy - dx * (sxy + syx) - dz * (syz + szy);
+        VecType dcFd2 = -two * dz * szz - dx * (sxz + szx) - dy * (syz + szy);
+
+        VecType np = r2 * facp * rinv7 * (commonCoeffn3 + r2 * trace);
+
+        VecType tv0 = (-five * commonCoeff * dx * dx - r2 * dx * dcFd0 + r2 * commonCoeff) * rinv7;
+        VecType tv1 = (-five * commonCoeff * dx * dy - r2 * dx * dcFd1) * rinv7;
+        VecType tv2 = (-five * commonCoeff * dx * dz - r2 * dx * dcFd2) * rinv7;
+        VecType tv3 = (-five * commonCoeff * dy * dx - r2 * dy * dcFd0) * rinv7;
+        VecType tv4 = (-five * commonCoeff * dy * dy - r2 * dy * dcFd1 + r2 * commonCoeff) * rinv7;
+        VecType tv5 = (-five * commonCoeff * dy * dz - r2 * dy * dcFd2) * rinv7;
+        VecType tv6 = (-five * commonCoeff * dz * dx - r2 * dz * dcFd0) * rinv7;
+        VecType tv7 = (-five * commonCoeff * dz * dy - r2 * dz * dcFd1) * rinv7;
+        VecType tv8 = (-five * commonCoeff * dz * dz - r2 * dz * dcFd2 + r2 * commonCoeff) * rinv7;
+
+        u[0] += np + tv0 + tv0;
+        u[1] += tv1 + tv3;
+        u[2] += tv2 + tv6;
+        u[3] += tv1 + tv3;
+        u[4] += np + tv4 + tv4;
+        u[5] += tv5 + tv7;
+        u[6] += tv2 + tv6;
+        u[7] += tv5 + tv7;
+        u[8] += np + tv8 + tv8;
+    }
+};
+
 /*********************************************************
  *                                                        *
  *   Stokes Double P Vel kernel, source: 9, target: 4     *

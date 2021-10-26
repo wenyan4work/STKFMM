@@ -144,6 +144,43 @@ struct stokes_pvellaplacian_new : public GenericKernel<stokes_pvellaplacian_new>
 };
 
 
+
+struct stokes_traction_new : public GenericKernel<stokes_traction_new> {
+    static const int FLOPS = 20;
+    template <class Real>
+    static Real ScaleFactor() {
+        return -3.0 / (4.0 * const_pi<Real>());
+    }
+    template <class VecType, int digits>
+    static void uKerEval(VecType (&u)[9], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
+        VecType r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        VecType rinv = sctl::approx_rsqrt<digits>(r2, r2 > VecType::Zero());
+        VecType rinv3 = rinv * rinv * rinv;
+        VecType rinv5 = rinv3 * rinv * rinv;
+        const VecType invthree = (typename VecType::ScalarType)(0.3333333333333333333);
+
+        // clang-format off
+        const VecType &dx = r[0], &dy = r[1], &dz = r[2];
+        const VecType &fx = f[0], &fy = f[1], &fz = f[2];
+        const VecType &tr = f[3];
+        // clang-format on
+
+        VecType commonCoeff = (fx * dx + fy * dy + fz * dz - tr) * rinv5;
+        VecType diag = tr * r2 * rinv5 * invthree;
+
+        u[0] += dx * dx * commonCoeff + diag;
+        u[1] += dx * dy * commonCoeff;
+        u[2] += dx * dz * commonCoeff;
+        u[3] += dy * dx * commonCoeff;
+        u[4] += dy * dy * commonCoeff + diag;
+        u[5] += dy * dz * commonCoeff;
+        u[6] += dz * dx * commonCoeff;
+        u[7] += dz * dy * commonCoeff;
+        u[8] += dz * dz * commonCoeff + diag;
+    }
+};
+
+
 /*********************************************************
  *                                                        *
  *     Stokes P Vel kernel, source: 4, target: 4          *

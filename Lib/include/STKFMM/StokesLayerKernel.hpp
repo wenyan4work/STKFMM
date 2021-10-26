@@ -84,7 +84,6 @@ inline const Kernel<T> &StokesLayerKernelNew<T>::PVelGrad() {
     return stokes_pgker;
 }
 
-
 template <class T>
 inline const Kernel<T> &StokesLayerKernelNew<T>::PVelLaplacian() {
     static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
@@ -98,6 +97,18 @@ inline const Kernel<T> &StokesLayerKernelNew<T>::PVelLaplacian() {
     return stokes_pgker;
 }
 
+template <class T>
+inline const Kernel<T> &StokesLayerKernelNew<T>::Traction() {
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
+        "stokes_PVel", 3, std::pair<int, int>(4, 4));
+    stokes_pker.surf_dim = 9;
+    static Kernel<T> stokes_pgker =
+        BuildKernel<T, stokes_traction_new::Eval<T>, stokes_doubletraction_new::Eval<T>>(
+            "stokes_Traction", 3, std::pair<int, int>(4, 9), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
+            &stokes_pker, NULL, &stokes_pker, NULL);
+    stokes_pgker.surf_dim = 9;
+    return stokes_pgker;
+}
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Vel() {
