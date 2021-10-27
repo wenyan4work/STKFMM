@@ -32,83 +32,8 @@ struct StokesLayerKernel {
     inline static const Kernel<T> &PVelGrad();      ///< SL+DL -> PVelGrad
     inline static const Kernel<T> &PVelLaplacian(); ///< SL+DL -> PVelLaplacian
     inline static const Kernel<T> &Traction();      ///< SL+DL -> Traction
-
-  private:
-    /**
-     * @brief number of Newton iteration times
-     *  generate NEWTON_ITE at compile time.
-     * 1 for float and 2 for double
-     *
-     */
-    static constexpr int NEWTON_ITE = sizeof(T) / 4;
 };
 
-
-/**
- * @brief Stokes Layer Kernels
- *
- * @tparam T float or double
- */
-template <class T>
-struct StokesLayerKernelNew {
-    inline static const Kernel<T> &Vel();           ///< Stokeslet 3x3, SL->Vel
-    inline static const Kernel<T> &PVel();          ///< SL+DL -> PVel
-    inline static const Kernel<T> &PVelGrad();      ///< SL+DL -> PVelGrad
-    inline static const Kernel<T> &PVelLaplacian(); ///< SL+DL -> PVelLaplacian
-    inline static const Kernel<T> &Traction();      ///< SL+DL -> Traction
-};
-
-template <class T>
-inline const Kernel<T> &StokesLayerKernelNew<T>::Vel() {
-    static Kernel<T> ker = BuildKernel<T, stokes_vel::Eval<T>>("stokes_vel", 3, std::pair<int, int>(3, 3));
-    return ker;
-}
-
-template <class T>
-inline const Kernel<T> &StokesLayerKernelNew<T>::PVel() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
-        "stokes_PVel", 3, std::pair<int, int>(4, 4));
-    stokes_pker.surf_dim = 9;
-    return stokes_pker;
-}
-
-template <class T>
-inline const Kernel<T> &StokesLayerKernelNew<T>::PVelGrad() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
-        "stokes_PVel", 3, std::pair<int, int>(4, 4));
-    stokes_pker.surf_dim = 9;
-    static Kernel<T> stokes_pgker = BuildKernel<T, stokes_pvelgrad_new::Eval<T>, stokes_doublepvelgrad_new::Eval<T>>(
-        "stokes_PVelGrad", 3, std::pair<int, int>(4, 16), &stokes_pker, &stokes_pker, NULL, &stokes_pker, &stokes_pker,
-        NULL, &stokes_pker, NULL);
-    stokes_pgker.surf_dim = 9;
-    return stokes_pgker;
-}
-
-template <class T>
-inline const Kernel<T> &StokesLayerKernelNew<T>::PVelLaplacian() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
-        "stokes_PVel", 3, std::pair<int, int>(4, 4));
-    stokes_pker.surf_dim = 9;
-    static Kernel<T> stokes_pgker =
-        BuildKernel<T, stokes_pvellaplacian_new::Eval<T>, stokes_doublelaplacian_new::Eval<T>>(
-            "stokes_PVelLaplacian", 3, std::pair<int, int>(4, 7), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
-            &stokes_pker, NULL, &stokes_pker, NULL);
-    stokes_pgker.surf_dim = 9;
-    return stokes_pgker;
-}
-
-template <class T>
-inline const Kernel<T> &StokesLayerKernelNew<T>::Traction() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel_new::Eval<T>, stokes_doublepvel_new::Eval<T>>(
-        "stokes_PVel", 3, std::pair<int, int>(4, 4));
-    stokes_pker.surf_dim = 9;
-    static Kernel<T> stokes_pgker =
-        BuildKernel<T, stokes_traction_new::Eval<T>, stokes_doubletraction_new::Eval<T>>(
-            "stokes_Traction", 3, std::pair<int, int>(4, 9), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
-            &stokes_pker, NULL, &stokes_pker, NULL);
-    stokes_pgker.surf_dim = 9;
-    return stokes_pgker;
-}
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Vel() {
@@ -118,7 +43,7 @@ inline const Kernel<T> &StokesLayerKernel<T>::Vel() {
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVel() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel::Eval<T>, stokes_doublepvel::Eval<T>>(
         "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     return stokes_pker;
@@ -126,24 +51,23 @@ inline const Kernel<T> &StokesLayerKernel<T>::PVel() {
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVelGrad() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel::Eval<T>, stokes_doublepvel::Eval<T>>(
         "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
-    static Kernel<T> stokes_pgker =
-        BuildKernel<T, stokes_pvelgrad<T, NEWTON_ITE>, stokes_doublepvelgrad<T, NEWTON_ITE>>(
-            "stokes_PVelGrad", 3, std::pair<int, int>(4, 16), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
-            &stokes_pker, NULL, &stokes_pker, NULL);
+    static Kernel<T> stokes_pgker = BuildKernel<T, stokes_pvelgrad::Eval<T>, stokes_doublepvelgrad::Eval<T>>(
+        "stokes_PVelGrad", 3, std::pair<int, int>(4, 16), &stokes_pker, &stokes_pker, NULL, &stokes_pker, &stokes_pker,
+        NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
     return stokes_pgker;
 }
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::PVelLaplacian() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel::Eval<T>, stokes_doublepvel::Eval<T>>(
         "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
-        BuildKernel<T, stokes_pvellaplacian<T, NEWTON_ITE>, stokes_doublelaplacian<T, NEWTON_ITE>>(
+        BuildKernel<T, stokes_pvellaplacian::Eval<T>, stokes_doublelaplacian::Eval<T>>(
             "stokes_PVelLaplacian", 3, std::pair<int, int>(4, 7), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
             &stokes_pker, NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
@@ -152,11 +76,11 @@ inline const Kernel<T> &StokesLayerKernel<T>::PVelLaplacian() {
 
 template <class T>
 inline const Kernel<T> &StokesLayerKernel<T>::Traction() {
-    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel<T, NEWTON_ITE>, stokes_doublepvel<T, NEWTON_ITE>>(
+    static Kernel<T> stokes_pker = BuildKernel<T, stokes_pvel::Eval<T>, stokes_doublepvel::Eval<T>>(
         "stokes_PVel", 3, std::pair<int, int>(4, 4));
     stokes_pker.surf_dim = 9;
     static Kernel<T> stokes_pgker =
-        BuildKernel<T, stokes_traction<T, NEWTON_ITE>, stokes_doubletraction<T, NEWTON_ITE>>(
+        BuildKernel<T, stokes_traction::Eval<T>, stokes_doubletraction::Eval<T>>(
             "stokes_Traction", 3, std::pair<int, int>(4, 9), &stokes_pker, &stokes_pker, NULL, &stokes_pker,
             &stokes_pker, NULL, &stokes_pker, NULL);
     stokes_pgker.surf_dim = 9;
