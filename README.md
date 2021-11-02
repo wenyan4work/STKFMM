@@ -151,7 +151,7 @@ In these tables
 
 ## Prerequisite:
 
-- Install the `develop` branch of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
+- Install the `v1.2.1` tag of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
 
 If PVFMM is properly installed, you should be able to compile this project using the `CMakeLists.txt`. The script `do-cmake.sh` is an example of how to invoke `cmake` command with optional features (python interface and doxygen documentation).
 
