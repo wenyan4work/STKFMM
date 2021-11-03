@@ -219,15 +219,15 @@ struct laplace_quadp : public GenericKernel<laplace_quadp> {
         const VecType &dx = r[0], &dy = r[1], &dz = r[2];
         // clang-format on
 
-        VecType commonCoeff = f[0] * dx * dx;
+        VecType commonCoeff = sxx * dx * dx;
         commonCoeff += (sxy + syx) * dx * dy;
         commonCoeff += (sxz + szx) * dx * dz;
         commonCoeff += syy * dy * dy;
         commonCoeff += (syz + szy) * dy * dz;
         commonCoeff += szz * dz * dz;
-        commonCoeff *= (typename VecType::ScalarType)(-3.0);
+        commonCoeff *= (typename VecType::ScalarType)(3.0);
 
-        u[0] += (commonCoeff + r2 * (sxx + syy + szz)) * rinv5;
+        u[0] += (commonCoeff - r2 * (sxx + syy + szz)) * rinv5;
     }
 };
 
