@@ -1,6 +1,7 @@
 <img src="./STKFMM_Logo_RGB.svg" width="200">
 
 ###
+
 A C++ library implements the [Kernel Aggregated Fast Multipole Method](https://link.springer.com/article/10.1007/s10444-021-09896-1) based on the library PVFMM.
 
 # What does it compute
@@ -24,7 +25,9 @@ In the table:
 5. For all kernels, the electrostatic conductivity and fluid viscosity are ignored (set to 1).
 6. The regularized Stokeslet is <img src="svgs/1a0ddfa5e81ec1e06ac5c4b3e4530e4e.svg?invert_in_darkmode" align=middle width=337.4336229pt height=49.00309590000003pt/>.
 7. For Stokes `PVel`, `PVelGrad`, `PVelLaplacian`, and `Traction` kernels, the pressure and velocity fields are:
-<p align="center"><img src="svgs/0b9096df9697907d2beba351423393bb.svg?invert_in_darkmode" align=middle width=690.49624545pt height=39.452455349999994pt/></p>
+   $$
+      p=\frac{1}{4 \pi} \frac{r_{j}}{r^{3}} f_{j} + \frac{1}{4 \pi}\left(-3 \frac{r_{j} r_{k}}{r^{5}}+\frac{\delta_{j k}}{r^{3}}\right) D_{j k}, \quad u_{i}=G_{ij}f_j + \frac{1}{8 \pi \mu}\left(-\frac{r_{i}}{r^{3}} trD\right) + \frac{1}{8 \pi \mu}\left[-\frac{3 r_{i} r_{j} r_{k}}{r^{5}}\right] D_{j k}
+   $$
 
 | Kernel              | Single Layer Source (dim)  | Double Layer Source (dim) | Summation                                       | Target Value (dim)                                                  |
 | ------------------- | -------------------------- | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
@@ -151,7 +154,7 @@ In these tables
 
 ## Prerequisite:
 
-- Install the `v1.2.1` tag of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
+- Install the `develop` branch (b9de1a) of `pvfmm` by cmake. If you install `pvfmm` by gnu automake you will have to manually help `STKFMM` discover `pvfmm`.
 
 If PVFMM is properly installed, you should be able to compile this project using the `CMakeLists.txt`. The script `do-cmake.sh` is an example of how to invoke `cmake` command with optional features (python interface and doxygen documentation).
 
