@@ -83,29 +83,29 @@ if __name__ == '__main__':
 
     # Setup FMM
     myFMM = PySTKFMM.Stk3DFMM(mult_order, max_pts, pbc, kernel)
-    kdim, _, kdimTrg = myFMM.getKernelDimension(kernel)
+    kdim, _, kdimTrg = myFMM.get_kernel_dimension(kernel)
 
     # Create sources and target values
     src_value = np.random.randn(nsrc, kdim)
     src_value[:, 3] = a
     trg_value = np.zeros((ntrg, kdimTrg))
     if rank == 0:
-        myFMM.showActiveKernels()
+        myFMM.show_active_kernels()
         print('kdimSL = ', kdim)
         print('kdimTrg = ', kdimTrg)
 
     # Set tree
-    myFMM.setBox(np.array([0.0, 0.0, 0.0]), 2.0)
-    myFMM.setPoints(nsrc, src_coord, ntrg, trg_coord, 0, 0)
-    myFMM.setupTree(kernel)
+    myFMM.set_box(np.array([0.0, 0.0, 0.0]), 2.0)
+    myFMM.set_points(src_coord, trg_coord, np.empty(shape=(0,0)))
+    myFMM.setup_tree(kernel)
 
     # Evaluate FMM
-    myFMM.evaluateFMM(kernel, nsrc, src_value, ntrg, trg_value, 0, 0)
+    myFMM.evaluate_fmm(kernel, src_value, trg_value, np.empty(shape=(0,0)))
 
     # Clear FMM and evaluate again
     trg_value[:,:] = 0
-    myFMM.clearFMM(kernel)
-    myFMM.evaluateFMM(kernel, nsrc, src_value, ntrg, trg_value, 0, 0)
+    myFMM.clear_fmm(kernel)
+    myFMM.evaluate_fmm(kernel, src_value, trg_value, np.empty(shape=(0,0)))
 
     comm.Barrier()
 
