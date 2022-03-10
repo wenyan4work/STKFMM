@@ -18,7 +18,7 @@ struct stokes_regvel : public GenericKernel<stokes_regvel> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[3], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
@@ -49,7 +49,7 @@ struct stokes_regftvel : public GenericKernel<stokes_regftvel> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[3], const VecType (&r)[3], const VecType (&f)[7], const void *ctx_ptr) {
@@ -97,7 +97,7 @@ struct stokes_regftvelomega : public GenericKernel<stokes_regftvelomega> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[6], const VecType (&r)[3], const VecType (&f)[7], const void *ctx_ptr) {
@@ -159,7 +159,7 @@ struct stokes_velomega : public GenericKernel<stokes_velomega> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[6], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {

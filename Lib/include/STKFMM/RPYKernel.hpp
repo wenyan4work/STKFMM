@@ -18,7 +18,7 @@ struct rpy_u : public GenericKernel<rpy_u> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[3], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
@@ -53,7 +53,7 @@ struct rpy_ulapu : public GenericKernel<rpy_ulapu> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[6], const VecType (&r)[3], const VecType (&f)[4], const void *ctx_ptr) {
@@ -98,7 +98,7 @@ struct stk_ulapu : public GenericKernel<stk_ulapu> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (8.0 * const_pi<Real>());
+        return 1.0 / (8.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[6], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {

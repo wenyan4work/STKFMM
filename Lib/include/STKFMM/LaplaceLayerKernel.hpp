@@ -42,7 +42,7 @@ struct laplace_p : public GenericKernel<laplace_p> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
 
     /**
@@ -68,7 +68,7 @@ struct laplace_pgrad : public GenericKernel<laplace_pgrad> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
 
     /**
@@ -99,7 +99,7 @@ struct laplace_dipolep : public GenericKernel<laplace_dipolep> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[1], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {
@@ -116,7 +116,7 @@ struct laplace_dipolepgrad : public GenericKernel<laplace_dipolepgrad> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[4], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {
@@ -139,7 +139,7 @@ struct laplace_pgradgrad : public GenericKernel<laplace_pgradgrad> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[10], const VecType (&r)[3], const VecType (&f)[1], const void *ctx_ptr) {
@@ -169,7 +169,7 @@ struct laplace_dipolepgradgrad : public GenericKernel<laplace_dipolepgradgrad> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[10], const VecType (&r)[3], const VecType (&f)[3], const void *ctx_ptr) {
@@ -203,7 +203,7 @@ struct laplace_quadp : public GenericKernel<laplace_quadp> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[1], const VecType (&r)[3], const VecType (&f)[9], const void *ctx_ptr) {
@@ -235,7 +235,7 @@ struct laplace_quadpgradgrad : public GenericKernel<laplace_quadpgradgrad> {
     static const int FLOPS = 20;
     template <class Real>
     static Real ScaleFactor() {
-        return 1.0 / (4.0 * const_pi<Real>());
+        return 1.0 / (4.0 * sctl::const_pi<Real>());
     }
     template <class VecType, int digits>
     static void uKerEval(VecType (&u)[10], const VecType (&r)[3], const VecType (&f)[9], const void *ctx_ptr) {
